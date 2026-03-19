@@ -143,8 +143,8 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*TokenPair, erro
 		return nil, ErrInvalidCredentials
 	}
 
-	// Get user's first organization
-	orgID, err := s.getDefaultOrgID(ctx, user.ID)
+	// Get user's first organization, or create one if none exists
+	orgID, err := s.getOrCreateDefaultOrg(ctx, user)
 	if err != nil {
 		return nil, err
 	}
@@ -168,6 +168,49 @@ func (s *Service) getDefaultOrgID(ctx context.Context, userID int64) (int64, err
 	return om.OrganizationID, nil
 }
 
+// getOrCreateDefaultOrg returns the user's default org, creating one if none exists.
+// This handles users created before the organization feature was added.
+func (s *Service) getOrCreateDefaultOrg(ctx context.Context, user *models.User) (int64, error) {
+	orgID, err := s.getDefaultOrgID(ctx, user.ID)
+	if err != nil {
+		return 0, err
+	}
+	if orgID != 0 {
+		return orgID, nil
+	}
+
+	// No org exists — create one for the user
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	orgName := fmt.Sprintf("%s's Workspace", user.Name)
+	org := &models.Organization{
+		Name: orgName,
+		Slug: generateOrgSlug(orgName),
+	}
+	if _, err := tx.NewInsert().Model(org).Exec(ctx); err != nil {
+		return 0, err
+	}
+
+	orgMember := &models.OrganizationMember{
+		OrganizationID: org.ID,
+		UserID:         user.ID,
+		Role:           models.OrgRoleOwner,
+	}
+	if _, err := tx.NewInsert().Model(orgMember).Exec(ctx); err != nil {
+		return 0, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+
+	return org.ID, nil
+}
+
 func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (*TokenPair, error) {
 	session := new(models.Session)
 	err := s.db.NewSelect().Model(session).
@@ -187,7 +230,7 @@ func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (*Token
 		return nil, err
 	}
 
-	orgID, err := s.getDefaultOrgID(ctx, session.User.ID)
+	orgID, err := s.getOrCreateDefaultOrg(ctx, session.User)
 	if err != nil {
 		return nil, err
 	}
