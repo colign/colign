@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,23 +14,28 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [workspaceName, setWorkspaceName] = useState("");
   const [saving, setSaving] = useState(false);
-  const [initialLoaded, setInitialLoaded] = useState(false);
+  const [error, setError] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
 
   // Wait for org context to load after signup
   useEffect(() => {
-    if (!orgLoading && !currentOrg && !initialLoaded) {
-      // Org context not loaded yet, retry
-      const timer = setTimeout(() => refresh(), 500);
+    if (!orgLoading && !currentOrg && retryCount < 10) {
+      const timer = setTimeout(() => {
+        refresh();
+        setRetryCount((c) => c + 1);
+      }, 500);
       return () => clearTimeout(timer);
     }
-    if (currentOrg) {
-      setInitialLoaded(true);
-    }
-  }, [orgLoading, currentOrg, initialLoaded, refresh]);
+  }, [orgLoading, currentOrg, retryCount, refresh]);
 
   async function handleSetupWorkspace(e: React.FormEvent) {
     e.preventDefault();
-    if (!workspaceName.trim() || !currentOrg) return;
+    setError("");
+    if (!workspaceName.trim()) return;
+    if (!currentOrg) {
+      setError("Organization not loaded. Please refresh and try again.");
+      return;
+    }
     setSaving(true);
     try {
       await orgClient.updateOrganization({
@@ -39,8 +44,8 @@ export default function OnboardingPage() {
       });
       await refresh();
       setStep(2);
-    } catch {
-      // handle error
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to create workspace");
     } finally {
       setSaving(false);
     }
@@ -91,12 +96,14 @@ export default function OnboardingPage() {
                 </p>
               </div>
 
+              {error && <p className="text-sm text-destructive">{error}</p>}
+
               <Button
                 type="submit"
                 className="w-full cursor-pointer h-11"
-                disabled={saving || !workspaceName.trim()}
+                disabled={saving || !workspaceName.trim() || orgLoading}
               >
-                {saving ? "Setting up..." : "Continue"}
+                {orgLoading ? "Loading..." : saving ? "Setting up..." : "Continue"}
               </Button>
             </form>
           </div>
