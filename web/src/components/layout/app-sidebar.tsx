@@ -66,7 +66,7 @@ export function AppSidebar() {
       }
     }
     loadProjects();
-  }, [currentOrg]);
+  }, [currentOrg, pathname]);
 
   const navItems = [
     { label: t("sidebar.home"), href: "/home", icon: Home },

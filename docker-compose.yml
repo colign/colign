@@ -38,5 +38,17 @@ services:
       redis:
         condition: service_started
 
+  hocuspocus:
+    build: ./hocuspocus
+    ports:
+      - "1234:1234"
+    environment:
+      PORT: "1234"
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/colign?sslmode=disable"
+      JWT_SECRET: "dev-secret-change-in-production"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   pgdata:

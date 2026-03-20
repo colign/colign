@@ -167,6 +167,8 @@ export function DocumentTab({ changeId, docType }: DocumentTabProps) {
             onAddComment={handleAddComment}
             onHighlightClick={handleHighlightClick}
             editorRef={editorRef}
+            documentId={undefined}
+            userName={payload?.name || payload?.email?.split("@")[0] || "Anonymous"}
           />
         </div>
 

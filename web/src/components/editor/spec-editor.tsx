@@ -4,8 +4,11 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
+import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
+import { HocuspocusProvider } from "@hocuspocus/provider";
 import { CommentHighlight } from "./extensions/comment-highlight";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useMemo } from "react";
 import {
   Bold,
   Italic,
@@ -14,9 +17,21 @@ import {
   List,
   Code,
   MessageSquarePlus,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import { useState } from "react";
 import { useI18n } from "@/lib/i18n";
+import { getAccessToken } from "@/lib/auth";
+import * as Y from "yjs";
+
+// Generate a consistent color from user name
+function userColor(name: string): string {
+  const colors = ["#3b82f6", "#ef4444", "#22c55e", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#f97316"];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
+}
 
 interface SpecEditorProps {
   initialContent?: string;
@@ -31,6 +46,8 @@ interface SpecEditorProps {
     scrollToHighlight: (commentId: string) => void;
     getEditorDom: () => HTMLElement | null;
   } | null>;
+  documentId?: string;
+  userName?: string;
 }
 
 export function SpecEditor({
@@ -41,24 +58,103 @@ export function SpecEditor({
   onAddComment,
   onHighlightClick,
   editorRef,
+  documentId,
+  userName = "Anonymous",
 }: SpecEditorProps) {
   const { t } = useI18n();
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "error" | "idle">("idle");
+  const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "connecting">("connecting");
   const savedSelectionRef = useRef<{ from: number; to: number } | null>(null);
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
+  const isCollaborative = !!documentId;
+  const hocuspocusUrl = process.env.NEXT_PUBLIC_HOCUSPOCUS_URL ?? "ws://localhost:1234";
+
+  // Y.js doc and provider (only for collaborative mode)
+  const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
+  const [provider, setProvider] = useState<HocuspocusProvider | null>(null);
+
+  useEffect(() => {
+    if (!isCollaborative || !documentId) return;
+
+    const doc = new Y.Doc();
+    const prov = new HocuspocusProvider({
+      url: hocuspocusUrl,
+      name: documentId,
+      document: doc,
+      token: getAccessToken() ?? undefined,
+    });
+
+    setYdoc(doc);
+    setProvider(prov);
+
+    return () => {
+      prov.destroy();
+      doc.destroy();
+      setYdoc(null);
+      setProvider(null);
+    };
+  }, [isCollaborative, documentId, hocuspocusUrl]);
+
+  // Track connection status
+  useEffect(() => {
+    if (!provider) {
+      setConnectionStatus("disconnected");
+      return;
+    }
+    const onStatus = ({ status }: { status: string }) => {
+      if (status === "connected") setConnectionStatus("connected");
+      else if (status === "connecting") setConnectionStatus("connecting");
+      else setConnectionStatus("disconnected");
+    };
+    provider.on("status", onStatus);
+    return () => {
+      provider.off("status", onStatus);
+    };
+  }, [provider]);
+
+
+  // Build extensions
+  const canCollaborate = isCollaborative && ydoc != null && provider != null;
+
+  const extensions = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const exts: any[] = [
+      canCollaborate
+        ? StarterKit.configure({ history: false } as any)
+        : StarterKit,
       Placeholder.configure({ placeholder }),
       CommentHighlight,
-    ],
-    content: initialContent,
+    ];
+
+    if (canCollaborate) {
+      exts.push(Collaboration.configure({ document: ydoc! }));
+      exts.push(
+        CollaborationCursor.configure({
+          provider: provider!,
+          user: { name: userName, color: userColor(userName) },
+        }),
+      );
+    }
+
+    return exts;
+  }, [canCollaborate, ydoc, provider, placeholder, userName]);
+
+  const editor = useEditor({
+    extensions,
+    content: canCollaborate ? undefined : initialContent,
     editable: !readOnly,
     immediatelyRender: false,
     onUpdate: ({ editor }) => {
       debouncedSave(editor.getHTML());
     },
-  });
+  }, [canCollaborate]);
+
+  // For non-collaborative mode: set initial content
+  useEffect(() => {
+    if (!canCollaborate && editor && initialContent) {
+      editor.commands.setContent(initialContent);
+    }
+  }, [canCollaborate, initialContent, editor]);
 
   // Expose editor methods via ref
   useEffect(() => {
@@ -74,16 +170,11 @@ export function SpecEditor({
           .setCommentHighlight({ commentId })
           .run();
         savedSelectionRef.current = null;
-        // Trigger save so the mark is persisted in HTML
-        if (onSave) {
-          debouncedSave(editor.getHTML());
-        }
+        if (onSave) debouncedSave(editor.getHTML());
       },
       removeHighlight: (commentId: string) => {
         editor.chain().focus().unsetCommentHighlight(commentId).run();
-        if (onSave) {
-          debouncedSave(editor.getHTML());
-        }
+        if (onSave) debouncedSave(editor.getHTML());
       },
       getEditorDom: () => editor.view.dom,
       scrollToHighlight: (commentId: string) => {
@@ -136,12 +227,6 @@ export function SpecEditor({
     [onSave],
   );
 
-  useEffect(() => {
-    if (editor && initialContent) {
-      editor.commands.setContent(initialContent);
-    }
-  }, [initialContent, editor]);
-
   const handleCommentClick = () => {
     if (!editor || !onAddComment) return;
     const { from, to } = editor.state.selection;
@@ -149,7 +234,6 @@ export function SpecEditor({
     const text = editor.state.doc.textBetween(from, to, " ");
     if (!text.trim()) return;
     savedSelectionRef.current = { from, to };
-    // Collapse selection to hide BubbleMenu
     editor.commands.setTextSelection(to);
     onAddComment(text);
   };
@@ -176,11 +260,21 @@ export function SpecEditor({
     <div>
       {/* Status bar */}
       <div className="flex items-center justify-between px-1 py-1">
-        <span className="text-[11px] text-muted-foreground">
-          {saveStatus === "saved" && t("common.saved")}
-          {saveStatus === "saving" && t("common.saving")}
-          {saveStatus === "error" && "Save failed"}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-muted-foreground">
+            {saveStatus === "saved" && t("common.saved")}
+            {saveStatus === "saving" && t("common.saving")}
+            {saveStatus === "error" && "Save failed"}
+          </span>
+          {isCollaborative && (
+            <span className={`flex items-center gap-1 text-[11px] ${
+              connectionStatus === "connected" ? "text-emerald-400" : "text-muted-foreground"
+            }`}>
+              {connectionStatus === "connected" ? <Wifi className="size-3" /> : <WifiOff className="size-3" />}
+              {connectionStatus === "connecting" && "Connecting..."}
+            </span>
+          )}
+        </div>
         {readOnly && (
           <span className="text-[11px] text-muted-foreground">View only</span>
         )}
@@ -224,7 +318,6 @@ export function SpecEditor({
               <Code className="size-4" />,
             )}
 
-            {/* Separator + Comment */}
             {onAddComment && (
               <>
                 <div className="mx-0.5 h-5 w-px bg-border" />
