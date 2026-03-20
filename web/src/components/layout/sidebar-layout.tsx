@@ -4,7 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./app-sidebar";
-import { authClient, clearTokens, getAccessToken } from "@/lib/auth";
+import { clearTokens, getAccessToken } from "@/lib/auth";
+import { createClient, ConnectError, Code } from "@connectrpc/connect";
+import { AuthService } from "@/gen/proto/auth/v1/auth_pb";
+import { transport } from "@/lib/connect";
 
 const NO_SIDEBAR_PATHS = ["/auth", "/onboarding"];
 
@@ -31,16 +34,21 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      await authClient.me({}, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const meClient = createClient(AuthService, transport);
+      await meClient.me({});
       setVerified(true);
-    } catch {
-      // Token invalid or user doesn't exist
-      clearTokens();
-      setHasToken(false);
+    } catch (err) {
+      // Only redirect on auth-specific errors (bad token, user not found)
+      if (
+        err instanceof ConnectError &&
+        (err.code === Code.Unauthenticated || err.code === Code.NotFound)
+      ) {
+        clearTokens();
+        setHasToken(false);
+        router.replace("/auth");
+      }
+      // Network errors, server errors, etc. — just proceed
       setVerified(true);
-      router.replace("/auth");
     }
   }, [pathname, router]);
 

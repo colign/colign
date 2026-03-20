@@ -36,11 +36,9 @@ const authInterceptor: Interceptor = (next) => async (req) => {
           return await next(req);
         } catch {
           clearTokens();
-          window.location.href = "/auth";
         }
       } else {
         clearTokens();
-        window.location.href = "/auth";
       }
     }
     throw err;
