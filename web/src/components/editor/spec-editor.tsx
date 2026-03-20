@@ -307,14 +307,13 @@ function SpecEditorInner({
   return (
     <div>
       {/* Status bar */}
-      <div className="flex items-center justify-between px-1 py-1">
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] text-muted-foreground">
-            {saveStatus === "saved" && t("common.saved")}
-            {saveStatus === "saving" && t("common.saving")}
-            {saveStatus === "error" && "Save failed"}
-          </span>
-        </div>
+      <div className="flex h-6 items-center justify-between px-1">
+        <span className="text-[11px] text-muted-foreground">
+          {saveStatus === "saved" && t("common.saved")}
+          {saveStatus === "saving" && t("common.saving")}
+          {saveStatus === "error" && "Save failed"}
+          {saveStatus === "idle" && "\u00A0"}
+        </span>
         {readOnly && (
           <span className="text-[11px] text-muted-foreground">View only</span>
         )}
