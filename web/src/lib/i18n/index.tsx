@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
 import en from "./locales/en.json";
 import ko from "./locales/ko.json";
 
@@ -16,13 +16,15 @@ interface I18nContextType {
 
 const I18nContext = createContext<I18nContextType | null>(null);
 
-function getStoredLocale(): Locale {
-  if (typeof window === "undefined") return "en";
-  return (localStorage.getItem("colign_locale") as Locale) || "en";
-}
-
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(getStoredLocale);
+  const [locale, setLocaleState] = useState<Locale>("en");
+
+  useEffect(() => {
+    const stored = localStorage.getItem("colign_locale") as Locale | null;
+    if (stored && stored !== "en") {
+      setLocaleState(stored);
+    }
+  }, []);
 
   const setLocale = useCallback((newLocale: Locale) => {
     setLocaleState(newLocale);

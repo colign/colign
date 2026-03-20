@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTheme } from "@/lib/theme-context";
 import { useI18n } from "@/lib/i18n";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Header } from "@/components/layout/header";
-import { clearTokens } from "@/lib/auth";
+import { clearTokens, getTokenPayload } from "@/lib/auth";
 
 type SettingsTab = "profile" | "account" | "ai" | "appearance" | "notifications";
 
@@ -44,12 +45,14 @@ const tabI18nKeys: Record<SettingsTab, string> = {
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
   const { locale, setLocale, t } = useI18n();
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
 
   // Profile state
-  const [name, setName] = useState("Ben Park");
-  const [email] = useState("ben@example.com");
+  const tokenPayload = getTokenPayload();
+  const [name, setName] = useState(tokenPayload?.name ?? "");
+  const [email] = useState(tokenPayload?.email ?? "");
 
   // Account state
   const [currentPassword, setCurrentPassword] = useState("");
@@ -58,9 +61,6 @@ export default function SettingsPage() {
   // AI state
   const [claudeApiKey, setClaudeApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
-
-  // Appearance state
-  const [theme, setTheme] = useState("dark");
 
   // Notifications state
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -337,9 +337,17 @@ export default function SettingsPage() {
               <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <Label>{t("settings.theme")}</Label>
-                  <Select value={theme} onValueChange={setTheme}>
+                  <Select value={theme ?? "system"} onValueChange={setTheme}>
                     <SelectTrigger className="cursor-pointer">
-                      <SelectValue />
+                      <SelectValue
+                        placeholder={
+                          theme === "dark"
+                            ? t("settings.dark")
+                            : theme === "light"
+                              ? t("settings.light")
+                              : t("settings.system")
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="dark" className="cursor-pointer">
