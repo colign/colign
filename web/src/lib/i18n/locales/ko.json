@@ -16,7 +16,9 @@
     "source": "소스",
     "signIn": "로그인",
     "signUp": "회원가입",
-    "signOut": "로그아웃"
+    "signOut": "로그아웃",
+    "notFound": "찾을 수 없음",
+    "backToProjects": "프로젝트 목록으로"
   },
   "auth": {
     "title": "환영합니다",
@@ -59,7 +61,26 @@
     "chatDescription": "요구사항을 논의하고, 스펙 제안을 받거나, AI와 기능을 브레인스토밍하세요",
     "chatPlaceholder": "AI와 스펙 요구사항을 논의하세요...",
     "applyToSpec": "스펙에 반영",
-    "creating": "생성 중..."
+    "creating": "생성 중...",
+    "notFoundDescription": "프로젝트 또는 Change가 존재하지 않거나 접근 권한이 없습니다.",
+    "viewSnapshot": "문서 스냅샷"
+  },
+  "tasks": {
+    "addTask": "태스크 추가...",
+    "viewKanban": "보드",
+    "viewList": "리스트",
+    "statusTodo": "할 일",
+    "statusInProgress": "진행 중",
+    "statusDone": "완료",
+    "deleteConfirm": "이 태스크를 삭제할까요?",
+    "deleteUndo": "태스크가 삭제되었습니다",
+    "undo": "되돌리기",
+    "noTasks": "태스크가 없습니다",
+    "titlePlaceholder": "태스크 제목",
+    "descriptionPlaceholder": "설명 추가...",
+    "specRefPlaceholder": "예: §2.1",
+    "assignee": "담당자",
+    "unassigned": "미배정"
   },
   "sidebar": {
     "home": "홈",
@@ -90,6 +111,15 @@
     "showResolved": "해결된 코멘트 보기",
     "hideResolved": "해결된 코멘트 숨기기",
     "comments": "코멘트"
+  },
+  "ac": {
+    "title": "인수 조건",
+    "add": "AC 추가",
+    "addFirst": "첫 번째 인수 조건을 추가하세요",
+    "empty": "정의된 인수 조건이 없습니다",
+    "givenPlaceholder": "사전 조건 또는 초기 상태...",
+    "whenPlaceholder": "수행하는 동작 또는 이벤트...",
+    "thenPlaceholder": "기대되는 결과..."
   },
   "stages": {
     "draft": "초안",

@@ -16,7 +16,9 @@
     "source": "Source",
     "signIn": "Sign In",
     "signUp": "Sign Up",
-    "signOut": "Sign Out"
+    "signOut": "Sign Out",
+    "notFound": "Not Found",
+    "backToProjects": "Back to Projects"
   },
   "auth": {
     "title": "Welcome",
@@ -59,7 +61,26 @@
     "chatDescription": "Discuss requirements, ask for spec suggestions, or brainstorm features with AI",
     "chatPlaceholder": "Discuss spec requirements with AI...",
     "applyToSpec": "Apply to Spec",
-    "creating": "Creating..."
+    "creating": "Creating...",
+    "notFoundDescription": "This project or change does not exist, or you don't have access.",
+    "viewSnapshot": "Document snapshot"
+  },
+  "tasks": {
+    "addTask": "Add task...",
+    "viewKanban": "Board",
+    "viewList": "List",
+    "statusTodo": "Todo",
+    "statusInProgress": "In Progress",
+    "statusDone": "Done",
+    "deleteConfirm": "Delete this task?",
+    "deleteUndo": "Task deleted",
+    "undo": "Undo",
+    "noTasks": "No tasks yet",
+    "titlePlaceholder": "Task title",
+    "descriptionPlaceholder": "Add description...",
+    "specRefPlaceholder": "e.g. §2.1",
+    "assignee": "Assignee",
+    "unassigned": "Unassigned"
   },
   "sidebar": {
     "home": "Home",
@@ -90,6 +111,15 @@
     "showResolved": "Show resolved",
     "hideResolved": "Hide resolved",
     "comments": "Comments"
+  },
+  "ac": {
+    "title": "Acceptance Criteria",
+    "add": "Add AC",
+    "addFirst": "Add your first acceptance criteria",
+    "empty": "No acceptance criteria defined yet",
+    "givenPlaceholder": "A precondition or initial context...",
+    "whenPlaceholder": "An action or event occurs...",
+    "thenPlaceholder": "The expected outcome..."
   },
   "stages": {
     "draft": "Draft",
