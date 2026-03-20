@@ -149,6 +149,7 @@ export default function ChangeDetailPage() {
 
   // Mobile: show prev/current/next only
   function getMobileVisibleStages(): { index: number; stage: string }[] {
+    if (currentIdx < 0) return [{ index: 0, stage: stages[0] }];
     const visible: { index: number; stage: string }[] = [];
     if (currentIdx > 0) visible.push({ index: currentIdx - 1, stage: stages[currentIdx - 1] });
     visible.push({ index: currentIdx, stage: stages[currentIdx] });
