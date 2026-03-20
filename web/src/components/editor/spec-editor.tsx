@@ -73,9 +73,16 @@ export function SpecEditor({
           .setCommentHighlight({ commentId })
           .run();
         savedSelectionRef.current = null;
+        // Trigger save so the mark is persisted in HTML
+        if (onSave) {
+          debouncedSave(editor.getHTML());
+        }
       },
       removeHighlight: (commentId: string) => {
         editor.chain().focus().unsetCommentHighlight(commentId).run();
+        if (onSave) {
+          debouncedSave(editor.getHTML());
+        }
       },
       scrollToHighlight: (commentId: string) => {
         const dom = editor.view.dom;
