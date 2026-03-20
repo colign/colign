@@ -77,6 +77,20 @@
     "appearance": "Appearance",
     "logOut": "Log Out"
   },
+  "comments": {
+    "addComment": "Add Comment",
+    "reply": "Reply",
+    "resolve": "Resolve",
+    "resolved": "Resolved",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this comment?",
+    "placeholder": "Write a comment...",
+    "replyPlaceholder": "Write a reply...",
+    "noComments": "No comments yet",
+    "showResolved": "Show resolved",
+    "hideResolved": "Hide resolved",
+    "comments": "Comments"
+  },
   "stages": {
     "draft": "Draft",
     "design": "Design",

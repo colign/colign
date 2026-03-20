@@ -9,19 +9,20 @@ import (
 type Comment struct {
 	bun.BaseModel `bun:"table:comments,alias:c"`
 
-	ID         int64     `bun:"id,pk,autoincrement"`
-	DocumentID int64     `bun:"document_id,notnull"`
-	UserID     int64     `bun:"user_id,notnull"`
-	Content    string    `bun:"content,notnull"`
-	RangeFrom  int       `bun:"range_from"`
-	RangeTo    int       `bun:"range_to"`
-	Resolved   bool      `bun:"resolved,notnull,default:false"`
-	CreatedAt  time.Time `bun:"created_at,notnull,default:current_timestamp"`
-	UpdatedAt  time.Time `bun:"updated_at,notnull,default:current_timestamp"`
+	ID           int64     `bun:"id,pk,autoincrement"`
+	ChangeID     int64     `bun:"change_id,notnull"`
+	DocumentType string    `bun:"document_type,notnull"`
+	QuotedText   string    `bun:"quoted_text,notnull,default:''"`
+	Body         string    `bun:"body,notnull"`
+	UserID       int64     `bun:"user_id,notnull"`
+	Resolved     bool      `bun:"resolved,notnull,default:false"`
+	ResolvedBy   *int64    `bun:"resolved_by"`
+	CreatedAt    time.Time `bun:"created_at,notnull,default:current_timestamp"`
+	UpdatedAt    time.Time `bun:"updated_at,notnull,default:current_timestamp"`
 
-	Document *Document      `bun:"rel:belongs-to,join:document_id=id"`
-	User     *User          `bun:"rel:belongs-to,join:user_id=id"`
-	Replies  []CommentReply `bun:"rel:has-many,join:id=comment_id"`
+	Change  *Change        `bun:"rel:belongs-to,join:change_id=id"`
+	User    *User          `bun:"rel:belongs-to,join:user_id=id"`
+	Replies []CommentReply `bun:"rel:has-many,join:id=comment_id"`
 }
 
 type CommentReply struct {
@@ -29,8 +30,8 @@ type CommentReply struct {
 
 	ID        int64     `bun:"id,pk,autoincrement"`
 	CommentID int64     `bun:"comment_id,notnull"`
+	Body      string    `bun:"body,notnull"`
 	UserID    int64     `bun:"user_id,notnull"`
-	Content   string    `bun:"content,notnull"`
 	CreatedAt time.Time `bun:"created_at,notnull,default:current_timestamp"`
 
 	Comment *Comment `bun:"rel:belongs-to,join:comment_id=id"`

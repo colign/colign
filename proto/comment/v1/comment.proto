@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package comment.v1;
+
+option go_package = "github.com/gobenpark/colign/gen/proto/comment/v1;commentv1";
+
+import "google/protobuf/timestamp.proto";
+
+message Comment {
+  int64 id = 1;
+  int64 change_id = 2;
+  string document_type = 3;
+  string quoted_text = 4;
+  string body = 5;
+  int64 user_id = 6;
+  string user_name = 7;
+  bool resolved = 8;
+  int64 resolved_by = 9;
+  repeated Reply replies = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+message Reply {
+  int64 id = 1;
+  int64 comment_id = 2;
+  string body = 3;
+  int64 user_id = 4;
+  string user_name = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message CreateCommentRequest {
+  int64 change_id = 1;
+  string document_type = 2;
+  string quoted_text = 3;
+  string body = 4;
+}
+
+message CreateCommentResponse {
+  Comment comment = 1;
+}
+
+message ListCommentsRequest {
+  int64 change_id = 1;
+  string document_type = 2;
+}
+
+message ListCommentsResponse {
+  repeated Comment comments = 1;
+}
+
+message ResolveCommentRequest {
+  int64 comment_id = 1;
+}
+
+message ResolveCommentResponse {
+  Comment comment = 1;
+}
+
+message DeleteCommentRequest {
+  int64 comment_id = 1;
+}
+
+message DeleteCommentResponse {}
+
+message CreateReplyRequest {
+  int64 comment_id = 1;
+  string body = 2;
+}
+
+message CreateReplyResponse {
+  Reply reply = 1;
+}
+
+service CommentService {
+  rpc CreateComment(CreateCommentRequest) returns (CreateCommentResponse) {}
+  rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse) {}
+  rpc ResolveComment(ResolveCommentRequest) returns (ResolveCommentResponse) {}
+  rpc DeleteComment(DeleteCommentRequest) returns (DeleteCommentResponse) {}
+  rpc CreateReply(CreateReplyRequest) returns (CreateReplyResponse) {}
+}

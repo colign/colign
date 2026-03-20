@@ -14,9 +14,11 @@ import (
 	"github.com/gobenpark/colign/internal/database"
 
 	"github.com/gobenpark/colign/gen/proto/auth/v1/authv1connect"
+	"github.com/gobenpark/colign/gen/proto/comment/v1/commentv1connect"
 	"github.com/gobenpark/colign/gen/proto/organization/v1/organizationv1connect"
 	"github.com/gobenpark/colign/gen/proto/project/v1/projectv1connect"
 	"github.com/gobenpark/colign/gen/proto/workflow/v1/workflowv1connect"
+	"github.com/gobenpark/colign/internal/comment"
 	"github.com/gobenpark/colign/internal/organization"
 	"github.com/gobenpark/colign/internal/project"
 	"github.com/gobenpark/colign/internal/workflow"
@@ -87,6 +89,12 @@ func (s *Server) setupRoutes(cfg *config.Config) {
 	workflowConnectHandler := workflow.NewConnectHandler(workflowService, s.db, s.jwtManager)
 	workflowPath, workflowHandler := workflowv1connect.NewWorkflowServiceHandler(workflowConnectHandler)
 	s.mux.Handle(workflowPath, workflowHandler)
+
+	// Comment service (Connect)
+	commentService := comment.NewService(s.db)
+	commentConnectHandler := comment.NewConnectHandler(commentService, s.jwtManager)
+	commentPath, commentHandler := commentv1connect.NewCommentServiceHandler(commentConnectHandler)
+	s.mux.Handle(commentPath, commentHandler)
 }
 
 func (s *Server) Handler() http.Handler {

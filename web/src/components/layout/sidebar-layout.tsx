@@ -4,8 +4,6 @@ import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./app-sidebar";
-import { FloatingChatPanel } from "@/components/chat/floating-chat-panel";
-import { ChatTab } from "@/components/change/chat-tab";
 
 const NO_SIDEBAR_PATHS = ["/auth", "/onboarding"];
 
@@ -34,9 +32,6 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         </div>
         {children}
       </SidebarInset>
-      <FloatingChatPanel>
-        <ChatTab changeId={BigInt(0)} />
-      </FloatingChatPanel>
     </SidebarProvider>
   );
 }

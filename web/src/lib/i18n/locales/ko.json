@@ -77,6 +77,20 @@
     "appearance": "외관 변경",
     "logOut": "로그아웃"
   },
+  "comments": {
+    "addComment": "코멘트 추가",
+    "reply": "답글",
+    "resolve": "해결",
+    "resolved": "해결됨",
+    "delete": "삭제",
+    "deleteConfirm": "이 코멘트를 삭제할까요?",
+    "placeholder": "코멘트를 작성하세요...",
+    "replyPlaceholder": "답글을 작성하세요...",
+    "noComments": "코멘트가 없습니다",
+    "showResolved": "해결된 코멘트 보기",
+    "hideResolved": "해결된 코멘트 숨기기",
+    "comments": "코멘트"
+  },
   "stages": {
     "draft": "초안",
     "design": "설계",

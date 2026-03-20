@@ -4,12 +4,12 @@ import "testing"
 
 func TestCommentModel(t *testing.T) {
 	c := &Comment{
-		DocumentID: 1,
-		UserID:     1,
-		Content:    "Needs clarification",
-		RangeFrom:  10,
-		RangeTo:    25,
-		Resolved:   false,
+		ChangeID:     1,
+		DocumentType: "proposal",
+		QuotedText:   "selected text",
+		Body:         "Needs clarification",
+		UserID:       1,
+		Resolved:     false,
 	}
 
 	if c.Resolved {
@@ -21,7 +21,7 @@ func TestCommentReplyModel(t *testing.T) {
 	r := &CommentReply{
 		CommentID: 1,
 		UserID:    2,
-		Content:   "Fixed it",
+		Body:      "Fixed it",
 	}
 
 	if r.CommentID != 1 {
