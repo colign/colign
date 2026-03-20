@@ -34,3 +34,16 @@ CREATE TABLE workflow_events (
 CREATE INDEX idx_workflow_events_change_id ON workflow_events(change_id);
 CREATE INDEX idx_workflow_events_user_id ON workflow_events(user_id);
 CREATE INDEX idx_workflow_events_created_at ON workflow_events(created_at);
+
+CREATE TABLE acceptance_criteria (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    change_id BIGINT NOT NULL REFERENCES changes(id) ON DELETE CASCADE,
+    scenario TEXT NOT NULL DEFAULT '',
+    steps JSONB NOT NULL DEFAULT '[]',
+    met BOOLEAN NOT NULL DEFAULT FALSE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_acceptance_criteria_change_id ON acceptance_criteria(change_id);

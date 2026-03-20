@@ -127,6 +127,15 @@
     "review": "리뷰",
     "ready": "준비 완료"
   },
+  "ac": {
+    "title": "인수 조건",
+    "add": "AC 추가",
+    "addFirst": "첫 번째 인수 조건을 추가하세요",
+    "empty": "정의된 인수 조건이 없습니다",
+    "scenarioPlaceholder": "시나리오 이름 (예: 사용자가 프로젝트를 생성한다)",
+    "stepPlaceholder": "이 스텝을 설명하세요...",
+    "addStep": "스텝 추가"
+  },
   "settings": {
     "title": "설정",
     "profile": "프로필",

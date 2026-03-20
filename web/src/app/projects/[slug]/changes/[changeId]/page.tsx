@@ -399,7 +399,7 @@ export default function ChangeDetailPage() {
             </div>
 
             {/* Tab Content */}
-            {activeTab === "proposal" && <DocumentTab changeId={changeId} docType="proposal" />}
+            {activeTab === "proposal" && <DocumentTab changeId={changeId} docType="proposal" currentStage={stage} />}
             {activeTab === "design" && <DocumentTab changeId={changeId} docType="design" />}
             {activeTab === "specs" && <DocumentTab changeId={changeId} docType="spec" />}
             {activeTab === "tasks" && <TaskBoard changeId={changeId} members={members} />}

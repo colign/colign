@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package acceptance.v1;
+
+option go_package = "github.com/gobenpark/colign/gen/proto/acceptance/v1;acceptancev1";
+
+import "google/protobuf/timestamp.proto";
+
+message ACStep {
+  string keyword = 1; // Given, When, Then, And, But
+  string text = 2;
+}
+
+message AcceptanceCriteria {
+  int64 id = 1;
+  int64 change_id = 2;
+  string scenario = 3;
+  repeated ACStep steps = 4;
+  bool met = 5;
+  int32 sort_order = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+message CreateACRequest {
+  int64 change_id = 1;
+  string scenario = 2;
+  repeated ACStep steps = 3;
+  int32 sort_order = 4;
+}
+
+message CreateACResponse {
+  AcceptanceCriteria criteria = 1;
+}
+
+message ListACRequest {
+  int64 change_id = 1;
+}
+
+message ListACResponse {
+  repeated AcceptanceCriteria criteria = 1;
+}
+
+message UpdateACRequest {
+  int64 id = 1;
+  string scenario = 2;
+  repeated ACStep steps = 3;
+  int32 sort_order = 4;
+}
+
+message UpdateACResponse {
+  AcceptanceCriteria criteria = 1;
+}
+
+message ToggleACRequest {
+  int64 id = 1;
+  bool met = 2;
+}
+
+message ToggleACResponse {
+  AcceptanceCriteria criteria = 1;
+}
+
+message DeleteACRequest {
+  int64 id = 1;
+}
+
+message DeleteACResponse {}
+
+service AcceptanceCriteriaService {
+  rpc CreateAC(CreateACRequest) returns (CreateACResponse) {}
+  rpc ListAC(ListACRequest) returns (ListACResponse) {}
+  rpc UpdateAC(UpdateACRequest) returns (UpdateACResponse) {}
+  rpc ToggleAC(ToggleACRequest) returns (ToggleACResponse) {}
+  rpc DeleteAC(DeleteACRequest) returns (DeleteACResponse) {}
+}

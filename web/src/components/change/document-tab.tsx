@@ -8,13 +8,15 @@ import { commentClient } from "@/lib/comment";
 import { documentClient } from "@/lib/document";
 import { getTokenPayload } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { AcceptanceCriteria } from "@/components/change/acceptance-criteria";
 
 interface DocumentTabProps {
   changeId: bigint;
   docType: "proposal" | "design" | "spec";
+  currentStage?: string;
 }
 
-export function DocumentTab({ changeId, docType }: DocumentTabProps) {
+export function DocumentTab({ changeId, docType, currentStage }: DocumentTabProps) {
   const { t } = useI18n();
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
@@ -64,21 +66,6 @@ export function DocumentTab({ changeId, docType }: DocumentTabProps) {
     }, 100);
     return () => clearInterval(interval);
   }, [loading]);
-
-  const handleSave = useCallback(
-    async (newContent: string) => {
-      try {
-        await documentClient.saveDocument({
-          changeId,
-          type: docType,
-          content: newContent,
-        });
-      } catch {
-        // retry handled by editor
-      }
-    },
-    [changeId, docType],
-  );
 
   const handleAddComment = (quotedText: string) => {
     setPendingQuotedText(quotedText);
@@ -163,11 +150,10 @@ export function DocumentTab({ changeId, docType }: DocumentTabProps) {
           <SpecEditor
             initialContent={content}
             placeholder={`Start writing your ${docType}...`}
-            onSave={handleSave}
             onAddComment={handleAddComment}
             onHighlightClick={handleHighlightClick}
             editorRef={editorRef}
-            documentId={process.env.NEXT_PUBLIC_HOCUSPOCUS_URL ? `change-${changeId}-${docType}` : undefined}
+            documentId={`change-${changeId}-${docType}`}
             userName={payload?.name || payload?.email?.split("@")[0] || "Anonymous"}
           />
         </div>
@@ -181,6 +167,14 @@ export function DocumentTab({ changeId, docType }: DocumentTabProps) {
           refreshRef={commentRefreshRef}
         />
       </div>
+
+      {/* Acceptance Criteria — show on proposal tab */}
+      {docType === "proposal" && (
+        <AcceptanceCriteria
+          changeId={changeId}
+          reviewMode={currentStage === "review" || currentStage === "ready"}
+        />
+      )}
     </div>
   );
 }

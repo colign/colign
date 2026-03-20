@@ -127,6 +127,15 @@
     "review": "Review",
     "ready": "Ready"
   },
+  "ac": {
+    "title": "Acceptance Criteria",
+    "add": "Add AC",
+    "addFirst": "Add your first acceptance criteria",
+    "empty": "No acceptance criteria defined yet",
+    "scenarioPlaceholder": "Scenario name (e.g. User creates a project)",
+    "stepPlaceholder": "Describe this step...",
+    "addStep": "Add step"
+  },
   "settings": {
     "title": "Settings",
     "profile": "Profile",

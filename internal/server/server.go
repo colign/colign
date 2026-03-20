@@ -13,6 +13,7 @@ import (
 	"github.com/gobenpark/colign/internal/config"
 	"github.com/gobenpark/colign/internal/database"
 
+	"github.com/gobenpark/colign/gen/proto/acceptance/v1/acceptancev1connect"
 	"github.com/gobenpark/colign/gen/proto/auth/v1/authv1connect"
 	"github.com/gobenpark/colign/gen/proto/comment/v1/commentv1connect"
 	"github.com/gobenpark/colign/gen/proto/document/v1/documentv1connect"
@@ -20,6 +21,7 @@ import (
 	"github.com/gobenpark/colign/gen/proto/project/v1/projectv1connect"
 	taskv1connect "github.com/gobenpark/colign/gen/proto/task/v1/taskv1connect"
 	"github.com/gobenpark/colign/gen/proto/workflow/v1/workflowv1connect"
+	"github.com/gobenpark/colign/internal/acceptance"
 	"github.com/gobenpark/colign/internal/comment"
 	"github.com/gobenpark/colign/internal/document"
 	"github.com/gobenpark/colign/internal/organization"
@@ -111,6 +113,12 @@ func (s *Server) setupRoutes(cfg *config.Config) {
 	taskConnectHandler := task.NewConnectHandler(taskService, s.jwtManager)
 	taskPath, taskHandler := taskv1connect.NewTaskServiceHandler(taskConnectHandler)
 	s.mux.Handle(taskPath, taskHandler)
+
+	// Acceptance Criteria service (Connect)
+	acService := acceptance.NewService(s.db)
+	acConnectHandler := acceptance.NewConnectHandler(acService, s.jwtManager)
+	acPath, acHandler := acceptancev1connect.NewAcceptanceCriteriaServiceHandler(acConnectHandler)
+	s.mux.Handle(acPath, acHandler)
 }
 
 func (s *Server) Handler() http.Handler {
