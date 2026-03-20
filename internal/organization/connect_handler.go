@@ -3,7 +3,6 @@ package organization
 import (
 	"context"
 	"errors"
-	"strings"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -26,13 +25,9 @@ func NewConnectHandler(service *Service, jwtManager *auth.JWTManager) *ConnectHa
 }
 
 func (h *ConnectHandler) extractClaims(header string) (*auth.Claims, error) {
-	parts := strings.SplitN(header, " ", 2)
-	if len(parts) != 2 || parts[0] != "Bearer" {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid authorization header"))
-	}
-	claims, err := h.jwtManager.ValidateAccessToken(parts[1])
+	claims, err := auth.ExtractClaims(h.jwtManager, header)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid or expired token"))
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 	return claims, nil
 }
@@ -80,7 +75,7 @@ func (h *ConnectHandler) SwitchOrganization(ctx context.Context, req *connect.Re
 	}
 
 	// Generate new token pair with new org_id
-	tokenPair, err := h.jwtManager.GenerateTokenPair(claims.UserID, claims.Email, req.Msg.OrganizationId)
+	tokenPair, err := h.jwtManager.GenerateTokenPair(claims.UserID, claims.Email, claims.Name, req.Msg.OrganizationId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

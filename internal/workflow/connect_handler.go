@@ -12,18 +12,28 @@ import (
 
 	"github.com/uptrace/bun"
 
+	"github.com/gobenpark/colign/internal/auth"
 	"github.com/gobenpark/colign/internal/models"
 )
 
 type ConnectHandler struct {
-	service *Service
-	db      *bun.DB
+	service    *Service
+	db         *bun.DB
+	jwtManager *auth.JWTManager
 }
 
 var _ workflowv1connect.WorkflowServiceHandler = (*ConnectHandler)(nil)
 
-func NewConnectHandler(service *Service, db *bun.DB) *ConnectHandler {
-	return &ConnectHandler{service: service, db: db}
+func NewConnectHandler(service *Service, db *bun.DB, jwtManager *auth.JWTManager) *ConnectHandler {
+	return &ConnectHandler{service: service, db: db, jwtManager: jwtManager}
+}
+
+func (h *ConnectHandler) extractClaims(header string) (*auth.Claims, error) {
+	claims, err := auth.ExtractClaims(h.jwtManager, header)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+	return claims, nil
 }
 
 func (h *ConnectHandler) GetStatus(ctx context.Context, req *connect.Request[workflowv1.GetStatusRequest]) (*connect.Response[workflowv1.GetStatusResponse], error) {
@@ -51,9 +61,12 @@ func (h *ConnectHandler) GetStatus(ctx context.Context, req *connect.Request[wor
 }
 
 func (h *ConnectHandler) Advance(ctx context.Context, req *connect.Request[workflowv1.AdvanceRequest]) (*connect.Response[workflowv1.AdvanceResponse], error) {
-	userID := int64(1) // TODO: from auth context
+	claims, err := h.extractClaims(req.Header().Get("Authorization"))
+	if err != nil {
+		return nil, err
+	}
 
-	newStage, err := h.service.Advance(ctx, req.Msg.ChangeId, userID)
+	newStage, err := h.service.Advance(ctx, req.Msg.ChangeId, claims.UserID)
 	if err != nil {
 		if errors.Is(err, ErrChangeNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, err)
@@ -67,11 +80,14 @@ func (h *ConnectHandler) Advance(ctx context.Context, req *connect.Request[workf
 }
 
 func (h *ConnectHandler) Approve(ctx context.Context, req *connect.Request[workflowv1.ApproveRequest]) (*connect.Response[workflowv1.ApproveResponse], error) {
-	userID := int64(1) // TODO: from auth context
+	claims, err := h.extractClaims(req.Header().Get("Authorization"))
+	if err != nil {
+		return nil, err
+	}
 
 	approval := &models.Approval{
 		ChangeID: req.Msg.ChangeId,
-		UserID:   userID,
+		UserID:   claims.UserID,
 		Status:   "approved",
 		Comment:  req.Msg.Comment,
 	}
@@ -100,9 +116,12 @@ func (h *ConnectHandler) Approve(ctx context.Context, req *connect.Request[workf
 }
 
 func (h *ConnectHandler) RequestChanges(ctx context.Context, req *connect.Request[workflowv1.RequestChangesRequest]) (*connect.Response[workflowv1.RequestChangesResponse], error) {
-	userID := int64(1) // TODO: from auth context
+	claims, err := h.extractClaims(req.Header().Get("Authorization"))
+	if err != nil {
+		return nil, err
+	}
 
-	if err := h.service.Revert(ctx, req.Msg.ChangeId, userID, req.Msg.Reason); err != nil {
+	if err := h.service.Revert(ctx, req.Msg.ChangeId, claims.UserID, req.Msg.Reason); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
@@ -117,9 +136,12 @@ func (h *ConnectHandler) RequestChanges(ctx context.Context, req *connect.Reques
 }
 
 func (h *ConnectHandler) Revert(ctx context.Context, req *connect.Request[workflowv1.RevertRequest]) (*connect.Response[workflowv1.RevertResponse], error) {
-	userID := int64(1) // TODO: from auth context
+	claims, err := h.extractClaims(req.Header().Get("Authorization"))
+	if err != nil {
+		return nil, err
+	}
 
-	if err := h.service.Revert(ctx, req.Msg.ChangeId, userID, req.Msg.Reason); err != nil {
+	if err := h.service.Revert(ctx, req.Msg.ChangeId, claims.UserID, req.Msg.Reason); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
@@ -136,8 +158,9 @@ func (h *ConnectHandler) Revert(ctx context.Context, req *connect.Request[workfl
 func (h *ConnectHandler) GetHistory(ctx context.Context, req *connect.Request[workflowv1.GetHistoryRequest]) (*connect.Response[workflowv1.GetHistoryResponse], error) {
 	var events []models.WorkflowEvent
 	err := h.db.NewSelect().Model(&events).
-		Where("change_id = ?", req.Msg.ChangeId).
-		OrderExpr("created_at DESC").
+		Relation("User").
+		Where("we.change_id = ?", req.Msg.ChangeId).
+		OrderExpr("we.created_at DESC").
 		Scan(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -145,6 +168,10 @@ func (h *ConnectHandler) GetHistory(ctx context.Context, req *connect.Request[wo
 
 	protoEvents := make([]*workflowv1.WorkflowEvent, len(events))
 	for i, e := range events {
+		userName := ""
+		if e.User != nil {
+			userName = e.User.Name
+		}
 		protoEvents[i] = &workflowv1.WorkflowEvent{
 			Id:        e.ID,
 			FromStage: e.FromStage,
@@ -153,6 +180,7 @@ func (h *ConnectHandler) GetHistory(ctx context.Context, req *connect.Request[wo
 			Reason:    e.Reason,
 			UserId:    e.UserID,
 			CreatedAt: timestamppb.New(e.CreatedAt),
+			UserName:  userName,
 		}
 	}
 

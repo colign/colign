@@ -3,7 +3,6 @@ package project
 import (
 	"context"
 	"errors"
-	"strings"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -26,13 +25,9 @@ func NewConnectHandler(service *Service, jwtManager *auth.JWTManager) *ConnectHa
 }
 
 func (h *ConnectHandler) extractClaims(header string) (*auth.Claims, error) {
-	parts := strings.SplitN(header, " ", 2)
-	if len(parts) != 2 || parts[0] != "Bearer" {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid authorization header"))
-	}
-	claims, err := h.jwtManager.ValidateAccessToken(parts[1])
+	claims, err := auth.ExtractClaims(h.jwtManager, header)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid or expired token"))
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 	return claims, nil
 }

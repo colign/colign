@@ -20,6 +20,7 @@ message WorkflowEvent {
   string reason = 5;
   int64 user_id = 6;
   google.protobuf.Timestamp created_at = 7;
+  string user_name = 8;
 }
 
 message GetStatusRequest {

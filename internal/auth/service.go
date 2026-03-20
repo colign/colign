@@ -219,7 +219,7 @@ func (s *Service) VerifyEmail(ctx context.Context, token string) error {
 }
 
 func (s *Service) createSession(ctx context.Context, user *models.User, orgID int64) (*TokenPair, error) {
-	tokenPair, err := s.jwtManager.GenerateTokenPair(user.ID, user.Email, orgID)
+	tokenPair, err := s.jwtManager.GenerateTokenPair(user.ID, user.Email, user.Name, orgID)
 	if err != nil {
 		return nil, err
 	}

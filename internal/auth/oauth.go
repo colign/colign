@@ -282,7 +282,7 @@ func (s *OAuthService) getDefaultOrgID(ctx context.Context, userID int64) int64 
 }
 
 func (s *OAuthService) createSession(ctx context.Context, user *models.User, orgID int64) (*TokenPair, error) {
-	tokenPair, err := s.jwtManager.GenerateTokenPair(user.ID, user.Email, orgID)
+	tokenPair, err := s.jwtManager.GenerateTokenPair(user.ID, user.Email, user.Name, orgID)
 	if err != nil {
 		return nil, err
 	}

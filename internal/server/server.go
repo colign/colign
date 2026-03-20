@@ -84,7 +84,7 @@ func (s *Server) setupRoutes(cfg *config.Config) {
 
 	// Workflow service (Connect)
 	workflowService := workflow.NewService(s.db)
-	workflowConnectHandler := workflow.NewConnectHandler(workflowService, s.db)
+	workflowConnectHandler := workflow.NewConnectHandler(workflowService, s.db, s.jwtManager)
 	workflowPath, workflowHandler := workflowv1connect.NewWorkflowServiceHandler(workflowConnectHandler)
 	s.mux.Handle(workflowPath, workflowHandler)
 }
