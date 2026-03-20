@@ -18,8 +18,16 @@ jobs:
 
       - uses: bufbuild/buf-setup-action@v1
 
+      - name: Install protoc-gen-go plugins
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install connectrpc.com/connect/cmd/protoc-gen-connect-go@latest
+
       - name: Buf lint
         run: cd proto && buf lint
+
+      - name: Buf generate (Go)
+        run: cd proto && buf generate --template buf.gen.go.yaml
 
       - name: Go test
         run: go test ./...
