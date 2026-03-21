@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,10 +14,17 @@ type Server struct {
 	writer   io.Writer
 	apiToken string
 	apiURL   string
+	clients  *apiClients
 }
 
 func NewServer(reader io.Reader, writer io.Writer, apiToken, apiURL string) *Server {
-	return &Server{reader: reader, writer: writer, apiToken: apiToken, apiURL: apiURL}
+	return &Server{
+		reader:   reader,
+		writer:   writer,
+		apiToken: apiToken,
+		apiURL:   apiURL,
+		clients:  newAPIClients(apiURL, apiToken),
+	}
 }
 
 func (s *Server) Run() error {
@@ -95,13 +103,27 @@ func (s *Server) handleToolCall(req JSONRPCRequest) JSONRPCResponse {
 		}
 	}
 
-	// TODO: implement tool handlers with actual service calls
+	result, err := s.callTool(context.Background(), params.Name, params.Arguments)
+	if err != nil {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result: map[string]any{
+				"content": []map[string]any{
+					{"type": "text", "text": fmt.Sprintf("Error: %v", err)},
+				},
+				"isError": true,
+			},
+		}
+	}
+
+	resultJSON, _ := json.MarshalIndent(result, "", "  ")
 	return JSONRPCResponse{
 		JSONRPC: "2.0",
 		ID:      req.ID,
 		Result: map[string]any{
 			"content": []map[string]any{
-				{"type": "text", "text": fmt.Sprintf("Tool %s called (not yet implemented)", params.Name)},
+				{"type": "text", "text": string(resultJSON)},
 			},
 		},
 	}
