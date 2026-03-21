@@ -113,7 +113,7 @@ Colign ships with a [Claude Code plugin](plugins/claude-code/) that adds workflo
 
 ```bash
 # 1. Register marketplace
-/plugin marketplace add https://github.com/gobenpark/colign
+/plugin marketplace add https://github.com/colign/plugin
 
 # 2. Install plugin
 /plugin install claude-code@colign
