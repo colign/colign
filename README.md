@@ -104,6 +104,8 @@ COLIGN_API_TOKEN=col_... COLIGN_API_URL=http://localhost:8080 ./colign-mcp
 | `list_tasks` | List implementation tasks for a change |
 | `update_task` | Update a task's status (todo, in_progress, done) |
 | `suggest_spec` | Get suggestions for improving a spec |
+| `list_acceptance_criteria` | List acceptance criteria (Given/When/Then) |
+| `create_acceptance_criteria` | Create BDD-style acceptance criteria |
 
 ## Claude Code Plugin
 
@@ -116,10 +118,10 @@ Colign ships with a [Claude Code plugin](plugins/claude-code/) that adds workflo
 /plugin marketplace add https://github.com/colign/plugin
 
 # 2. Install plugin
-/plugin install claude-code@colign
+/plugin install colign@colign
 
-# 3. Set your API token (generate at Settings > AI & API Keys)
-export COLIGN_API_TOKEN=col_your_token_here
+# 3. Reload and connect (browser opens for OAuth login)
+/reload-plugins
 ```
 
 ### Workflow Skills
