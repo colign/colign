@@ -17,6 +17,8 @@ api:
     limits:
       cpu: 500m
       memory: 512Mi
+  migrate:
+    enabled: true  # run DB migrations as initContainer on pod start
   env:
     jwtSecret: ""  # required: set via --set or secrets
     claudeApiKey: ""
