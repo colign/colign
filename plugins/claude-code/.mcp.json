@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "colign": {
-      "url": "${COLIGN_MCP_URL:-https://app.colign.dev/mcp}",
+      "url": "${COLIGN_MCP_URL:-https://api.colign.co/mcp}",
       "headers": {
         "Authorization": "Bearer ${COLIGN_API_TOKEN}"
       }

@@ -72,7 +72,7 @@ No binary to install. Just add the URL and your API token:
 {
   "mcpServers": {
     "colign": {
-      "url": "https://app.colign.dev/mcp",
+      "url": "https://api.colign.co/mcp",
       "headers": {
         "Authorization": "Bearer col_your_token_here"
       }
@@ -112,8 +112,14 @@ Colign ships with a [Claude Code plugin](plugins/claude-code/) that adds workflo
 ### Install
 
 ```bash
+# 1. Register marketplace
+/plugin marketplace add https://github.com/gobenpark/colign
+
+# 2. Install plugin
+/plugin install claude-code@colign
+
+# 3. Set your API token (generate at Settings > AI & API Keys)
 export COLIGN_API_TOKEN=col_your_token_here
-claude --plugin-dir ./plugins/claude-code
 ```
 
 ### Workflow Skills
