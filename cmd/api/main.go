@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"net/http"
 	"os"
@@ -15,6 +16,9 @@ import (
 )
 
 func main() {
+	migrateOnly := flag.Bool("migrate-only", false, "Run migrations and exit")
+	flag.Parse()
+
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("failed to load config: %v", err)
@@ -26,7 +30,12 @@ func main() {
 		migrationsPath = "migrations"
 	}
 	if err := database.RunMigrations(cfg.DatabaseURL, migrationsPath); err != nil {
-		log.Printf("warning: migration failed: %v", err)
+		log.Fatalf("migration failed: %v", err)
+	}
+
+	if *migrateOnly {
+		log.Println("migrations completed successfully")
+		return
 	}
 
 	s, err := server.New(cfg)
