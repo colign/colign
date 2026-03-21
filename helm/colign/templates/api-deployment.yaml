@@ -22,12 +22,16 @@ spec:
         {{- include "colign.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: api
     spec:
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
       terminationGracePeriodSeconds: 15
       containers:
         - name: api
           image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.api.image.pullPolicy }}
-          command: ["/bin/api"]
+          command: ["/bin/api", "--skip-migrate"]
           ports:
             - name: http
               containerPort: 8080

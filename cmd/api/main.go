@@ -17,6 +17,7 @@ import (
 
 func main() {
 	migrateOnly := flag.Bool("migrate-only", false, "Run migrations and exit")
+	skipMigrate := flag.Bool("skip-migrate", false, "Skip auto-migration on startup")
 	flag.Parse()
 
 	cfg, err := config.Load()
@@ -29,8 +30,13 @@ func main() {
 	if migrationsPath == "" {
 		migrationsPath = "migrations"
 	}
-	if err := database.RunMigrations(cfg.DatabaseURL, migrationsPath); err != nil {
-		log.Fatalf("migration failed: %v", err)
+	if !*skipMigrate {
+		if err := database.RunMigrations(cfg.DatabaseURL, migrationsPath); err != nil {
+			if *migrateOnly {
+				log.Fatalf("migration failed: %v", err)
+			}
+			log.Printf("warning: migration failed: %v", err)
+		}
 	}
 
 	if *migrateOnly {
