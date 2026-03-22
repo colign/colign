@@ -98,7 +98,7 @@ func (h *ConnectHandler) GetUnreadCount(ctx context.Context, req *connect.Reques
 	}), nil
 }
 
-func (h *ConnectHandler) Subscribe(ctx context.Context, req *connect.Request[notificationv1.SubscribeRequest], stream *connect.ServerStream[notificationv1.Event]) error {
+func (h *ConnectHandler) Subscribe(ctx context.Context, req *connect.Request[notificationv1.SubscribeRequest], stream *connect.ServerStream[notificationv1.SubscribeResponse]) error {
 	if _, err := h.extractClaims(ctx, req.Header().Get("Authorization")); err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func (h *ConnectHandler) Subscribe(ctx context.Context, req *connect.Request[not
 			if !ok {
 				return nil
 			}
-			if err := stream.Send(&notificationv1.Event{
+			if err := stream.Send(&notificationv1.SubscribeResponse{
 				Type:      evt.Type,
 				ChangeId:  evt.ChangeID,
 				Payload:   evt.Payload,

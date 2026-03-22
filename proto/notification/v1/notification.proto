@@ -54,7 +54,7 @@ message SubscribeRequest {
   int64 change_id = 1; // subscribe to events for a specific change (0 = all)
 }
 
-message Event {
+message SubscribeResponse {
   string type = 1;       // "task_created", "task_updated", "document_updated", "change_updated"
   int64 change_id = 2;
   string payload = 3;    // JSON-encoded event data
@@ -66,5 +66,5 @@ service NotificationService {
   rpc MarkRead(MarkReadRequest) returns (MarkReadResponse) {}
   rpc MarkAllRead(MarkAllReadRequest) returns (MarkAllReadResponse) {}
   rpc GetUnreadCount(GetUnreadCountRequest) returns (GetUnreadCountResponse) {}
-  rpc Subscribe(SubscribeRequest) returns (stream Event) {}
+  rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse) {}
 }
