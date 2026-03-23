@@ -77,7 +77,8 @@
     "properties": "Properties",
     "resources": "Resources",
     "addResource": "Add link...",
-    "addSummary": "Add a short summary..."
+    "addSummary": "Add a short summary...",
+    "settings": "Settings"
   },
   "change": {
     "workflow": "Workflow",

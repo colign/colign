@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/uptrace/bun"
@@ -33,6 +34,11 @@ type OAuthService struct {
 	google     *oauth2.Config
 }
 
+type ProviderStatus struct {
+	GitHub bool `json:"github"`
+	Google bool `json:"google"`
+}
+
 func NewOAuthService(db *bun.DB, jwtManager *JWTManager, cfg OAuthConfig, orgJoiner OrgJoiner) *OAuthService {
 	return &OAuthService{
 		db:         db,
@@ -56,6 +62,10 @@ func NewOAuthService(db *bun.DB, jwtManager *JWTManager, cfg OAuthConfig, orgJoi
 }
 
 func (s *OAuthService) GetAuthURL(provider, state string) (string, error) {
+	if !s.isProviderEnabled(provider) {
+		return "", fmt.Errorf("provider not enabled: %s", provider)
+	}
+
 	cfg, err := s.getConfig(provider)
 	if err != nil {
 		return "", err
@@ -64,6 +74,10 @@ func (s *OAuthService) GetAuthURL(provider, state string) (string, error) {
 }
 
 func (s *OAuthService) HandleCallback(ctx context.Context, provider, code string) (*TokenPair, error) {
+	if !s.isProviderEnabled(provider) {
+		return nil, fmt.Errorf("provider not enabled: %s", provider)
+	}
+
 	cfg, err := s.getConfig(provider)
 	if err != nil {
 		return nil, err
@@ -104,6 +118,13 @@ func (s *OAuthService) fetchUserInfo(ctx context.Context, provider string, token
 		return s.fetchGoogleUser(client)
 	default:
 		return nil, fmt.Errorf("unsupported provider: %s", provider)
+	}
+}
+
+func (s *OAuthService) EnabledProviders() ProviderStatus {
+	return ProviderStatus{
+		GitHub: s.isProviderEnabled("github"),
+		Google: s.isProviderEnabled("google"),
 	}
 }
 
@@ -318,4 +339,13 @@ func (s *OAuthService) getConfig(provider string) (*oauth2.Config, error) {
 	default:
 		return nil, fmt.Errorf("unsupported provider: %s", provider)
 	}
+}
+
+func (s *OAuthService) isProviderEnabled(provider string) bool {
+	cfg, err := s.getConfig(provider)
+	if err != nil || cfg == nil {
+		return false
+	}
+
+	return strings.TrimSpace(cfg.ClientID) != "" && strings.TrimSpace(cfg.ClientSecret) != ""
 }

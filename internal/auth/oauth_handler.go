@@ -3,6 +3,7 @@ package auth
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"net/http"
 )
 
@@ -14,6 +15,11 @@ type OAuthHandler struct {
 
 func NewOAuthHandler(service *OAuthService, frontendURL string, cookieOpts BrowserSessionOptions) *OAuthHandler {
 	return &OAuthHandler{service: service, frontendURL: frontendURL, cookieOpts: cookieOpts}
+}
+
+func (h *OAuthHandler) Providers(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(h.service.EnabledProviders())
 }
 
 func (h *OAuthHandler) Redirect(w http.ResponseWriter, r *http.Request) {
