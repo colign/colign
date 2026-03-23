@@ -50,6 +50,7 @@ message Change {
   string stage = 4;
   google.protobuf.Timestamp created_at = 5;
   google.protobuf.Timestamp updated_at = 6;
+  optional google.protobuf.Timestamp archived_at = 7;
 }
 
 // Project CRUD
@@ -158,6 +159,7 @@ message CreateChangeResponse {
 
 message ListChangesRequest {
   int64 project_id = 1;
+  optional string filter = 2;
 }
 
 message ListChangesResponse {
@@ -177,6 +179,46 @@ message DeleteChangeRequest {
 }
 
 message DeleteChangeResponse {}
+
+// Archive
+message ArchiveChangeRequest {
+  int64 change_id = 1;
+}
+message ArchiveChangeResponse {
+  Change change = 1;
+}
+
+message UnarchiveChangeRequest {
+  int64 change_id = 1;
+}
+message UnarchiveChangeResponse {
+  Change change = 1;
+}
+
+// Archive Policy
+message ArchivePolicyMsg {
+  int64 project_id = 1;
+  string mode = 2;
+  string trigger = 3;
+  int32 days_delay = 4;
+}
+
+message GetArchivePolicyRequest {
+  int64 project_id = 1;
+}
+message GetArchivePolicyResponse {
+  ArchivePolicyMsg policy = 1;
+}
+
+message UpdateArchivePolicyRequest {
+  int64 project_id = 1;
+  string mode = 2;
+  string trigger = 3;
+  int32 days_delay = 4;
+}
+message UpdateArchivePolicyResponse {
+  ArchivePolicyMsg policy = 1;
+}
 
 // Search
 message SearchRequest {
@@ -211,5 +253,9 @@ service ProjectService {
   rpc ListChanges(ListChangesRequest) returns (ListChangesResponse) {}
   rpc GetChange(GetChangeRequest) returns (GetChangeResponse) {}
   rpc DeleteChange(DeleteChangeRequest) returns (DeleteChangeResponse) {}
+  rpc ArchiveChange(ArchiveChangeRequest) returns (ArchiveChangeResponse) {}
+  rpc UnarchiveChange(UnarchiveChangeRequest) returns (UnarchiveChangeResponse) {}
+  rpc GetArchivePolicy(GetArchivePolicyRequest) returns (GetArchivePolicyResponse) {}
+  rpc UpdateArchivePolicy(UpdateArchivePolicyRequest) returns (UpdateArchivePolicyResponse) {}
   rpc Search(SearchRequest) returns (SearchResponse) {}
 }
