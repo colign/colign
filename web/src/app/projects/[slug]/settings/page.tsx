@@ -381,10 +381,10 @@ export default function ProjectSettingsPage() {
                       <div className="space-y-2">
                         <Label>{t("projectSettings.archiveTrigger")}</Label>
                         <Select value={archiveTrigger} onValueChange={(v) => v && setArchiveTrigger(v)}>
-                          <SelectTrigger className="cursor-pointer">
+                          <SelectTrigger className="w-full cursor-pointer">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="min-w-[280px]">
                             <SelectItem value="tasks_done" className="cursor-pointer">
                               {t("projectSettings.archiveTriggerTasksDone")}
                             </SelectItem>
