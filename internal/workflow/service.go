@@ -16,6 +16,7 @@ var (
 	ErrChangeNotFound    = errors.New("change not found")
 	ErrInvalidTransition = errors.New("invalid stage transition")
 	ErrGateNotMet        = errors.New("gate conditions not met")
+	ErrChangeArchived    = errors.New("cannot modify archived change")
 )
 
 type Service struct {
@@ -37,6 +38,10 @@ func (s *Service) EvaluateAndAdvance(ctx context.Context, changeID int64) (bool,
 			return false, ErrChangeNotFound
 		}
 		return false, err
+	}
+
+	if change.ArchivedAt != nil {
+		return false, ErrChangeArchived
 	}
 
 	input, err := s.buildGateInput(ctx, change)
@@ -89,6 +94,10 @@ func (s *Service) Advance(ctx context.Context, changeID int64, userID int64) (mo
 		return "", err
 	}
 
+	if change.ArchivedAt != nil {
+		return "", ErrChangeArchived
+	}
+
 	next, ok := NextStage(change.Stage)
 	if !ok {
 		return change.Stage, fmt.Errorf("already at final stage")
@@ -125,6 +134,10 @@ func (s *Service) Revert(ctx context.Context, changeID int64, userID int64, reas
 			return ErrChangeNotFound
 		}
 		return err
+	}
+
+	if change.ArchivedAt != nil {
+		return ErrChangeArchived
 	}
 
 	prev, ok := PrevStage(change.Stage)
