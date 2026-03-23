@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/uptrace/bun"
@@ -23,12 +24,31 @@ type ReorderItem struct {
 	OrderIndex int
 }
 
-type Service struct {
-	db *bun.DB
+// ArchiveEvaluator is implemented by the archive service to trigger auto-archive
+// evaluation when a task transitions to done.
+type ArchiveEvaluator interface {
+	EvaluateAutoArchive(ctx context.Context, changeID int64) (bool, error)
 }
 
-func NewService(db *bun.DB) *Service {
-	return &Service{db: db}
+// Option configures a Service.
+type Option func(*Service)
+
+// WithArchiveEvaluator injects an ArchiveEvaluator into the service.
+func WithArchiveEvaluator(ae ArchiveEvaluator) Option {
+	return func(s *Service) { s.archiveEvaluator = ae }
+}
+
+type Service struct {
+	db               *bun.DB
+	archiveEvaluator ArchiveEvaluator
+}
+
+func NewService(db *bun.DB, opts ...Option) *Service {
+	s := &Service{db: db}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 func (s *Service) List(ctx context.Context, changeID int64) ([]models.Task, error) {
@@ -128,6 +148,12 @@ func (s *Service) Update(ctx context.Context, id int64, title *string, descripti
 		WherePK().
 		Scan(ctx); err != nil {
 		return nil, err
+	}
+
+	if status != nil && models.TaskStatus(*status) == models.TaskDone && s.archiveEvaluator != nil {
+		if _, err := s.archiveEvaluator.EvaluateAutoArchive(ctx, task.ChangeID); err != nil {
+			slog.Error("auto-archive evaluation failed", "error", err, "change_id", task.ChangeID)
+		}
 	}
 
 	return task, nil
