@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -120,6 +121,9 @@ func (s *Server) setupRoutes(cfg *config.Config) {
 	// Project service (Connect)
 	projectService := project.NewService(s.db)
 	archiveService := archive.NewService(s.db)
+	cronCtx, cronCancel := context.WithCancel(context.Background())
+	_ = cronCancel // TODO: call on server shutdown
+	archiveService.StartCron(cronCtx)
 	projectConnectHandler := project.NewConnectHandler(projectService, archiveService, s.jwtManager, apiTokenService)
 	projectPath, projectHandler := projectv1connect.NewProjectServiceHandler(projectConnectHandler)
 	s.mux.Handle(projectPath, projectHandler)
@@ -148,7 +152,7 @@ func (s *Server) setupRoutes(cfg *config.Config) {
 	s.mux.Handle(documentPath, documentHandler)
 
 	// Task service (Connect)
-	taskService := task.NewService(s.db)
+	taskService := task.NewService(s.db, task.WithArchiveEvaluator(archiveService))
 	taskConnectHandler := task.NewConnectHandler(taskService, s.jwtManager, apiTokenService)
 	taskPath, taskHandler := taskv1connect.NewTaskServiceHandler(taskConnectHandler)
 	s.mux.Handle(taskPath, taskHandler)
