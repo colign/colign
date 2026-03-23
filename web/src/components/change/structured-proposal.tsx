@@ -128,22 +128,25 @@ export function StructuredProposal({ changeId, currentStage }: StructuredProposa
     load();
   }, [changeId]);
 
-  // Auto-save with debounce
+  // Save to server
+  const saveNow = useCallback(async () => {
+    try {
+      await documentClient.saveDocument({
+        changeId,
+        type: "proposal",
+        title: "Proposal",
+        content: JSON.stringify(sectionsRef.current),
+      });
+    } catch (err) {
+      console.error("proposal save failed:", err);
+    }
+  }, [changeId]);
+
+  // Debounced save for text input
   const save = useCallback(() => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(async () => {
-      try {
-        await documentClient.saveDocument({
-          changeId,
-          type: "proposal",
-          title: "Proposal",
-          content: JSON.stringify(sectionsRef.current),
-        });
-      } catch {
-        // save error
-      }
-    }, 1000);
-  }, [changeId]);
+    saveTimerRef.current = setTimeout(saveNow, 1000);
+  }, [saveNow]);
 
   function updateSection(key: TextSectionKey, value: string) {
     setSections((prev) => ({ ...prev, [key]: value }));
@@ -158,7 +161,7 @@ export function StructuredProposal({ changeId, currentStage }: StructuredProposa
       sectionsRef.current = updated;
       return updated;
     });
-    save();
+    saveNow();
   }
 
   function removeDesignLink(index: number) {
@@ -167,7 +170,7 @@ export function StructuredProposal({ changeId, currentStage }: StructuredProposa
       sectionsRef.current = updated;
       return updated;
     });
-    save();
+    saveNow();
   }
 
   function toggleCollapse(key: string) {
