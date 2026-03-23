@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -9,11 +9,24 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { authClient, saveTokens } from "@/lib/auth";
+import { authClient, saveTokens, isLoggedIn } from "@/lib/auth";
 
 export default function AuthPage() {
   const router = useRouter();
   const { t } = useI18n();
+
+  useEffect(() => {
+    if (isLoggedIn()) {
+      const pendingInvite = sessionStorage.getItem("pending_invite_token");
+      if (pendingInvite) {
+        sessionStorage.removeItem("pending_invite_token");
+        router.replace(`/invite/${pendingInvite}`);
+      } else {
+        router.replace("/projects");
+      }
+    }
+  }, [router]);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");

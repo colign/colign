@@ -6,7 +6,7 @@ import { useOrg } from "@/lib/org-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserPlus, Trash2, Shield, User, Crown, X, Mail, Globe } from "lucide-react";
+import { UserPlus, Trash2, Shield, User, Crown, X, Mail, Globe, Copy, Check } from "lucide-react";
 
 type Member = {
   id: bigint;
@@ -46,6 +46,8 @@ export function OrgMembers() {
   const [inviting, setInviting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [inviteLink, setInviteLink] = useState("");
+  const [copied, setCopied] = useState(false);
 
   // Domain settings
   const [domains, setDomains] = useState<string[]>([]);
@@ -117,11 +119,12 @@ export function OrgMembers() {
         email: inviteEmail.trim(),
         role: inviteRole,
       });
-      const inviteLink = `${window.location.origin}/invite/${res.invitation?.token}`;
-      setSuccess(`Invitation sent! Link: ${inviteLink}`);
+      const link = `${window.location.origin}/invite/${res.invitation?.token}`;
+      setInviteLink(link);
+      setCopied(false);
+      setSuccess("Invitation sent!");
       setInviteEmail("");
       fetchInvitations();
-      setTimeout(() => setSuccess(""), 5000);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to invite");
     } finally {
@@ -290,7 +293,31 @@ export function OrgMembers() {
           </form>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
-          {success && <p className="text-sm text-emerald-400">{success}</p>}
+          {success && inviteLink && (
+            <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2">
+              <p className="flex-1 truncate text-sm text-emerald-400">{inviteLink}</p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 shrink-0 cursor-pointer gap-1.5 px-2 text-xs"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(inviteLink);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+              >
+                {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                {copied ? "Copied" : "Copy"}
+              </Button>
+              <button
+                onClick={() => { setSuccess(""); setInviteLink(""); }}
+                className="cursor-pointer rounded-sm p-0.5 text-muted-foreground hover:text-foreground"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          )}
 
           {/* Pending Invitations */}
           {invitations.length > 0 && (
