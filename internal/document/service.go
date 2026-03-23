@@ -51,7 +51,8 @@ func (s *Service) Save(ctx context.Context, input SaveInput) (*models.Document, 
 	err := s.db.NewSelect().Model(doc).
 		Where("change_id = ?", input.ChangeID).
 		Where("type = ?", input.Type).
-		Where("COALESCE(title, '') = COALESCE(?, '')", input.Title).
+		OrderExpr("updated_at DESC").
+		Limit(1).
 		Scan(ctx)
 
 	if errors.Is(err, sql.ErrNoRows) {
