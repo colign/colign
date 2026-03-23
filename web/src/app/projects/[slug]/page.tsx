@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { ReadmeEditor } from "@/components/editor/readme-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -40,7 +39,6 @@ import {
   ChevronRight,
   Layers,
   Brain,
-  Save,
   User,
   Signal,
 } from "lucide-react";
@@ -990,82 +988,28 @@ function OverviewTab({
   onReadmeUpdate: (desc: string) => void;
   t: (key: string) => string;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(readme);
-  const [saving, setSaving] = useState(false);
-
-  async function handleSave() {
-    setSaving(true);
+  const handleReadmeSave = async (html: string) => {
     try {
-      await projectClient.updateProject({ id: projectId, readme: draft });
-      onReadmeUpdate(draft);
-      setEditing(false);
+      await projectClient.updateProject({ id: projectId, readme: html });
+      onReadmeUpdate(html);
     } catch (err) {
       console.error("Failed to save README:", err);
-    } finally {
-      setSaving(false);
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
       {/* README */}
       <div className="rounded-xl border border-border/40 bg-card/50">
-        <div className="flex items-center justify-between border-b border-border/40 px-5 py-3">
-          <div className="flex items-center gap-2">
-            <FileText className="size-4 text-muted-foreground" />
-            <span className="text-sm font-medium">README</span>
-          </div>
-          {editing ? (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  setEditing(false);
-                  setDraft(readme);
-                }}
-                className="cursor-pointer rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {t("common.cancel")}
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="cursor-pointer rounded-md bg-primary px-3 py-1 text-xs text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-              >
-                {saving ? t("common.saving") : t("common.save")}
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => {
-                setDraft(readme);
-                setEditing(true);
-              }}
-              className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Pencil className="size-3" />
-              {t("common.edit")}
-            </button>
-          )}
+        <div className="flex items-center gap-2 border-b border-border/40 px-5 py-3">
+          <FileText className="size-4 text-muted-foreground" />
+          <span className="text-sm font-medium">README</span>
         </div>
-        {editing ? (
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            className="w-full min-h-[200px] resize-y bg-transparent px-5 py-4 text-sm text-foreground/90 focus:outline-none font-mono"
-            autoFocus
-          />
-        ) : (
-          <div className="prose prose-invert prose-sm max-w-none px-5 py-4">
-            {readme ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{readme}</ReactMarkdown>
-            ) : (
-              <p className="text-sm text-muted-foreground italic">
-                No description yet. Click Edit to add one.
-              </p>
-            )}
-          </div>
-        )}
+        <ReadmeEditor
+          initialContent={readme}
+          onSave={handleReadmeSave}
+          placeholder="Write your project README..."
+        />
       </div>
 
       {/* Recent Changes */}
@@ -1412,87 +1356,31 @@ function MemoryTab({
   content: string;
   t: (key: string) => string;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [editContent, setEditContent] = useState(content);
-  const [currentContent, setCurrentContent] = useState(content);
+  const handleMemorySave = async (html: string) => {
+    try {
+      await memoryClient.saveMemory({ projectId, content: html });
+    } catch {
+      // handle error
+    }
+  };
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Brain className="size-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">{t("project.memoryDesc")}</span>
-        </div>
+      <div className="mb-4 flex items-center gap-2">
+        <Brain className="size-4 text-muted-foreground" />
+        <span className="text-sm text-muted-foreground">{t("project.memoryDesc")}</span>
       </div>
 
       <div className="rounded-xl border border-border/40 bg-card/50">
-        <div className="flex items-center justify-between border-b border-border/30 px-5 py-3">
-          <div className="flex items-center gap-2">
-            <Brain className="size-3.5 text-primary/60" />
-            <span className="text-sm font-medium">{t("project.memory")}</span>
-          </div>
-          <button
-            onClick={async () => {
-              if (editing) {
-                try {
-                  await memoryClient.saveMemory({ projectId, content: editContent });
-                  setCurrentContent(editContent);
-                } catch {
-                  // handle error
-                }
-                setEditing(false);
-              } else {
-                setEditContent(currentContent.replace(/\\n/g, "\n"));
-                setEditing(true);
-              }
-            }}
-            className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {editing ? (
-              <>
-                <Save className="size-3" /> {t("common.save")}
-              </>
-            ) : (
-              <>
-                <Pencil className="size-3" /> {t("common.edit")}
-              </>
-            )}
-          </button>
+        <div className="flex items-center gap-2 border-b border-border/30 px-5 py-3">
+          <Brain className="size-3.5 text-primary/60" />
+          <span className="text-sm font-medium">{t("project.memory")}</span>
         </div>
-
-        <div className="px-5 py-4">
-          {editing ? (
-            <textarea
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              className="w-full resize-none rounded-md border border-border/50 bg-transparent px-3 py-2 text-sm font-mono outline-none focus:border-primary transition-colors"
-              rows={Math.max(10, editContent.split("\n").length + 2)}
-              autoFocus
-            />
-          ) : currentContent.trim() ? (
-            <div className="prose prose-invert prose-sm max-w-none">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {currentContent.replace(/\\n/g, "\n")}
-              </ReactMarkdown>
-            </div>
-          ) : (
-            <div className="py-8 text-center">
-              <Brain className="mx-auto mb-3 size-8 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">{t("project.noMemories")}</p>
-              <button
-                onClick={() => {
-                  setEditContent(
-                    "## Domain Rules\n- \n\n## Business Context\n\n\n## Constraints\n- ",
-                  );
-                  setEditing(true);
-                }}
-                className="mt-2 cursor-pointer text-xs text-primary hover:text-primary/80 transition-colors"
-              >
-                {t("project.addFirstMemory")}
-              </button>
-            </div>
-          )}
-        </div>
+        <ReadmeEditor
+          initialContent={content.replace(/\\n/g, "\n")}
+          onSave={handleMemorySave}
+          placeholder="Write project memory — domain rules, business context, constraints..."
+        />
       </div>
     </div>
   );

@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
+	"github.com/yuin/goldmark"
 
 	acceptancev1 "github.com/gobenpark/colign/gen/proto/acceptance/v1"
 	commentv1 "github.com/gobenpark/colign/gen/proto/comment/v1"
@@ -523,19 +524,31 @@ func (s *Server) handleToggleAC(ctx context.Context, args json.RawMessage) (any,
 
 func (s *Server) handleUpdateProject(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
-		ProjectID   int64  `json:"project_id"`
-		Name        string `json:"name"`
-		Description string `json:"description"`
+		ProjectID   int64   `json:"project_id"`
+		Name        string  `json:"name"`
+		Description string  `json:"description"`
+		Readme      *string `json:"readme"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
 	}
 
-	resp, err := s.clients.project.UpdateProject(ctx, connect.NewRequest(&projectv1.UpdateProjectRequest{
+	req := &projectv1.UpdateProjectRequest{
 		Id:          params.ProjectID,
 		Name:        params.Name,
 		Description: params.Description,
-	}))
+	}
+	if params.Readme != nil {
+		// Convert markdown to HTML for Tiptap editor
+		var buf bytes.Buffer
+		if err := goldmark.Convert([]byte(*params.Readme), &buf); err != nil {
+			return nil, fmt.Errorf("failed to convert markdown: %w", err)
+		}
+		html := buf.String()
+		req.Readme = &html
+	}
+
+	resp, err := s.clients.project.UpdateProject(ctx, connect.NewRequest(req))
 	if err != nil {
 		return nil, err
 	}
@@ -545,6 +558,7 @@ func (s *Server) handleUpdateProject(ctx context.Context, args json.RawMessage) 
 		"id":          p.Id,
 		"name":        p.Name,
 		"description": p.Description,
+		"readme":      p.Readme,
 		"updated":     true,
 	}, nil
 }

@@ -16,7 +16,7 @@ interface SpecEditorProps {
   initialContent?: string;
   placeholder?: string;
   readOnly?: boolean;
-  onAddComment?: (quotedText: string) => void;
+  onAddComment?: (quotedText: string, rect: { top: number; left: number; width: number }) => void;
   onHighlightClick?: (commentId: string) => void;
   editorRef?: React.MutableRefObject<{
     addHighlightAtSavedSelection: (commentId: string) => void;
@@ -194,8 +194,20 @@ function SpecEditorInner({
     const text = editor.state.doc.textBetween(from, to, " ");
     if (!text.trim()) return;
     savedSelectionRef.current = { from, to };
+
+    // Get selection coordinates relative to editor container
+    const coords = editor.view.coordsAtPos(to);
+    const editorDom =
+      editor.view.dom.closest("[data-editor-wrapper]") || editor.view.dom.parentElement;
+    const editorRect = editorDom?.getBoundingClientRect() || { top: 0, left: 0, width: 600 };
+    const rect = {
+      top: coords.bottom - editorRect.top,
+      left: 0,
+      width: editorRect.width,
+    };
+
     editor.commands.setTextSelection(to);
-    onAddComment(text);
+    onAddComment(text, rect);
   };
 
   const bubbleBtn = (active: boolean, onClick: () => void, children: React.ReactNode) => (
@@ -213,7 +225,7 @@ function SpecEditorInner({
   );
 
   return (
-    <div>
+    <div data-editor-wrapper className="relative">
       <div className="min-h-[400px] p-6">
         {editor && !readOnly && (
           <BubbleMenu

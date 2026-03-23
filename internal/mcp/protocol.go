@@ -168,13 +168,14 @@ func ListTools() []Tool {
 		},
 		{
 			Name:        "update_project",
-			Description: "Update a project's name or description (README)",
+			Description: "Update a project's name, description, or README",
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
 					"project_id":  {Type: "integer", Description: "Project ID"},
-					"name":        {Type: "string", Description: "New project name (optional, omit to keep current)"},
-					"description": {Type: "string", Description: "New project description/README in markdown"},
+					"name":        {Type: "string", Description: "New project name (optional)"},
+					"description": {Type: "string", Description: "Short project description (one-liner)"},
+					"readme":      {Type: "string", Description: "Project README content in markdown (auto-converted to HTML)"},
 				},
 				Required: []string{"project_id"},
 			},

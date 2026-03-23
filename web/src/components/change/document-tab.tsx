@@ -22,7 +22,9 @@ export function DocumentTab({ changeId, docType, currentStage }: DocumentTabProp
   const [loading, setLoading] = useState(true);
   const [pendingQuotedText, setPendingQuotedText] = useState<string | null>(null);
   const [commentInput, setCommentInput] = useState("");
+  const [commentPosition, setCommentPosition] = useState<{ top: number } | null>(null);
   const [editorDom, setEditorDom] = useState<HTMLElement | null>(null);
+  const editorWrapperRef = useRef<HTMLDivElement>(null);
   const payload = typeof window !== "undefined" ? getTokenPayload() : null;
 
   const editorRef = useRef<{
@@ -67,9 +69,13 @@ export function DocumentTab({ changeId, docType, currentStage }: DocumentTabProp
     return () => clearInterval(interval);
   }, [loading]);
 
-  const handleAddComment = (quotedText: string) => {
+  const handleAddComment = (
+    quotedText: string,
+    rect: { top: number; left: number; width: number },
+  ) => {
     setPendingQuotedText(quotedText);
     setCommentInput("");
+    setCommentPosition({ top: rect.top });
   };
 
   const handleSubmitComment = async () => {
@@ -86,6 +92,7 @@ export function DocumentTab({ changeId, docType, currentStage }: DocumentTabProp
       }
       setPendingQuotedText(null);
       setCommentInput("");
+      setCommentPosition(null);
       commentRefreshRef.current?.();
     } catch {
       // handle error
@@ -106,47 +113,59 @@ export function DocumentTab({ changeId, docType, currentStage }: DocumentTabProp
 
   return (
     <div className="py-4">
-      {/* New comment input overlay */}
-      {pendingQuotedText && (
-        <div className="mb-4 rounded-lg border border-primary/30 p-3">
-          <div className="rounded border-l-2 border-yellow-500/50 bg-yellow-500/5 px-2 py-1 text-xs text-muted-foreground">
-            &ldquo;{pendingQuotedText}&rdquo;
-          </div>
-          <textarea
-            autoFocus
-            value={commentInput}
-            onChange={(e) => setCommentInput(e.target.value)}
-            placeholder={t("comments.placeholder")}
-            className="mt-2 w-full resize-none rounded-md border border-border/50 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-primary"
-            rows={2}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault();
-                handleSubmitComment();
-              }
-            }}
-          />
-          <div className="mt-1.5 flex justify-end gap-1.5">
-            <button
-              onClick={() => setPendingQuotedText(null)}
-              className="cursor-pointer rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-            >
-              {t("common.cancel")}
-            </button>
-            <button
-              onClick={handleSubmitComment}
-              disabled={!commentInput.trim()}
-              className="cursor-pointer rounded bg-primary px-2 py-1 text-xs text-primary-foreground disabled:opacity-50"
-            >
-              {t("comments.addComment")}
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Editor + Margin Comments */}
       <div className="flex gap-4">
-        <div className="min-w-0 flex-1">
+        <div className="relative min-w-0 flex-1" ref={editorWrapperRef}>
+          {/* Inline comment form — positioned below selected text */}
+          {pendingQuotedText && commentPosition && (
+            <div
+              className="absolute left-0 right-0 z-30 mx-6"
+              style={{ top: commentPosition.top + 8 }}
+            >
+              <div className="rounded-lg border border-primary/30 bg-card p-3 shadow-xl">
+                <div className="rounded border-l-2 border-yellow-500/50 bg-yellow-500/5 px-2 py-1 text-xs text-muted-foreground">
+                  &ldquo;{pendingQuotedText}&rdquo;
+                </div>
+                <textarea
+                  autoFocus
+                  value={commentInput}
+                  onChange={(e) => setCommentInput(e.target.value)}
+                  placeholder={t("comments.placeholder")}
+                  className="mt-2 w-full resize-none rounded-md border border-border/50 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-primary"
+                  rows={2}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                      e.preventDefault();
+                      handleSubmitComment();
+                    }
+                    if (e.key === "Escape") {
+                      setPendingQuotedText(null);
+                      setCommentPosition(null);
+                    }
+                  }}
+                />
+                <div className="mt-1.5 flex justify-end gap-1.5">
+                  <button
+                    onClick={() => {
+                      setPendingQuotedText(null);
+                      setCommentPosition(null);
+                    }}
+                    className="cursor-pointer rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    {t("common.cancel")}
+                  </button>
+                  <button
+                    onClick={handleSubmitComment}
+                    disabled={!commentInput.trim()}
+                    className="cursor-pointer rounded bg-primary px-2 py-1 text-xs text-primary-foreground disabled:opacity-50"
+                  >
+                    {t("comments.addComment")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <SpecEditor
             initialContent={content}
             placeholder={`Start writing your ${docType}...`}
