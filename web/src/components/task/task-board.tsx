@@ -57,6 +57,7 @@ export function TaskBoard({ changeId, projectId, members }: TaskBoardProps) {
   }, []);
 
   const fetchTasks = useCallback(() => {
+    if (!projectId) return;
     taskClient
       .listTasks({ changeId, projectId })
       .then((res) => {
@@ -78,7 +79,7 @@ export function TaskBoard({ changeId, projectId, members }: TaskBoardProps) {
       })
       .catch((err) => showError(t("toast.tasksLoadFailed"), err))
       .finally(() => setLoading(false));
-  }, [changeId]);
+  }, [changeId, projectId]);
 
   // Fetch tasks on mount
   useEffect(() => {
@@ -148,7 +149,7 @@ export function TaskBoard({ changeId, projectId, members }: TaskBoardProps) {
         setTasks((prev) => prev.filter((t) => t.id !== tempId));
       }
     },
-    [changeId],
+    [changeId, projectId],
   );
 
   const handleUpdate = useCallback(async (id: bigint, fields: Record<string, unknown>) => {
@@ -268,7 +269,7 @@ export function TaskBoard({ changeId, projectId, members }: TaskBoardProps) {
         }
       }
     },
-    [changeId],
+    [changeId, projectId],
   );
 
   return (
