@@ -3,9 +3,11 @@
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { saveTokens } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -29,7 +31,7 @@ export default function AuthCallbackPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center">
-      <p>Authenticating...</p>
+      <p>{t("common.authenticating")}</p>
     </div>
   );
 }

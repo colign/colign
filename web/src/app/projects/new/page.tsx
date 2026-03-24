@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { projectClient } from "@/lib/project";
+import { useI18n } from "@/lib/i18n";
 
 export default function NewProjectPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
@@ -43,13 +45,13 @@ export default function NewProjectPage() {
       <main className="mx-auto max-w-lg px-6 py-10">
         <Card className="border-border/50">
           <CardHeader>
-            <CardTitle>Create New Project</CardTitle>
-            <CardDescription>Set up a project to start your SDD workflow</CardDescription>
+            <CardTitle>{t("projects.createProject")}</CardTitle>
+            <CardDescription>{t("projects.setupSDD")}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="name">Project Name</Label>
+                <Label htmlFor="name">{t("projects.projectName")}</Label>
                 <Input
                   id="name"
                   value={name}
@@ -60,7 +62,7 @@ export default function NewProjectPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">{t("projects.description")}</Label>
                 <Input
                   id="description"
                   value={description}
@@ -76,10 +78,10 @@ export default function NewProjectPage() {
                   className="cursor-pointer"
                   onClick={() => router.back()}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
                 <Button type="submit" className="flex-1 cursor-pointer" disabled={loading}>
-                  {loading ? "Creating..." : "Create Project"}
+                  {loading ? t("common.creating") : t("projects.createProject")}
                 </Button>
               </div>
             </form>

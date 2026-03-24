@@ -196,7 +196,7 @@ export default function SettingsPage() {
 
   async function handleAvatarFile(file: File) {
     if (!file.type.startsWith("image/")) {
-      setAvatarError("Please select an image file.");
+      setAvatarError(t("common.imageFileRequired"));
       return;
     }
 
@@ -206,7 +206,7 @@ export default function SettingsPage() {
       const compressed = await fileToAvatarDataUrl(file);
       setAvatarUrl(compressed);
     } catch (err) {
-      setAvatarError("Could not process that image.");
+      setAvatarError(t("common.imageProcessError"));
       showError(t("toast.saveFailed"), err);
     } finally {
       setUploadingAvatar(false);
@@ -284,7 +284,7 @@ export default function SettingsPage() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1 space-y-2">
-                    <Label>Profile Photo</Label>
+                    <Label>{t("settings.profilePhoto")}</Label>
                     <input
                       ref={avatarInputRef}
                       type="file"
@@ -306,7 +306,7 @@ export default function SettingsPage() {
                         onClick={() => avatarInputRef.current?.click()}
                         disabled={uploadingAvatar}
                       >
-                        {uploadingAvatar ? "Uploading..." : avatarUrl ? "Change photo" : "Upload photo"}
+                        {uploadingAvatar ? t("settings.uploading") : avatarUrl ? t("settings.changePhoto") : t("settings.uploadPhoto")}
                       </Button>
                       {avatarUrl && (
                         <Button
@@ -318,12 +318,12 @@ export default function SettingsPage() {
                             setAvatarError("");
                           }}
                         >
-                          Remove
+                          {t("common.remove")}
                         </Button>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      PNG, JPG, GIF, or WebP. The image is resized automatically.
+                      {t("settings.avatarHint")}
                     </p>
                     {avatarError && <p className="text-xs text-destructive">{avatarError}</p>}
                   </div>
@@ -345,7 +345,7 @@ export default function SettingsPage() {
                   >
                     {saving ? t("common.saving") : t("common.save")}
                   </Button>
-                  {saved === "profile" && <span className="text-sm text-emerald-400">Saved</span>}
+                  {saved === "profile" && <span className="text-sm text-emerald-400">{t("common.saved")}</span>}
                 </div>
               </CardContent>
             </Card>
@@ -356,12 +356,12 @@ export default function SettingsPage() {
             <>
               <Card className="border-border/50">
                 <CardHeader>
-                  <CardTitle>Change Password</CardTitle>
-                  <CardDescription>Update your password</CardDescription>
+                  <CardTitle>{t("settings.changePassword")}</CardTitle>
+                  <CardDescription>{t("settings.updatePasswordDesc")}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="current-password">Current Password</Label>
+                    <Label htmlFor="current-password">{t("settings.currentPassword")}</Label>
                     <Input
                       id="current-password"
                       type="password"
@@ -370,7 +370,7 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="new-password">New Password</Label>
+                    <Label htmlFor="new-password">{t("settings.newPassword")}</Label>
                     <Input
                       id="new-password"
                       type="password"
@@ -386,10 +386,10 @@ export default function SettingsPage() {
                       disabled={saving || !currentPassword || !newPassword}
                       className="cursor-pointer"
                     >
-                      Update Password
+                      {t("settings.updatePassword")}
                     </Button>
                     {saved === "password" && (
-                      <span className="text-sm text-emerald-400">Updated</span>
+                      <span className="text-sm text-emerald-400">{t("common.updated")}</span>
                     )}
                   </div>
                 </CardContent>
@@ -397,8 +397,8 @@ export default function SettingsPage() {
 
               <Card className="border-border/50">
                 <CardHeader>
-                  <CardTitle>Connected Accounts</CardTitle>
-                  <CardDescription>OAuth providers linked to your account</CardDescription>
+                  <CardTitle>{t("settings.connectedAccounts")}</CardTitle>
+                  <CardDescription>{t("settings.connectedAccountsDesc")}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
@@ -409,7 +409,7 @@ export default function SettingsPage() {
                       <span className="text-sm font-medium">GitHub</span>
                     </div>
                     <Button variant="outline" size="sm" className="cursor-pointer">
-                      Connect
+                      {t("settings.connect")}
                     </Button>
                   </div>
                   <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
@@ -435,7 +435,7 @@ export default function SettingsPage() {
                       <span className="text-sm font-medium">Google</span>
                     </div>
                     <Button variant="outline" size="sm" className="cursor-pointer">
-                      Connect
+                      {t("settings.connect")}
                     </Button>
                   </div>
                 </CardContent>
@@ -443,15 +443,15 @@ export default function SettingsPage() {
 
               <Card className="border-destructive/30">
                 <CardHeader>
-                  <CardTitle className="text-destructive">Danger Zone</CardTitle>
-                  <CardDescription>Irreversible actions</CardDescription>
+                  <CardTitle className="text-destructive">{t("settings.dangerZone")}</CardTitle>
+                  <CardDescription>{t("settings.irreversible")}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Button
                     variant="outline"
                     className="cursor-pointer border-destructive/50 text-destructive hover:bg-destructive/10"
                   >
-                    Delete Account
+                    {t("settings.deleteAccount")}
                   </Button>
                 </CardContent>
               </Card>
@@ -466,15 +466,14 @@ export default function SettingsPage() {
             <>
               <Card className="border-border/50">
                 <CardHeader>
-                  <CardTitle>AI & API Keys</CardTitle>
+                  <CardTitle>{t("settings.aiApiKeys")}</CardTitle>
                   <CardDescription>
-                    Configure your own API key for AI features. Without a key, AI features use the
-                    platform&apos;s shared quota.
+                    {t("settings.aiApiKeysDesc")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="claude-key">Claude API Key</Label>
+                    <Label htmlFor="claude-key">{t("settings.claudeApiKey")}</Label>
                     <div className="flex gap-2">
                       <Input
                         id="claude-key"
@@ -490,12 +489,11 @@ export default function SettingsPage() {
                         onClick={() => setShowApiKey(!showApiKey)}
                         className="cursor-pointer text-muted-foreground"
                       >
-                        {showApiKey ? "Hide" : "Show"}
+                        {showApiKey ? t("common.hide") : t("common.show")}
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Your key is encrypted and stored securely. It&apos;s only used for your
-                      requests.
+                      {t("settings.apiKeySecurityNote")}
                     </p>
                   </div>
                   <div className="flex items-center gap-3 pt-2">
@@ -504,9 +502,9 @@ export default function SettingsPage() {
                       disabled={saving}
                       className="cursor-pointer"
                     >
-                      {saving ? "Saving..." : "Save API Key"}
+                      {saving ? t("common.saving") : t("settings.saveApiKey")}
                     </Button>
-                    {saved === "ai" && <span className="text-sm text-emerald-400">Saved</span>}
+                    {saved === "ai" && <span className="text-sm text-emerald-400">{t("common.saved")}</span>}
                   </div>
                 </CardContent>
               </Card>
@@ -551,7 +549,7 @@ export default function SettingsPage() {
                           onClick={handleCopyToken}
                           className="cursor-pointer"
                         >
-                          {copied ? t("common.saved") : "Copy"}
+                          {copied ? t("common.saved") : t("common.copy")}
                         </Button>
                       </div>
                       <Button

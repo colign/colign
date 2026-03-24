@@ -8,9 +8,11 @@ import { Label } from "@/components/ui/label";
 import { orgClient } from "@/lib/organization";
 import { showError } from "@/lib/toast";
 import { useOrg } from "@/lib/org-context";
+import { useI18n } from "@/lib/i18n";
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const { currentOrg, loading: orgLoading, refresh } = useOrg();
   const [step, setStep] = useState(1);
   const [workspaceName, setWorkspaceName] = useState("");
@@ -75,15 +77,15 @@ export default function OnboardingPage() {
         {step === 1 && (
           <div className="space-y-6">
             <div className="text-center">
-              <h1 className="text-2xl font-bold tracking-tight">Create your workspace</h1>
+              <h1 className="text-2xl font-bold tracking-tight">{t("onboarding.createWorkspace")}</h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                A workspace is where your team collaborates on specs and designs.
+                {t("onboarding.createWorkspaceDesc")}
               </p>
             </div>
 
             <form onSubmit={handleSetupWorkspace} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="workspace-name">Workspace name</Label>
+                <Label htmlFor="workspace-name">{t("onboarding.workspaceName")}</Label>
                 <Input
                   id="workspace-name"
                   value={workspaceName}
@@ -94,7 +96,7 @@ export default function OnboardingPage() {
                   className="h-11 text-base"
                 />
                 <p className="text-xs text-muted-foreground">
-                  You can change this later in settings.
+                  {t("onboarding.changeInSettings")}
                 </p>
               </div>
 
@@ -105,7 +107,7 @@ export default function OnboardingPage() {
                 className="w-full cursor-pointer h-11"
                 disabled={saving || !workspaceName.trim() || orgLoading}
               >
-                {orgLoading ? "Loading..." : saving ? "Setting up..." : "Continue"}
+                {orgLoading ? t("common.loading") : saving ? t("common.settingUp") : t("common.continue")}
               </Button>
             </form>
           </div>
@@ -130,15 +132,14 @@ export default function OnboardingPage() {
             </div>
 
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">You&apos;re all set!</h1>
+              <h1 className="text-2xl font-bold tracking-tight">{t("onboarding.allSet")}</h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                Your workspace <span className="font-medium text-foreground">{workspaceName}</span>{" "}
-                is ready. Start by creating your first project.
+                {t("onboarding.workspaceReady")}
               </p>
             </div>
 
             <Button onClick={handleFinish} className="cursor-pointer h-11 px-8">
-              Go to projects
+              {t("onboarding.goToProjects")}
             </Button>
           </div>
         )}

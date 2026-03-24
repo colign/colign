@@ -18,7 +18,20 @@
     "signUp": "회원가입",
     "signOut": "로그아웃",
     "notFound": "찾을 수 없음",
-    "backToProjects": "프로젝트 목록으로"
+    "backToProjects": "프로젝트 목록으로",
+    "add": "추가",
+    "continue": "계속",
+    "creating": "생성 중...",
+    "settingUp": "설정 중...",
+    "updated": "변경됨",
+    "authenticating": "인증 중...",
+    "imageFileRequired": "이미지 파일을 선택하세요.",
+    "imageProcessError": "이미지를 처리할 수 없습니다.",
+    "removeConfirm": "{name}을(를) 조직에서 제거하시겠습니까?",
+    "remove": "제거",
+    "hide": "숨기기",
+    "show": "보기",
+    "copy": "복사"
   },
   "auth": {
     "title": "환영합니다",
@@ -32,7 +45,8 @@
     "or": "또는",
     "signingIn": "로그인 중...",
     "creatingAccount": "계정 생성 중...",
-    "createAccount": "계정 만들기"
+    "createAccount": "계정 만들기",
+    "tagline": "AI 기반 스펙 주도 개발"
   },
   "projects": {
     "title": "프로젝트",
@@ -43,7 +57,8 @@
     "projectName": "프로젝트 이름",
     "description": "설명",
     "noLead": "담당자 없음",
-    "noPriority": "우선순위 없음"
+    "noPriority": "우선순위 없음",
+    "setupSDD": "SDD 워크플로우를 시작할 프로젝트를 만드세요"
   },
   "project": {
     "overview": "개요",
@@ -282,6 +297,11 @@
     "stageChangesDesc": "Change가 다음 단계로 진행될 때",
     "apiTokens": "API 토큰",
     "apiTokensDesc": "MCP 서버 및 외부 AI 도구 연동을 위한 토큰을 생성하세요",
+    "organizationSettings": "조직 설정",
+    "organizationSettingsDesc": "조직 이름과 워크스페이스 식별 정보를 관리하세요.",
+    "organizationName": "조직 이름",
+    "organizationNameHelp": "이 이름은 워크스페이스 전반과 조직 전환 메뉴에 표시됩니다.",
+    "saveOrganizationName": "조직 이름 저장",
     "tokenNamePlaceholder": "토큰 이름 (예: Claude Code, Cursor)",
     "generateToken": "토큰 생성",
     "tokenCreatedWarning": "이 토큰을 지금 복사하세요. 다시 볼 수 없습니다.",
@@ -290,7 +310,17 @@
     "noTokens": "API 토큰이 없습니다",
     "tokenCreated": "생성일",
     "tokenLastUsed": "마지막 사용",
-    "tokenNeverUsed": "사용 안 함"
+    "tokenNeverUsed": "사용 안 함",
+    "profilePhoto": "프로필 사진",
+    "passwordUpdated": "비밀번호가 변경되었습니다",
+    "updatePasswordDesc": "비밀번호를 변경하세요",
+    "uploading": "업로드 중...",
+    "changePhoto": "사진 변경",
+    "uploadPhoto": "사진 업로드",
+    "avatarHint": "PNG, JPG, GIF 또는 WebP. 최대 2MB.",
+    "connect": "연결",
+    "aiApiKeysDesc": "AI 기능에 사용할 API 키를 설정하세요. 키가 없으면 플랫폼의 공유 할당량을 사용합니다.",
+    "apiKeySecurityNote": "키는 암호화되어 안전하게 저장됩니다. 본인의 요청에만 사용됩니다."
   },
   "toast": {
     "loadFailed": "데이터를 불러오지 못했습니다",
@@ -330,6 +360,31 @@
     "restoreFailed": "복원 처리에 실패했습니다",
     "networkError": "네트워크 오류입니다. 연결 상태를 확인하세요.",
     "retryAction": "재시도"
+  },
+  "onboarding": {
+    "createWorkspace": "워크스페이스 만들기",
+    "createWorkspaceDesc": "워크스페이스는 팀이 스펙과 설계를 함께 작업하는 공간입니다.",
+    "workspaceName": "워크스페이스 이름",
+    "changeInSettings": "설정에서 나중에 변경할 수 있습니다.",
+    "allSet": "준비 완료!",
+    "workspaceReady": "워크스페이스가 준비되었습니다. 첫 번째 프로젝트를 만들어보세요.",
+    "goToProjects": "프로젝트로 이동"
+  },
+  "org": {
+    "members": "조직 멤버",
+    "membersDesc": "조직 멤버를 관리합니다.",
+    "allowedDomains": "허용된 이메일 도메인",
+    "allowedDomainsDesc": "이 이메일 도메인의 사용자는 가입 시 자동으로 조직에 참여합니다.",
+    "pendingInvitations": "대기 중인 초대",
+    "saveDomains": "도메인 저장",
+    "domainsUpdated": "허용 도메인이 업데이트되었습니다",
+    "invitationSent": "초대가 전송되었습니다!",
+    "revokeInvitation": "취소",
+    "noMembers": "아직 멤버가 없습니다. 누군가를 초대하세요.",
+    "newOrganization": "새 조직",
+    "createOrganization": "조직 만들기",
+    "createOrganizationDesc": "별도의 프로젝트, 멤버, 설정을 가진 새 워크스페이스를 만듭니다.",
+    "orgNameUpdated": "조직 이름이 변경되었습니다"
   },
   "projectSettings": {
     "general": "일반",

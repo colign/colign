@@ -18,7 +18,20 @@
     "signUp": "Sign Up",
     "signOut": "Sign Out",
     "notFound": "Not Found",
-    "backToProjects": "Back to Projects"
+    "backToProjects": "Back to Projects",
+    "add": "Add",
+    "continue": "Continue",
+    "creating": "Creating...",
+    "settingUp": "Setting up...",
+    "updated": "Updated",
+    "authenticating": "Authenticating...",
+    "imageFileRequired": "Please select an image file.",
+    "imageProcessError": "Could not process that image.",
+    "removeConfirm": "Remove {name} from the organization?",
+    "remove": "Remove",
+    "hide": "Hide",
+    "show": "Show",
+    "copy": "Copy"
   },
   "auth": {
     "title": "Welcome",
@@ -32,7 +45,8 @@
     "or": "or",
     "signingIn": "Signing in...",
     "creatingAccount": "Creating account...",
-    "createAccount": "Create Account"
+    "createAccount": "Create Account",
+    "tagline": "AI-powered Spec-Driven Development"
   },
   "projects": {
     "title": "Projects",
@@ -43,7 +57,8 @@
     "projectName": "Project Name",
     "description": "Description",
     "noLead": "No lead",
-    "noPriority": "No priority"
+    "noPriority": "No priority",
+    "setupSDD": "Set up a project to start your SDD workflow"
   },
   "project": {
     "overview": "Overview",
@@ -282,6 +297,11 @@
     "stageChangesDesc": "When a change advances to the next stage",
     "apiTokens": "API Tokens",
     "apiTokensDesc": "Generate tokens for MCP servers and external AI tool integrations",
+    "organizationSettings": "Organization Settings",
+    "organizationSettingsDesc": "Update your organization name and workspace identity.",
+    "organizationName": "Organization name",
+    "organizationNameHelp": "This name appears across the workspace and organization switcher.",
+    "saveOrganizationName": "Save Organization Name",
     "tokenNamePlaceholder": "Token name (e.g., Claude Code, Cursor)",
     "generateToken": "Generate Token",
     "tokenCreatedWarning": "Copy this token now. You won't be able to see it again.",
@@ -290,7 +310,17 @@
     "noTokens": "No API tokens yet",
     "tokenCreated": "Created",
     "tokenLastUsed": "Last used",
-    "tokenNeverUsed": "Never used"
+    "tokenNeverUsed": "Never used",
+    "profilePhoto": "Profile Photo",
+    "passwordUpdated": "Password updated",
+    "updatePasswordDesc": "Update your password",
+    "uploading": "Uploading...",
+    "changePhoto": "Change photo",
+    "uploadPhoto": "Upload photo",
+    "avatarHint": "PNG, JPG, GIF, or WebP. Max 2MB.",
+    "connect": "Connect",
+    "aiApiKeysDesc": "Configure your own API key for AI features. Without a key, AI features use the platform's shared quota.",
+    "apiKeySecurityNote": "Your key is encrypted and stored securely. It's only used for your requests."
   },
   "toast": {
     "loadFailed": "Failed to load data",
@@ -330,6 +360,31 @@
     "restoreFailed": "Failed to restore",
     "networkError": "Network error. Please check your connection.",
     "retryAction": "Retry"
+  },
+  "onboarding": {
+    "createWorkspace": "Create your workspace",
+    "createWorkspaceDesc": "A workspace is where your team collaborates on specs and designs.",
+    "workspaceName": "Workspace name",
+    "changeInSettings": "You can change this later in settings.",
+    "allSet": "You're all set!",
+    "workspaceReady": "Your workspace is ready. Start by creating your first project.",
+    "goToProjects": "Go to projects"
+  },
+  "org": {
+    "members": "Organization Members",
+    "membersDesc": "Manage members of your organization.",
+    "allowedDomains": "Allowed Email Domains",
+    "allowedDomainsDesc": "Users with these email domains will automatically join your organization when they sign up.",
+    "pendingInvitations": "Pending Invitations",
+    "saveDomains": "Save Domains",
+    "domainsUpdated": "Allowed domains updated",
+    "invitationSent": "Invitation sent!",
+    "revokeInvitation": "Revoke",
+    "noMembers": "No members yet. Invite someone to get started.",
+    "newOrganization": "New organization",
+    "createOrganization": "Create organization",
+    "createOrganizationDesc": "Create a separate workspace with its own projects, members, and settings.",
+    "orgNameUpdated": "Organization name updated"
   },
   "projectSettings": {
     "general": "General",

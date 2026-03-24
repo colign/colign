@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { orgClient } from "@/lib/organization";
 import { useOrg } from "@/lib/org-context";
+import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,10 +39,13 @@ const roleLabels: Record<string, string> = {
 };
 
 export function OrgMembers() {
-  const { currentOrg } = useOrg();
+  const { t } = useI18n();
+  const { currentOrg, refresh } = useOrg();
   const [members, setMembers] = useState<Member[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [orgName, setOrgName] = useState("");
+  const [savingOrgName, setSavingOrgName] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
   const [inviting, setInviting] = useState(false);
@@ -68,7 +72,7 @@ export function OrgMembers() {
         })),
       );
     } catch (err) {
-      showError("Failed to load members", err);
+      showError(t("toast.loadFailed"), err);
     } finally {
       setLoading(false);
     }
@@ -87,7 +91,7 @@ export function OrgMembers() {
         })),
       );
     } catch (err) {
-      showError("Failed to load invitations", err);
+      showError(t("toast.loadFailed"), err);
     }
   }, []);
 
@@ -99,7 +103,7 @@ export function OrgMembers() {
         setDomains([...org.allowedDomains]);
       }
     } catch (err) {
-      showError("Failed to load organization", err);
+      showError(t("toast.orgLoadFailed"), err);
     }
   }, []);
 
@@ -108,6 +112,29 @@ export function OrgMembers() {
     fetchInvitations();
     fetchOrgDetails();
   }, [fetchMembers, fetchInvitations, fetchOrgDetails]);
+
+  useEffect(() => {
+    setOrgName(currentOrg?.name ?? "");
+  }, [currentOrg]);
+
+  async function handleSaveOrgName(e: React.FormEvent) {
+    e.preventDefault();
+    if (!currentOrg || !orgName.trim()) return;
+
+    setSavingOrgName(true);
+    try {
+      await orgClient.updateOrganization({
+        id: currentOrg.id,
+        name: orgName.trim(),
+      });
+      await refresh();
+      showSuccess(t("toast.updateSuccess"));
+    } catch (err) {
+      showError(t("toast.updateFailed"), err);
+    } finally {
+      setSavingOrgName(false);
+    }
+  }
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -123,7 +150,7 @@ export function OrgMembers() {
       const link = `${window.location.origin}/invite/${res.invitation?.token}`;
       setInviteLink(link);
       setCopied(false);
-      setSuccess("Invitation sent!");
+      setSuccess(t("org.invitationSent"));
       setInviteEmail("");
       fetchInvitations();
     } catch (err: unknown) {
@@ -138,17 +165,17 @@ export function OrgMembers() {
       await orgClient.revokeInvitation({ invitationId });
       fetchInvitations();
     } catch (err) {
-      showError("Failed to revoke invitation", err);
+      showError(t("toast.deleteFailed"), err);
     }
   }
 
   async function handleRemove(userId: bigint, name: string) {
-    if (!confirm(`Remove ${name} from the organization?`)) return;
+    if (!confirm(t("common.removeConfirm").replace("{name}", name))) return;
     try {
       await orgClient.removeOrgMember({ userId });
       fetchMembers();
     } catch (err) {
-      showError("Failed to remove member", err);
+      showError(t("toast.memberRemoveFailed"), err);
     }
   }
 
@@ -157,7 +184,7 @@ export function OrgMembers() {
       await orgClient.updateOrgMemberRole({ userId, role });
       fetchMembers();
     } catch (err) {
-      showError("Failed to update role", err);
+      showError(t("toast.memberRoleUpdateFailed"), err);
     }
   }
 
@@ -176,9 +203,9 @@ export function OrgMembers() {
     setSavingDomains(true);
     try {
       await orgClient.setAllowedDomains({ domains });
-      showSuccess("Allowed domains updated");
+      showSuccess(t("org.domainsUpdated"));
     } catch (err) {
-      showError("Failed to save domains", err);
+      showError(t("toast.saveFailed"), err);
     } finally {
       setSavingDomains(false);
     }
@@ -196,16 +223,48 @@ export function OrgMembers() {
 
   return (
     <div className="space-y-6">
+      <Card className="border-border/50">
+        <CardHeader>
+          <CardTitle>{t("settings.organizationSettings")}</CardTitle>
+          <CardDescription>{t("settings.organizationSettingsDesc")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSaveOrgName} className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="org-name" className="text-sm font-medium">
+                {t("settings.organizationName")}
+              </label>
+              <Input
+                id="org-name"
+                value={orgName}
+                onChange={(e) => setOrgName(e.target.value)}
+                placeholder="Acme Inc."
+                disabled={savingOrgName || !currentOrg}
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("settings.organizationNameHelp")}
+              </p>
+            </div>
+            <Button
+              type="submit"
+              disabled={savingOrgName || !currentOrg || !orgName.trim() || orgName.trim() === currentOrg.name}
+              className="cursor-pointer"
+            >
+              {savingOrgName ? t("common.saving") : t("settings.saveOrganizationName")}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
       {/* Domain-based auto-join */}
       <Card className="border-border/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Globe className="size-5" />
-            Allowed Email Domains
+            {t("org.allowedDomains")}
           </CardTitle>
           <CardDescription>
-            Users with these email domains will automatically join your organization when they sign
-            up.
+            {t("org.allowedDomainsDesc")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -224,7 +283,7 @@ export function OrgMembers() {
               disabled={!newDomain.trim()}
               className="cursor-pointer"
             >
-              Add
+              {t("common.add")}
             </Button>
           </div>
           {domains.length > 0 && (
@@ -251,7 +310,7 @@ export function OrgMembers() {
             size="sm"
             className="cursor-pointer"
           >
-            {savingDomains ? "Saving..." : "Save Domains"}
+            {savingDomains ? t("common.saving") : t("org.saveDomains")}
           </Button>
         </CardContent>
       </Card>
@@ -259,9 +318,9 @@ export function OrgMembers() {
       {/* Members & Invitations */}
       <Card className="border-border/50">
         <CardHeader>
-          <CardTitle>Organization Members</CardTitle>
+          <CardTitle>{t("org.members")}</CardTitle>
           <CardDescription>
-            Manage members of {currentOrg?.name ?? "your organization"}.
+            {t("org.membersDesc")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -269,7 +328,7 @@ export function OrgMembers() {
           <form onSubmit={handleInvite} className="flex gap-2">
             <Input
               type="email"
-              placeholder="Email address"
+              placeholder={t("auth.email")}
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               className="flex-1"
@@ -288,7 +347,7 @@ export function OrgMembers() {
               className="cursor-pointer"
             >
               <UserPlus className="mr-1.5 size-4" />
-              {inviting ? "Inviting..." : "Invite"}
+              {inviting ? t("common.creating") : t("common.invite")}
             </Button>
           </form>
 
@@ -322,7 +381,7 @@ export function OrgMembers() {
           {/* Pending Invitations */}
           {invitations.length > 0 && (
             <div className="space-y-2">
-              <p className="text-sm font-medium text-muted-foreground">Pending Invitations</p>
+              <p className="text-sm font-medium text-muted-foreground">{t("org.pendingInvitations")}</p>
               <div className="divide-y divide-border/50 rounded-lg border border-dashed border-border/50">
                 {invitations.map((inv) => (
                   <div key={String(inv.id)} className="flex items-center justify-between px-4 py-3">
@@ -399,7 +458,7 @@ export function OrgMembers() {
             })}
             {members.length === 0 && (
               <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-                No members yet. Invite someone to get started.
+                {t("org.noMembers")}
               </div>
             )}
           </div>

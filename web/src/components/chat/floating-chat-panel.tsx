@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { showError } from "@/lib/toast";
+import { useI18n } from "@/lib/i18n";
 
 interface FloatingChatPanelProps {
   children: React.ReactNode;
@@ -40,6 +41,7 @@ function saveState(state: PanelState) {
 }
 
 export function FloatingChatPanel({ children }: FloatingChatPanelProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -157,7 +159,7 @@ export function FloatingChatPanel({ children }: FloatingChatPanelProps) {
         <div className="fixed inset-x-0 bottom-0 z-50 flex h-[70vh] flex-col rounded-t-2xl border-t border-border bg-background shadow-2xl">
           <div className="flex items-center justify-between border-b border-border/50 px-4 py-3">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-medium">AI Chat</h3>
+              <h3 className="text-sm font-medium">{t("change.aiChat")}</h3>
               <span className="inline-flex h-4 items-center rounded-full bg-primary/10 px-1.5 text-[10px] font-medium text-primary">AI</span>
             </div>
             <button onClick={() => setOpen(false)} className="cursor-pointer rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
@@ -191,7 +193,7 @@ export function FloatingChatPanel({ children }: FloatingChatPanelProps) {
         className="flex shrink-0 cursor-grab items-center justify-between border-b border-border/50 px-4 py-2.5 active:cursor-grabbing"
       >
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-medium">AI Chat</h3>
+          <h3 className="text-sm font-medium">{t("change.aiChat")}</h3>
           <span className="inline-flex h-4 items-center rounded-full bg-primary/10 px-1.5 text-[10px] font-medium text-primary">AI</span>
         </div>
         <button
