@@ -257,6 +257,38 @@
     "stepPlaceholder": "Describe this step...",
     "addStep": "Add step"
   },
+  "ai": {
+    "generateProposal": "Generate with AI",
+    "regenerateProposal": "Regenerate",
+    "generateAC": "Generate AC from Proposal",
+    "addMoreAC": "Generate more with AI",
+    "apply": "Apply",
+    "cancel": "Cancel",
+    "descriptionPlaceholder": "Describe this change in one line...",
+    "confirmRegenerate": "This will replace existing content. Continue?",
+    "writeProposalFirst": "Write a proposal first to generate acceptance criteria.",
+    "loading": "Generating...",
+    "connectionError": "Connection lost. Retry?",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "applySelected": "Apply selected",
+    "emptyStateTitle": "Start with AI",
+    "emptyStateDescription": "Describe what you want to build and AI will draft the proposal for you."
+  },
+  "aiConfig": {
+    "title": "AI Configuration",
+    "provider": "Provider",
+    "model": "Model",
+    "apiKey": "API Key",
+    "apiKeyPlaceholder": "Enter your API key",
+    "testConnection": "Test Connection",
+    "testSuccess": "Connection successful",
+    "testFailed": "Connection failed",
+    "includeContext": "Include project context",
+    "includeContextHelp": "Include project README and recent changes in AI prompts",
+    "save": "Save",
+    "notConfigured": "Configure AI settings to use AI features"
+  },
   "settings": {
     "title": "Settings",
     "profile": "Profile",
