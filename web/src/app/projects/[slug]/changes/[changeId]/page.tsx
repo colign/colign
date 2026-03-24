@@ -540,11 +540,11 @@ export default function ChangeDetailPage() {
           </div>
 
           {/* Tab Content */}
-          {activeTab === "proposal" && (
+          {activeTab === "proposal" && projectId > 0 && (
             <StructuredProposal changeId={changeId} projectId={projectId} currentStage={stage} />
           )}
-          {activeTab === "design" && <DocumentTab changeId={changeId} projectId={projectId} docType="design" />}
-          {activeTab === "tasks" && (
+          {activeTab === "design" && projectId > 0 && <DocumentTab changeId={changeId} projectId={projectId} docType="design" />}
+          {activeTab === "tasks" && projectId > 0 && (
             <div className="min-h-0 max-h-[calc(100svh-20rem)] overflow-y-auto pr-1 md:max-h-[calc(100svh-18rem)]">
               <TaskBoard changeId={changeId} projectId={projectId} members={members} />
             </div>
