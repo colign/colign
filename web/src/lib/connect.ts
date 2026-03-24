@@ -49,6 +49,10 @@ async function refreshAccessToken(): Promise<string | null> {
   return refreshPromise;
 }
 
+function isNotFoundError(err: unknown): boolean {
+  return err instanceof Error && "code" in err && (err as { code: number }).code === 5;
+}
+
 const authInterceptor: Interceptor = (next) => async (req) => {
   const token = getAccessToken();
   if (token) {
@@ -71,6 +75,11 @@ const authInterceptor: Interceptor = (next) => async (req) => {
         req.header.set("Authorization", `Bearer ${refreshedToken}`);
         return await next(req);
       }
+    }
+    // Redirect to projects list when resource not found
+    if (isNotFoundError(err) && typeof window !== "undefined") {
+      window.location.href = "/projects";
+      return await next(req); // unreachable but satisfies return type
     }
     throw err;
   }

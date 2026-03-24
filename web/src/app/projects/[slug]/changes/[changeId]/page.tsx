@@ -108,11 +108,7 @@ export default function ChangeDetailPage() {
   async function loadAll() {
     try {
       const projectRes = await projectClient.getProject({ slug });
-      if (!projectRes.project) {
-        router.replace("/projects");
-        return;
-      }
-      const pid = projectRes.project.id;
+      const pid = projectRes.project!.id;
       setProjectId(pid);
       setMembers(
         (projectRes.members || []).map((m) => ({

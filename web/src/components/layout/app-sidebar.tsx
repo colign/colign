@@ -165,7 +165,7 @@ export function AppSidebar() {
 
         {/* Projects */}
         <SidebarGroup>
-          <SidebarGroupLabel>{t("sidebar.projects")}</SidebarGroupLabel>
+          <SidebarGroupLabel className="cursor-pointer hover:text-sidebar-foreground" render={<Link href="/projects" />}>{t("sidebar.projects")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {projects.map((project) => (

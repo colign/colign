@@ -64,8 +64,8 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       const res = await orgClient.switchOrganization({ organizationId: orgId });
       saveTokens(res.accessToken, res.refreshToken);
       setCurrentOrgId(orgId);
-      // Reload page to refresh all data with new org context
-      window.location.reload();
+      // Always navigate to projects list since all pages show org-specific data
+      window.location.href = "/projects";
     } catch (err) {
       showError("Failed to load organization", err);
     }
