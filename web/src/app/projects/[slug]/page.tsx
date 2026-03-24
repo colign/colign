@@ -28,6 +28,7 @@ import { projectClient } from "@/lib/project";
 import { orgClient } from "@/lib/organization";
 import { memoryClient } from "@/lib/memory";
 import { useI18n } from "@/lib/i18n";
+import { marked } from "marked";
 import {
   Users,
   FileText,
@@ -1377,7 +1378,7 @@ function MemoryTab({
           <span className="text-sm font-medium">{t("project.memory")}</span>
         </div>
         <ReadmeEditor
-          initialContent={content.replace(/\\n/g, "\n")}
+          initialContent={content.startsWith("<") ? content : marked.parse(content, { async: false }) as string}
           onSave={handleMemorySave}
           placeholder="Write project memory — domain rules, business context, constraints..."
         />
