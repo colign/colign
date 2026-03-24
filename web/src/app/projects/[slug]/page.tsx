@@ -28,6 +28,7 @@ import { projectClient } from "@/lib/project";
 import { orgClient } from "@/lib/organization";
 import { memoryClient } from "@/lib/memory";
 import { useI18n } from "@/lib/i18n";
+import { showError, showSuccess } from "@/lib/toast";
 import { marked } from "marked";
 import {
   Users,
@@ -238,8 +239,8 @@ export default function ProjectDetailPage() {
           );
           setMemoryContent(memoryRes.memory?.content ?? "");
         }
-      } catch {
-        // handle error
+      } catch (err) {
+        showError(t("toast.projectLoadFailed"), err);
       } finally {
         setLoading(false);
       }
@@ -268,8 +269,8 @@ export default function ProjectDetailPage() {
         ]);
         setNewChangeName("");
       }
-    } catch {
-      // handle error
+    } catch (err) {
+      showError(t("toast.createFailed"), err);
     } finally {
       setCreating(false);
     }
@@ -297,8 +298,9 @@ export default function ProjectDetailPage() {
         setRenameOpen(false);
         if (res.project.slug !== slug) router.replace(`/projects/${res.project.slug}`);
       }
-    } catch {
-      // handle error
+      showSuccess(t("toast.saveSuccess"));
+    } catch (err) {
+      showError(t("toast.updateFailed"), err);
     } finally {
       setRenaming(false);
     }
@@ -337,8 +339,9 @@ export default function ProjectDetailPage() {
       if (res.project) {
         setProject(mapProjectDetail(res.project));
       }
-    } catch {
+    } catch (err) {
       setProject(prev); // rollback
+      showError(t("toast.updateFailed"), err);
     }
   }
 
@@ -348,7 +351,8 @@ export default function ProjectDetailPage() {
     try {
       await projectClient.deleteProject({ id: project.id });
       router.push("/projects");
-    } catch {
+    } catch (err) {
+      showError(t("toast.deleteFailed"), err);
       setDeleting(false);
     }
   }
@@ -363,7 +367,7 @@ export default function ProjectDetailPage() {
           res.members.map((m) => ({ userId: m.userId, name: m.userName, email: m.userEmail })),
         );
       })
-      .catch(() => {});
+      .catch((err: unknown) => { showError(t("toast.loadFailed"), err); });
   }, [inviteOpen, activeProperty, orgMembers.length]);
 
   useEffect(() => {
@@ -397,8 +401,9 @@ export default function ProjectDetailPage() {
       setInviteSuccess(inviteEmail.trim());
       setInviteEmail("");
       setTimeout(() => setInviteSuccess(""), 3000);
-    } catch {
-      // handle error
+      showSuccess(t("toast.inviteSuccess"));
+    } catch (err) {
+      showError(t("toast.inviteFailed"), err);
     } finally {
       setInviting(false);
     }
@@ -465,7 +470,7 @@ export default function ProjectDetailPage() {
                           setRenameArchiveDaysDelay(res.policy.daysDelay ?? 0);
                         }
                       })
-                      .catch(() => {});
+                      .catch((err: unknown) => { showError(t("toast.loadFailed"), err); });
                     setRenameOpen(true);
                   }}
                 >
@@ -496,7 +501,7 @@ export default function ProjectDetailPage() {
                             setRenameArchiveDaysDelay(res.policy.daysDelay ?? 0);
                           }
                         })
-                        .catch(() => {});
+                        .catch((err: unknown) => { showError(t("toast.loadFailed"), err); });
                       setRenameOpen(true);
                     }}
                     className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
@@ -994,7 +999,7 @@ function OverviewTab({
       await projectClient.updateProject({ id: projectId, readme: html });
       onReadmeUpdate(html);
     } catch (err) {
-      console.error("Failed to save README:", err);
+      showError(t("toast.saveFailed"), err);
     }
   };
 
@@ -1117,8 +1122,9 @@ function ChangesTab({
           })),
         );
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         setArchivedCount(0);
+        showError(t("toast.changesLoadFailed"), err);
       });
   }, [projectId]);
 
@@ -1137,8 +1143,8 @@ function ChangesTab({
           })),
         );
         setArchivedCount(res.changes.length);
-      } catch {
-        // handle error
+      } catch (err) {
+        showError(t("toast.changesLoadFailed"), err);
       } finally {
         setLoadingArchived(false);
       }
@@ -1154,8 +1160,8 @@ function ChangesTab({
             archivedAt: c.archivedAt,
           })),
         );
-      } catch {
-        // handle error
+      } catch (err) {
+        showError(t("toast.changesLoadFailed"), err);
       }
     }
   }
@@ -1360,8 +1366,8 @@ function MemoryTab({
   const handleMemorySave = async (html: string) => {
     try {
       await memoryClient.saveMemory({ projectId, content: html });
-    } catch {
-      // handle error
+    } catch (err) {
+      showError(t("toast.saveFailed"), err);
     }
   };
 

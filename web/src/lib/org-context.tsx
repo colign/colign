@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { orgClient } from "./organization";
 import { saveTokens, getAccessToken } from "./auth";
+import { showError } from "@/lib/toast";
 
 interface Org {
   id: bigint;
@@ -47,8 +48,8 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       }));
       setOrgs(orgList);
       setCurrentOrgId(res.currentOrgId);
-    } catch {
-      // not authenticated or no orgs
+    } catch (err) {
+      showError("Failed to load organization", err);
     } finally {
       setLoading(false);
     }
@@ -65,8 +66,8 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       setCurrentOrgId(orgId);
       // Reload page to refresh all data with new org context
       window.location.reload();
-    } catch {
-      // handle error
+    } catch (err) {
+      showError("Failed to load organization", err);
     }
   }, []);
 

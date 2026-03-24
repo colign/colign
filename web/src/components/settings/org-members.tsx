@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserPlus, Trash2, Shield, User, Crown, X, Mail, Globe, Copy, Check } from "lucide-react";
+import { showError, showSuccess } from "@/lib/toast";
 
 type Member = {
   id: bigint;
@@ -67,7 +68,7 @@ export function OrgMembers() {
         })),
       );
     } catch (err) {
-      console.error("Failed to load members:", err);
+      showError("Failed to load members", err);
     } finally {
       setLoading(false);
     }
@@ -86,7 +87,7 @@ export function OrgMembers() {
         })),
       );
     } catch (err) {
-      console.error("Failed to load invitations:", err);
+      showError("Failed to load invitations", err);
     }
   }, []);
 
@@ -98,7 +99,7 @@ export function OrgMembers() {
         setDomains([...org.allowedDomains]);
       }
     } catch (err) {
-      console.error("Failed to load org details:", err);
+      showError("Failed to load organization", err);
     }
   }, []);
 
@@ -137,7 +138,7 @@ export function OrgMembers() {
       await orgClient.revokeInvitation({ invitationId });
       fetchInvitations();
     } catch (err) {
-      console.error("Failed to revoke invitation:", err);
+      showError("Failed to revoke invitation", err);
     }
   }
 
@@ -147,7 +148,7 @@ export function OrgMembers() {
       await orgClient.removeOrgMember({ userId });
       fetchMembers();
     } catch (err) {
-      console.error("Failed to remove member:", err);
+      showError("Failed to remove member", err);
     }
   }
 
@@ -156,7 +157,7 @@ export function OrgMembers() {
       await orgClient.updateOrgMemberRole({ userId, role });
       fetchMembers();
     } catch (err) {
-      console.error("Failed to update role:", err);
+      showError("Failed to update role", err);
     }
   }
 
@@ -175,10 +176,9 @@ export function OrgMembers() {
     setSavingDomains(true);
     try {
       await orgClient.setAllowedDomains({ domains });
-      setSuccess("Allowed domains updated");
-      setTimeout(() => setSuccess(""), 3000);
+      showSuccess("Allowed domains updated");
     } catch (err) {
-      console.error("Failed to save domains:", err);
+      showError("Failed to save domains", err);
     } finally {
       setSavingDomains(false);
     }

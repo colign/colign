@@ -7,6 +7,7 @@ import { taskClient } from "@/lib/task";
 import { useEvents } from "@/lib/events";
 import { KanbanView } from "./kanban-view";
 import { ListView } from "./list-view";
+import { showError } from "@/lib/toast";
 
 const STORAGE_KEY = "colign:task-view-mode";
 
@@ -74,7 +75,7 @@ export function TaskBoard({ changeId, members }: TaskBoardProps) {
           })),
         );
       })
-      .catch((err) => console.error("Failed to load tasks:", err))
+      .catch((err) => showError(t("toast.tasksLoadFailed"), err))
       .finally(() => setLoading(false));
   }, [changeId]);
 
@@ -142,7 +143,7 @@ export function TaskBoard({ changeId, members }: TaskBoardProps) {
           ),
         );
       } catch (err) {
-        console.error("Failed to create task:", err);
+        showError(t("toast.taskCreateFailed"), err);
         setTasks((prev) => prev.filter((t) => t.id !== tempId));
       }
     },
@@ -183,7 +184,7 @@ export function TaskBoard({ changeId, members }: TaskBoardProps) {
     try {
       await taskClient.updateTask(req);
     } catch (err) {
-      console.error("Failed to update task:", err);
+      showError(t("toast.taskUpdateFailed"), err);
       setTasks(prevTasks);
     }
   }, []);
@@ -208,7 +209,7 @@ export function TaskBoard({ changeId, members }: TaskBoardProps) {
       // If there was a previous pending delete, commit it immediately
       if (pendingDelete) {
         taskClient.deleteTask({ id: pendingDelete.task.id }).catch((err) => {
-          console.error("Failed to delete task:", err);
+          showError(t("toast.taskDeleteFailed"), err);
         });
         setPendingDelete(null);
       }
@@ -223,7 +224,7 @@ export function TaskBoard({ changeId, members }: TaskBoardProps) {
         undoTimeoutRef.current = null;
         setPendingDelete(null);
         taskClient.deleteTask({ id }).catch((err) => {
-          console.error("Failed to delete task:", err);
+          showError(t("toast.taskDeleteFailed"), err);
         });
       }, 3000);
     },
@@ -242,7 +243,7 @@ export function TaskBoard({ changeId, members }: TaskBoardProps) {
           })),
         });
       } catch (err) {
-        console.error("Failed to reorder tasks:", err);
+        showError(t("toast.taskReorderFailed"), err);
         // Re-fetch to reset state
         try {
           const res = await taskClient.listTasks({ changeId });
@@ -262,7 +263,7 @@ export function TaskBoard({ changeId, members }: TaskBoardProps) {
             })),
           );
         } catch (fetchErr) {
-          console.error("Failed to re-fetch tasks after reorder error:", fetchErr);
+          showError(t("toast.tasksLoadFailed"), fetchErr);
         }
       }
     },

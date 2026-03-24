@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import { commentClient } from "@/lib/comment";
 import { MessageSquare, Check, Trash2, ChevronDown, ChevronUp, Send } from "lucide-react";
+import { showError } from "@/lib/toast";
 
 interface CommentData {
   id: bigint;
@@ -79,10 +80,10 @@ export function CommentPanel({
           createdAt: c.createdAt ? new Date(Number(c.createdAt.seconds) * 1000) : new Date(),
         })),
       );
-    } catch {
-      // handle error
+    } catch (err) {
+      showError(t("toast.loadFailed"), err);
     }
-  }, [changeId, documentType]);
+  }, [changeId, documentType, t]);
 
   useEffect(() => {
     loadComments();

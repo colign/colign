@@ -17,6 +17,7 @@ import { Header } from "@/components/layout/header";
 import { workflowClient } from "@/lib/workflow";
 import { projectClient } from "@/lib/project";
 import { useI18n } from "@/lib/i18n";
+import { showError, showSuccess } from "@/lib/toast";
 
 type SettingsTab = "general" | "members" | "approval" | "archive" | "danger";
 
@@ -78,8 +79,8 @@ export default function ProjectSettingsPage() {
           setProjectDescription(res.project.description);
         }
       })
-      .catch(() => {
-        // handle error
+      .catch((err: unknown) => {
+        showError(t("toast.projectLoadFailed"), err);
       });
   }, [slug]);
 
@@ -96,8 +97,8 @@ export default function ProjectSettingsPage() {
           setArchiveDaysDelay(res.policy.daysDelay ?? 0);
         }
       })
-      .catch(() => {
-        // handle error
+      .catch((err: unknown) => {
+        showError(t("toast.loadFailed"), err);
       })
       .finally(() => {
         setLoadingArchivePolicy(false);
@@ -118,8 +119,9 @@ export default function ProjectSettingsPage() {
           policy,
           minCount,
         });
-      } catch {
-        // handle error
+        showSuccess(t("toast.saveSuccess"));
+      } catch (err) {
+        showError(t("toast.saveFailed"), err);
       }
     }
     // TODO: other API calls
@@ -140,8 +142,9 @@ export default function ProjectSettingsPage() {
       });
       setSavedArchive(true);
       setTimeout(() => setSavedArchive(false), 2000);
-    } catch {
-      // handle error
+      showSuccess(t("toast.saveSuccess"));
+    } catch (err) {
+      showError(t("toast.saveFailed"), err);
     } finally {
       setSavingArchive(false);
     }

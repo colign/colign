@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./app-sidebar";
 import { clearTokens, getAccessToken } from "@/lib/auth";
+import { showError } from "@/lib/toast";
 import { createClient, ConnectError, Code } from "@connectrpc/connect";
 import { AuthService } from "@/gen/proto/auth/v1/auth_pb";
 import { transport } from "@/lib/connect";
@@ -51,7 +52,10 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         setHasToken(false);
         router.replace("/auth");
       }
-      // Network errors, server errors, etc. — just proceed
+      // Network errors, server errors, etc. — notify and proceed
+      if (!(err instanceof ConnectError && (err.code === Code.Unauthenticated || err.code === Code.NotFound))) {
+        showError("Failed to load data", err);
+      }
       setVerified(true);
     }
   }, [pathname, router]);

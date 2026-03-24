@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useI18n } from "@/lib/i18n";
 import { projectClient } from "@/lib/project";
 import { Plus, Folder, Calendar, icons, type LucideIcon } from "lucide-react";
+import { showError } from "@/lib/toast";
 
 const statusConfig: Record<string, { label: string; dotColor: string }> = {
   backlog: { label: "Backlog", dotColor: "bg-muted-foreground" },
@@ -70,8 +71,8 @@ export default function ProjectsPage() {
             color: p.color || "",
           })),
         );
-      } catch {
-        // handle error
+      } catch (err) {
+        showError(t("toast.projectLoadFailed"), err);
       } finally {
         setLoading(false);
       }

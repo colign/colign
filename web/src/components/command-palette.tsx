@@ -19,6 +19,7 @@ import {
   Settings,
 } from "lucide-react";
 import { projectClient } from "@/lib/project";
+import { showError } from "@/lib/toast";
 import { useI18n } from "@/lib/i18n";
 
 interface SearchResult {
@@ -67,7 +68,8 @@ export function CommandPalette() {
           projectId: r.projectId,
         })),
       );
-    } catch {
+    } catch (err) {
+      showError("Search failed", err);
       setResults([]);
     } finally {
       setLoading(false);

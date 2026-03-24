@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { acceptanceClient } from "@/lib/acceptance";
 import { useI18n } from "@/lib/i18n";
 import { Plus, Trash2, GripVertical, Check, X } from "lucide-react";
+import { showError } from "@/lib/toast";
 
 interface Step {
   keyword: string;
@@ -50,8 +51,8 @@ export function AcceptanceCriteria({ changeId, reviewMode = false }: AcceptanceC
           sortOrder: c.sortOrder,
         })),
       );
-    } catch {
-      // handle error
+    } catch (err) {
+      showError(t("toast.acLoadFailed"), err);
     } finally {
       setLoading(false);
     }
@@ -71,8 +72,8 @@ export function AcceptanceCriteria({ changeId, reviewMode = false }: AcceptanceC
       });
       setAdding(false);
       loadItems();
-    } catch {
-      // handle error
+    } catch (err) {
+      showError(t("toast.acCreateFailed"), err);
     }
   };
 
@@ -85,8 +86,8 @@ export function AcceptanceCriteria({ changeId, reviewMode = false }: AcceptanceC
         sortOrder: item.sortOrder,
       });
       loadItems();
-    } catch {
-      // handle error
+    } catch (err) {
+      showError(t("toast.acUpdateFailed"), err);
     }
   };
 
@@ -94,8 +95,8 @@ export function AcceptanceCriteria({ changeId, reviewMode = false }: AcceptanceC
     try {
       await acceptanceClient.deleteAC({ id });
       loadItems();
-    } catch {
-      // handle error
+    } catch (err) {
+      showError(t("toast.acDeleteFailed"), err);
     }
   };
 
@@ -103,8 +104,8 @@ export function AcceptanceCriteria({ changeId, reviewMode = false }: AcceptanceC
     try {
       await acceptanceClient.toggleAC({ id, met });
       loadItems();
-    } catch {
-      // handle error
+    } catch (err) {
+      showError(t("toast.acToggleFailed"), err);
     }
   };
 

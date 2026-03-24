@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { documentClient } from "@/lib/document";
+import { showError } from "@/lib/toast";
 import { AcceptanceCriteria } from "@/components/change/acceptance-criteria";
 import { ChevronDown, ChevronRight, ExternalLink, Figma, Link2, Plus, Sparkles, Trash2 } from "lucide-react";
 
@@ -119,8 +120,8 @@ export function StructuredProposal({ changeId, currentStage }: StructuredProposa
             approach: !parsed.approach,
           });
         }
-      } catch {
-        // new document
+      } catch (err) {
+        showError("Failed to save proposal", err);
       } finally {
         setLoading(false);
       }
@@ -138,7 +139,7 @@ export function StructuredProposal({ changeId, currentStage }: StructuredProposa
         content: JSON.stringify(sectionsRef.current),
       });
     } catch (err) {
-      console.error("proposal save failed:", err);
+      showError("Failed to save proposal", err);
     }
   }, [changeId]);
 

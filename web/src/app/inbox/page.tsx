@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { useI18n } from "@/lib/i18n";
 import { notificationClient } from "@/lib/notification";
+import { showError } from "@/lib/toast";
 import {
   Eye,
   MessageSquare,
@@ -93,8 +94,8 @@ export default function InboxPage() {
         })),
       );
       setUnreadCount(res.unreadCount);
-    } catch {
-      // handle error
+    } catch (err) {
+      showError("Failed to load notifications", err);
     } finally {
       setLoading(false);
     }
@@ -109,8 +110,8 @@ export default function InboxPage() {
       await notificationClient.markRead({ id, read: !currentRead });
       setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: !currentRead } : n)));
       setUnreadCount((prev) => prev + (currentRead ? 1 : -1));
-    } catch {
-      // handle error
+    } catch (err) {
+      showError("Failed to load notifications", err);
     }
   }
 
@@ -119,8 +120,8 @@ export default function InboxPage() {
       await notificationClient.markAllRead({});
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
-    } catch {
-      // handle error
+    } catch (err) {
+      showError("Failed to load notifications", err);
     }
   }
 

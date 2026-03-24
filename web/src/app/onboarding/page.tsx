@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { orgClient } from "@/lib/organization";
+import { showError } from "@/lib/toast";
 import { useOrg } from "@/lib/org-context";
 
 export default function OnboardingPage() {
@@ -45,6 +46,7 @@ export default function OnboardingPage() {
       await refresh();
       setStep(2);
     } catch (err: unknown) {
+      showError("Failed to create workspace", err);
       setError(err instanceof Error ? err.message : "Failed to create workspace");
     } finally {
       setSaving(false);

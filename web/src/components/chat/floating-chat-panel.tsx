@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { showError } from "@/lib/toast";
 
 interface FloatingChatPanelProps {
   children: React.ReactNode;
@@ -24,7 +25,8 @@ function loadState(): PanelState | null {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     return saved ? JSON.parse(saved) : null;
-  } catch {
+  } catch (err) {
+    showError("Failed to load chat panel state", err);
     return null;
   }
 }
@@ -32,8 +34,8 @@ function loadState(): PanelState | null {
 function saveState(state: PanelState) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    // ignore
+  } catch (err) {
+    showError("Failed to save chat panel state", err);
   }
 }
 

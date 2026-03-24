@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import { workflowClient } from "@/lib/workflow";
 import { projectClient } from "@/lib/project";
+import { showError } from "@/lib/toast";
 import { Archive, ArchiveRestore } from "lucide-react";
 import { DocumentTab } from "@/components/change/document-tab";
 import { StructuredProposal } from "@/components/change/structured-proposal";
@@ -132,8 +133,8 @@ export default function ChangeDetailPage() {
         })),
       );
       setArchivedAt(changeRes.change?.archivedAt);
-    } catch {
-      // handle error
+    } catch (err) {
+      showError(t("toast.loadFailed"), err);
     } finally {
       setLoading(false);
     }
@@ -144,8 +145,8 @@ export default function ChangeDetailPage() {
     try {
       await projectClient.archiveChange({ changeId });
       await loadAll();
-    } catch {
-      // handle error
+    } catch (err) {
+      showError(t("toast.archiveFailed"), err);
     } finally {
       setArchiving(false);
     }
@@ -156,8 +157,8 @@ export default function ChangeDetailPage() {
     try {
       await projectClient.unarchiveChange({ changeId });
       await loadAll();
-    } catch {
-      // handle error
+    } catch (err) {
+      showError(t("toast.restoreFailed"), err);
     } finally {
       setArchiving(false);
     }

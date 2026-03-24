@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { orgClient } from "@/lib/organization";
 import { isLoggedIn } from "@/lib/auth";
+import { showError } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -30,7 +31,8 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
           email: res.invitation?.email ?? "",
           role: res.invitation?.role ?? "member",
         });
-      } catch {
+      } catch (err) {
+        showError("Failed to load invitation", err);
         setError("This invitation is invalid or has expired.");
       } finally {
         setLoading(false);
@@ -53,6 +55,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
       await orgClient.acceptInvitation({ token });
       router.push("/projects");
     } catch (err: unknown) {
+      showError("Failed to accept invitation", err);
       setError(err instanceof Error ? err.message : "Failed to accept invitation");
     } finally {
       setAccepting(false);

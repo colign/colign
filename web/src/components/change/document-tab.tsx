@@ -6,6 +6,7 @@ import { MarginComments } from "@/components/comment/margin-comments";
 import { sddTemplates } from "@/components/editor/templates";
 import { commentClient } from "@/lib/comment";
 import { documentClient } from "@/lib/document";
+import { showError } from "@/lib/toast";
 import { getTokenPayload } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { AcceptanceCriteria } from "@/components/change/acceptance-criteria";
@@ -46,7 +47,8 @@ export function DocumentTab({ changeId, docType, currentStage }: DocumentTabProp
         } else {
           setContent(sddTemplates[docType] || "");
         }
-      } catch {
+      } catch (err) {
+        showError("Failed to load document", err);
         setContent(sddTemplates[docType] || "");
       } finally {
         setLoading(false);
@@ -94,8 +96,8 @@ export function DocumentTab({ changeId, docType, currentStage }: DocumentTabProp
       setCommentInput("");
       setCommentPosition(null);
       commentRefreshRef.current?.();
-    } catch {
-      // handle error
+    } catch (err) {
+      showError("Failed to save comment", err);
     }
   };
 

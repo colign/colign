@@ -33,10 +33,12 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { CreateOrganizationDialog } from "@/components/organization/create-organization-dialog";
 import { useOrg } from "@/lib/org-context";
 import { projectClient } from "@/lib/project";
 import { useI18n } from "@/lib/i18n";
 import { clearTokens, getTokenPayload } from "@/lib/auth";
+import { showError } from "@/lib/toast";
 import { transport } from "@/lib/connect";
 import { AuthService } from "@/gen/proto/auth/v1/auth_pb";
 
@@ -75,7 +77,7 @@ export function AppSidebar() {
           avatarUrl: res.avatarUrl || "",
         });
       })
-      .catch(() => {});
+      .catch((err) => showError("Failed to load projects", err));
   }, [payload?.name, userEmail]);
 
   useEffect(() => {
@@ -93,8 +95,8 @@ export function AppSidebar() {
       try {
         const res = await projectClient.listProjects({});
         setProjects(res.projects.map((p) => ({ id: p.id, name: p.name, slug: p.slug })));
-      } catch {
-        // not loaded
+      } catch (err) {
+        showError("Failed to load projects", err);
       }
     }
     loadProjects();
@@ -217,7 +219,7 @@ export function AppSidebar() {
               <span>{t("sidebar.settings")}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          {currentOrg && orgs.length > 1 && (
+          {currentOrg && (
             <SidebarMenuItem>
               <div className="relative">
                 <SidebarMenuButton
@@ -243,6 +245,11 @@ export function AppSidebar() {
                         {org.name}
                       </button>
                     ))}
+                    <div className="my-1 h-px bg-border" />
+                    <CreateOrganizationDialog
+                      onCreated={() => setOrgMenuOpen(false)}
+                      triggerClassName="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+                    />
                   </div>
                 )}
               </div>

@@ -25,6 +25,7 @@ import { Header } from "@/components/layout/header";
 import { clearTokens } from "@/lib/auth";
 import { transport } from "@/lib/connect";
 import { OrgMembers } from "@/components/settings/org-members";
+import { showError, showSuccess } from "@/lib/toast";
 
 type SettingsTab = "profile" | "account" | "organization" | "ai" | "appearance" | "notifications";
 
@@ -104,8 +105,8 @@ export default function SettingsPage() {
     try {
       const res = await apiTokenClient.listApiTokens({});
       setTokens(res.tokens);
-    } catch {
-      // ignore
+    } catch (err) {
+      showError(t("toast.loadFailed"), err);
     } finally {
       setLoadingTokens(false);
     }
@@ -119,7 +120,7 @@ export default function SettingsPage() {
         setEmail(res.email);
         setAvatarUrl(res.avatarUrl || "");
       })
-      .catch(() => {});
+      .catch((err: unknown) => { showError(t("toast.loadFailed"), err); });
   }, []);
 
   useEffect(() => {
@@ -137,8 +138,8 @@ export default function SettingsPage() {
       setNewTokenName("");
       setCopied(false);
       loadTokens();
-    } catch {
-      // ignore
+    } catch (err) {
+      showError(t("toast.createFailed"), err);
     } finally {
       setCreatingToken(false);
     }
@@ -148,8 +149,8 @@ export default function SettingsPage() {
     try {
       await apiTokenClient.deleteApiToken({ id });
       loadTokens();
-    } catch {
-      // ignore
+    } catch (err) {
+      showError(t("toast.deleteFailed"), err);
     }
   }
 
@@ -178,6 +179,9 @@ export default function SettingsPage() {
             },
           }),
         );
+        showSuccess(t("toast.saveSuccess"));
+      } catch (err) {
+        showError(t("toast.saveFailed"), err);
       } finally {
         setSaving(false);
       }
@@ -201,8 +205,9 @@ export default function SettingsPage() {
     try {
       const compressed = await fileToAvatarDataUrl(file);
       setAvatarUrl(compressed);
-    } catch {
+    } catch (err) {
       setAvatarError("Could not process that image.");
+      showError(t("toast.saveFailed"), err);
     } finally {
       setUploadingAvatar(false);
     }

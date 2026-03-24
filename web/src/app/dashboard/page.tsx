@@ -7,6 +7,7 @@ import { useI18n } from "@/lib/i18n";
 import { useOrg } from "@/lib/org-context";
 import { projectClient } from "@/lib/project";
 import { FolderKanban, GitBranch, Eye, CheckCircle2, ChevronRight } from "lucide-react";
+import { showError } from "@/lib/toast";
 
 interface Project {
   id: bigint;
@@ -85,8 +86,8 @@ export default function DashboardPage() {
           }),
         );
         setAllChanges(changeResults.flat());
-      } catch {
-        // handle error
+      } catch (err) {
+        showError(t("toast.projectLoadFailed"), err);
       } finally {
         setLoading(false);
       }
