@@ -51,9 +51,10 @@ func ListTools() []Tool {
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
-					"change_id": {Type: "integer", Description: "Change ID"},
+					"change_id":  {Type: "integer", Description: "Change ID"},
+					"project_id": {Type: "integer", Description: "Project ID"},
 				},
-				Required: []string{"change_id"},
+				Required: []string{"change_id", "project_id"},
 			},
 		},
 		{
@@ -62,10 +63,11 @@ func ListTools() []Tool {
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
-					"change_id": {Type: "integer", Description: "Change ID"},
-					"doc_type":  {Type: "string", Description: "Document type: proposal, design, spec, tasks"},
+					"change_id":  {Type: "integer", Description: "Change ID"},
+					"project_id": {Type: "integer", Description: "Project ID"},
+					"doc_type":   {Type: "string", Description: "Document type: proposal, design, spec, tasks"},
 				},
-				Required: []string{"change_id", "doc_type"},
+				Required: []string{"change_id", "project_id", "doc_type"},
 			},
 		},
 		{
@@ -74,11 +76,12 @@ func ListTools() []Tool {
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
-					"change_id": {Type: "integer", Description: "Change ID"},
-					"doc_type":  {Type: "string", Description: "Document type: proposal, design, spec, tasks"},
-					"content":   {Type: "string", Description: "For proposal: JSON with problem, scope, outOfScope, approach. For others: markdown text."},
+					"change_id":  {Type: "integer", Description: "Change ID"},
+					"project_id": {Type: "integer", Description: "Project ID"},
+					"doc_type":   {Type: "string", Description: "Document type: proposal, design, spec, tasks"},
+					"content":    {Type: "string", Description: "For proposal: JSON with problem, scope, outOfScope, approach. For others: markdown text."},
 				},
-				Required: []string{"change_id", "doc_type", "content"},
+				Required: []string{"change_id", "project_id", "doc_type", "content"},
 			},
 		},
 		{
@@ -88,11 +91,12 @@ func ListTools() []Tool {
 				Type: "object",
 				Properties: map[string]Property{
 					"change_id":   {Type: "integer", Description: "Change ID"},
+					"project_id":  {Type: "integer", Description: "Project ID"},
 					"title":       {Type: "string", Description: "Task title"},
 					"description": {Type: "string", Description: "Task description (optional)"},
 					"status":      {Type: "string", Description: "Initial status: todo, in_progress, done (default: todo)"},
 				},
-				Required: []string{"change_id", "title"},
+				Required: []string{"change_id", "project_id", "title"},
 			},
 		},
 		{
@@ -101,9 +105,10 @@ func ListTools() []Tool {
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
-					"change_id": {Type: "integer", Description: "Change ID"},
+					"change_id":  {Type: "integer", Description: "Change ID"},
+					"project_id": {Type: "integer", Description: "Project ID"},
 				},
-				Required: []string{"change_id"},
+				Required: []string{"change_id", "project_id"},
 			},
 		},
 		{
@@ -113,11 +118,12 @@ func ListTools() []Tool {
 				Type: "object",
 				Properties: map[string]Property{
 					"task_id":        {Type: "integer", Description: "Task ID"},
+					"project_id":     {Type: "integer", Description: "Project ID"},
 					"status":         {Type: "string", Description: "New status: todo, in_progress, done"},
 					"assignee_id":    {Type: "integer", Description: "User ID to assign the task to (optional)"},
 					"clear_assignee": {Type: "boolean", Description: "Set to true to remove the current assignee (optional)"},
 				},
-				Required: []string{"task_id"},
+				Required: []string{"task_id", "project_id"},
 			},
 		},
 		{
@@ -126,10 +132,11 @@ func ListTools() []Tool {
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
-					"change_id": {Type: "integer", Description: "Change ID"},
-					"doc_type":  {Type: "string", Description: "Document type to improve"},
+					"change_id":  {Type: "integer", Description: "Change ID"},
+					"project_id": {Type: "integer", Description: "Project ID"},
+					"doc_type":   {Type: "string", Description: "Document type to improve"},
 				},
-				Required: []string{"change_id", "doc_type"},
+				Required: []string{"change_id", "project_id", "doc_type"},
 			},
 		},
 		{
@@ -138,9 +145,10 @@ func ListTools() []Tool {
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
-					"change_id": {Type: "integer", Description: "Change ID"},
+					"change_id":  {Type: "integer", Description: "Change ID"},
+					"project_id": {Type: "integer", Description: "Project ID"},
 				},
-				Required: []string{"change_id"},
+				Required: []string{"change_id", "project_id"},
 			},
 		},
 		{
@@ -149,12 +157,13 @@ func ListTools() []Tool {
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
-					"change_id": {Type: "integer", Description: "Change ID"},
-					"scenario":  {Type: "string", Description: "Scenario name describing the test case"},
-					"steps":     {Type: "string", Description: "JSON array of steps, each with keyword (Given/When/Then/And/But) and text. Example: [{\"keyword\":\"Given\",\"text\":\"a user is logged in\"},{\"keyword\":\"When\",\"text\":\"they click logout\"},{\"keyword\":\"Then\",\"text\":\"they are redirected to login page\"}]"},
-					"test_ref":  {Type: "string", Description: "Reference to test that verifies this criteria, e.g. 'tests/checkout_test.go::TestPaymentSuccess' (optional)"},
+					"change_id":  {Type: "integer", Description: "Change ID"},
+					"project_id": {Type: "integer", Description: "Project ID"},
+					"scenario":   {Type: "string", Description: "Scenario name describing the test case"},
+					"steps":      {Type: "string", Description: "JSON array of steps, each with keyword (Given/When/Then/And/But) and text. Example: [{\"keyword\":\"Given\",\"text\":\"a user is logged in\"},{\"keyword\":\"When\",\"text\":\"they click logout\"},{\"keyword\":\"Then\",\"text\":\"they are redirected to login page\"}]"},
+					"test_ref":   {Type: "string", Description: "Reference to test that verifies this criteria, e.g. 'tests/checkout_test.go::TestPaymentSuccess' (optional)"},
 				},
-				Required: []string{"change_id", "scenario", "steps"},
+				Required: []string{"change_id", "project_id", "scenario", "steps"},
 			},
 		},
 		{
@@ -163,10 +172,11 @@ func ListTools() []Tool {
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
-					"id":  {Type: "integer", Description: "Acceptance criteria ID"},
-					"met": {Type: "boolean", Description: "Whether the criteria is met (true) or unmet (false)"},
+					"id":         {Type: "integer", Description: "Acceptance criteria ID"},
+					"project_id": {Type: "integer", Description: "Project ID"},
+					"met":        {Type: "boolean", Description: "Whether the criteria is met (true) or unmet (false)"},
 				},
-				Required: []string{"id", "met"},
+				Required: []string{"id", "project_id", "met"},
 			},
 		},
 		{
@@ -175,10 +185,11 @@ func ListTools() []Tool {
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
-					"ac_id":    {Type: "integer", Description: "Acceptance criteria ID"},
-					"test_ref": {Type: "string", Description: "Test reference, e.g. 'tests/checkout_test.go::TestPaymentSuccess'"},
+					"ac_id":      {Type: "integer", Description: "Acceptance criteria ID"},
+					"project_id": {Type: "integer", Description: "Project ID"},
+					"test_ref":   {Type: "string", Description: "Test reference, e.g. 'tests/checkout_test.go::TestPaymentSuccess'"},
 				},
-				Required: []string{"ac_id", "test_ref"},
+				Required: []string{"ac_id", "project_id", "test_ref"},
 			},
 		},
 		{
@@ -236,9 +247,10 @@ func ListTools() []Tool {
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
-					"change_id": {Type: "integer", Description: "Change ID"},
+					"change_id":  {Type: "integer", Description: "Change ID"},
+					"project_id": {Type: "integer", Description: "Project ID"},
 				},
-				Required: []string{"change_id"},
+				Required: []string{"change_id", "project_id"},
 			},
 		},
 		{
@@ -247,9 +259,10 @@ func ListTools() []Tool {
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
-					"change_id": {Type: "integer", Description: "Change ID"},
+					"change_id":  {Type: "integer", Description: "Change ID"},
+					"project_id": {Type: "integer", Description: "Project ID"},
 				},
-				Required: []string{"change_id"},
+				Required: []string{"change_id", "project_id"},
 			},
 		},
 		{
@@ -258,10 +271,11 @@ func ListTools() []Tool {
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
-					"change_id": {Type: "integer", Description: "Change ID"},
-					"content":   {Type: "string", Description: "Comment text"},
+					"change_id":  {Type: "integer", Description: "Change ID"},
+					"project_id": {Type: "integer", Description: "Project ID"},
+					"content":    {Type: "string", Description: "Comment text"},
 				},
-				Required: []string{"change_id", "content"},
+				Required: []string{"change_id", "project_id", "content"},
 			},
 		},
 		{
@@ -270,9 +284,10 @@ func ListTools() []Tool {
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
-					"task_id": {Type: "integer", Description: "Task ID"},
+					"task_id":    {Type: "integer", Description: "Task ID"},
+					"project_id": {Type: "integer", Description: "Project ID"},
 				},
-				Required: []string{"task_id"},
+				Required: []string{"task_id", "project_id"},
 			},
 		},
 		{
@@ -304,9 +319,10 @@ func ListTools() []Tool {
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
-					"change_id": {Type: "integer", Description: "Change ID"},
+					"change_id":  {Type: "integer", Description: "Change ID"},
+					"project_id": {Type: "integer", Description: "Project ID"},
 				},
-				Required: []string{"change_id"},
+				Required: []string{"change_id", "project_id"},
 			},
 		},
 		{
@@ -337,9 +353,10 @@ func ListTools() []Tool {
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
-					"change_id": {Type: "integer", Description: "Change ID"},
+					"change_id":  {Type: "integer", Description: "Change ID"},
+					"project_id": {Type: "integer", Description: "Project ID"},
 				},
-				Required: []string{"change_id"},
+				Required: []string{"change_id", "project_id"},
 			},
 		},
 		{
@@ -348,10 +365,11 @@ func ListTools() []Tool {
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
-					"change_id": {Type: "integer", Description: "Change ID"},
-					"comment":   {Type: "string", Description: "Optional approval comment"},
+					"change_id":  {Type: "integer", Description: "Change ID"},
+					"project_id": {Type: "integer", Description: "Project ID"},
+					"comment":    {Type: "string", Description: "Optional approval comment"},
 				},
-				Required: []string{"change_id"},
+				Required: []string{"change_id", "project_id"},
 			},
 		},
 		{
@@ -360,10 +378,11 @@ func ListTools() []Tool {
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
-					"change_id": {Type: "integer", Description: "Change ID"},
-					"reason":    {Type: "string", Description: "Reason for requesting changes"},
+					"change_id":  {Type: "integer", Description: "Change ID"},
+					"project_id": {Type: "integer", Description: "Project ID"},
+					"reason":     {Type: "string", Description: "Reason for requesting changes"},
 				},
-				Required: []string{"change_id", "reason"},
+				Required: []string{"change_id", "project_id", "reason"},
 			},
 		},
 		{
@@ -372,9 +391,10 @@ func ListTools() []Tool {
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
-					"change_id": {Type: "integer", Description: "Change ID"},
+					"change_id":  {Type: "integer", Description: "Change ID"},
+					"project_id": {Type: "integer", Description: "Project ID"},
 				},
-				Required: []string{"change_id"},
+				Required: []string{"change_id", "project_id"},
 			},
 		},
 		{

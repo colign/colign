@@ -144,14 +144,16 @@ func (s *Server) handleListProjects(ctx context.Context) (any, error) {
 
 func (s *Server) handleGetChange(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
-		ChangeID int64 `json:"change_id"`
+		ChangeID  int64 `json:"change_id"`
+		ProjectID int64 `json:"project_id"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
 	}
 
 	resp, err := s.clients.project.GetChange(ctx, connect.NewRequest(&projectv1.GetChangeRequest{
-		Id: params.ChangeID,
+		Id:        params.ChangeID,
+		ProjectId: params.ProjectID,
 	}))
 	if err != nil {
 		return nil, err
@@ -168,22 +170,18 @@ func (s *Server) handleGetChange(ctx context.Context, args json.RawMessage) (any
 
 func (s *Server) handleReadSpec(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
-		ChangeID int64  `json:"change_id"`
-		DocType  string `json:"doc_type"`
+		ChangeID  int64  `json:"change_id"`
+		ProjectID int64  `json:"project_id"`
+		DocType   string `json:"doc_type"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
 	}
 
-	projectID, err := s.resolveProjectID(ctx, params.ChangeID)
-	if err != nil {
-		return nil, err
-	}
-
 	resp, err := s.clients.document.GetDocument(ctx, connect.NewRequest(&documentv1.GetDocumentRequest{
 		ChangeId:  params.ChangeID,
 		Type:      params.DocType,
-		ProjectId: projectID,
+		ProjectId: params.ProjectID,
 	}))
 	if err != nil {
 		return nil, err
@@ -212,17 +210,13 @@ func (s *Server) handleReadSpec(ctx context.Context, args json.RawMessage) (any,
 
 func (s *Server) handleWriteSpec(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
-		ChangeID int64  `json:"change_id"`
-		DocType  string `json:"doc_type"`
-		Content  string `json:"content"`
+		ChangeID  int64  `json:"change_id"`
+		ProjectID int64  `json:"project_id"`
+		DocType   string `json:"doc_type"`
+		Content   string `json:"content"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
-	}
-
-	projectID, err := s.resolveProjectID(ctx, params.ChangeID)
-	if err != nil {
-		return nil, err
 	}
 
 	// For non-proposal doc types, convert markdown to HTML and route through Hocuspocus
@@ -249,7 +243,7 @@ func (s *Server) handleWriteSpec(ctx context.Context, args json.RawMessage) (any
 			Type:      params.DocType,
 			Title:     params.DocType,
 			Content:   content,
-			ProjectId: projectID,
+			ProjectId: params.ProjectID,
 		}))
 		if err != nil {
 			return nil, err
@@ -268,7 +262,7 @@ func (s *Server) handleWriteSpec(ctx context.Context, args json.RawMessage) (any
 		Type:      params.DocType,
 		Title:     params.DocType,
 		Content:   params.Content,
-		ProjectId: projectID,
+		ProjectId: params.ProjectID,
 	}))
 	if err != nil {
 		return nil, err
@@ -316,16 +310,6 @@ func (s *Server) updateViaHocuspocus(changeID int64, docType, htmlContent string
 	return nil
 }
 
-// resolveProjectID looks up the project_id for a given change_id via the project service.
-func (s *Server) resolveProjectID(ctx context.Context, changeID int64) (int64, error) {
-	resp, err := s.clients.project.GetChange(ctx, connect.NewRequest(&projectv1.GetChangeRequest{
-		Id: changeID,
-	}))
-	if err != nil {
-		return 0, fmt.Errorf("resolve project for change %d: %w", changeID, err)
-	}
-	return resp.Msg.Change.ProjectId, nil
-}
 
 func (s *Server) publishEvent(eventType string, changeID int64, data any) {
 	if s.clients.eventHub == nil {
@@ -342,6 +326,7 @@ func (s *Server) publishEvent(eventType string, changeID int64, data any) {
 func (s *Server) handleCreateTask(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
 		ChangeID    int64  `json:"change_id"`
+		ProjectID   int64  `json:"project_id"`
 		Title       string `json:"title"`
 		Description string `json:"description"`
 		Status      string `json:"status"`
@@ -380,7 +365,8 @@ func (s *Server) handleCreateTask(ctx context.Context, args json.RawMessage) (an
 
 func (s *Server) handleListTasks(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
-		ChangeID int64 `json:"change_id"`
+		ChangeID  int64 `json:"change_id"`
+		ProjectID int64 `json:"project_id"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
@@ -428,6 +414,7 @@ func (s *Server) handleListTasks(ctx context.Context, args json.RawMessage) (any
 func (s *Server) handleUpdateTask(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
 		TaskID        int64  `json:"task_id"`
+		ProjectID     int64  `json:"project_id"`
 		Status        string `json:"status"`
 		AssigneeID    *int64 `json:"assignee_id"`
 		ClearAssignee bool   `json:"clear_assignee"`
@@ -437,7 +424,8 @@ func (s *Server) handleUpdateTask(ctx context.Context, args json.RawMessage) (an
 	}
 
 	req := &taskv1.UpdateTaskRequest{
-		Id: params.TaskID,
+		Id:        params.TaskID,
+		ProjectId: params.ProjectID,
 	}
 	if params.Status != "" {
 		req.Status = &params.Status
@@ -470,23 +458,19 @@ func (s *Server) handleUpdateTask(ctx context.Context, args json.RawMessage) (an
 
 func (s *Server) handleSuggestSpec(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
-		ChangeID int64  `json:"change_id"`
-		DocType  string `json:"doc_type"`
+		ChangeID  int64  `json:"change_id"`
+		ProjectID int64  `json:"project_id"`
+		DocType   string `json:"doc_type"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
-	}
-
-	projectID, err := s.resolveProjectID(ctx, params.ChangeID)
-	if err != nil {
-		return nil, err
 	}
 
 	// Read the current document first
 	resp, err := s.clients.document.GetDocument(ctx, connect.NewRequest(&documentv1.GetDocumentRequest{
 		ChangeId:  params.ChangeID,
 		Type:      params.DocType,
-		ProjectId: projectID,
+		ProjectId: params.ProjectID,
 	}))
 	if err != nil {
 		return nil, err
@@ -508,20 +492,16 @@ func (s *Server) handleSuggestSpec(ctx context.Context, args json.RawMessage) (a
 
 func (s *Server) handleListAC(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
-		ChangeID int64 `json:"change_id"`
+		ChangeID  int64 `json:"change_id"`
+		ProjectID int64 `json:"project_id"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
 	}
 
-	projectID, err := s.resolveProjectID(ctx, params.ChangeID)
-	if err != nil {
-		return nil, err
-	}
-
 	resp, err := s.clients.acceptance.ListAC(ctx, connect.NewRequest(&acceptancev1.ListACRequest{
 		ChangeId:  params.ChangeID,
-		ProjectId: projectID,
+		ProjectId: params.ProjectID,
 	}))
 	if err != nil {
 		return nil, err
@@ -563,10 +543,11 @@ func (s *Server) handleListAC(ctx context.Context, args json.RawMessage) (any, e
 
 func (s *Server) handleCreateAC(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
-		ChangeID int64  `json:"change_id"`
-		Scenario string `json:"scenario"`
-		Steps    string `json:"steps"`
-		TestRef  string `json:"test_ref"`
+		ChangeID  int64  `json:"change_id"`
+		ProjectID int64  `json:"project_id"`
+		Scenario  string `json:"scenario"`
+		Steps     string `json:"steps"`
+		TestRef   string `json:"test_ref"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
@@ -585,17 +566,12 @@ func (s *Server) handleCreateAC(ctx context.Context, args json.RawMessage) (any,
 		protoSteps[i] = &acceptancev1.ACStep{Keyword: s.Keyword, Text: s.Text}
 	}
 
-	projectID, err := s.resolveProjectID(ctx, params.ChangeID)
-	if err != nil {
-		return nil, err
-	}
-
 	resp, err := s.clients.acceptance.CreateAC(ctx, connect.NewRequest(&acceptancev1.CreateACRequest{
 		ChangeId:  params.ChangeID,
 		Scenario:  params.Scenario,
 		Steps:     protoSteps,
 		TestRef:   params.TestRef,
-		ProjectId: projectID,
+		ProjectId: params.ProjectID,
 	}))
 	if err != nil {
 		return nil, err
@@ -612,16 +588,18 @@ func (s *Server) handleCreateAC(ctx context.Context, args json.RawMessage) (any,
 
 func (s *Server) handleToggleAC(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
-		ID  int64 `json:"id"`
-		Met bool  `json:"met"`
+		ID        int64 `json:"id"`
+		ProjectID int64 `json:"project_id"`
+		Met       bool  `json:"met"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
 	}
 
 	resp, err := s.clients.acceptance.ToggleAC(ctx, connect.NewRequest(&acceptancev1.ToggleACRequest{
-		Id:  params.ID,
-		Met: params.Met,
+		Id:        params.ID,
+		Met:       params.Met,
+		ProjectId: params.ProjectID,
 	}))
 	if err != nil {
 		return nil, err
@@ -639,16 +617,18 @@ func (s *Server) handleToggleAC(ctx context.Context, args json.RawMessage) (any,
 
 func (s *Server) handleLinkACToTest(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
-		ACID    int64  `json:"ac_id"`
-		TestRef string `json:"test_ref"`
+		ACID      int64  `json:"ac_id"`
+		ProjectID int64  `json:"project_id"`
+		TestRef   string `json:"test_ref"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
 	}
 
 	resp, err := s.clients.acceptance.UpdateAC(ctx, connect.NewRequest(&acceptancev1.UpdateACRequest{
-		Id:      params.ACID,
-		TestRef: params.TestRef,
+		Id:        params.ACID,
+		TestRef:   params.TestRef,
+		ProjectId: params.ProjectID,
 	}))
 	if err != nil {
 		return nil, err
@@ -789,20 +769,16 @@ func (s *Server) handleListChanges(ctx context.Context, args json.RawMessage) (a
 
 func (s *Server) handleAdvanceStage(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
-		ChangeID int64 `json:"change_id"`
+		ChangeID  int64 `json:"change_id"`
+		ProjectID int64 `json:"project_id"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
 	}
 
-	projectID, err := s.resolveProjectID(ctx, params.ChangeID)
-	if err != nil {
-		return nil, err
-	}
-
 	resp, err := s.clients.workflow.Advance(ctx, connect.NewRequest(&workflowv1.AdvanceRequest{
 		ChangeId:  params.ChangeID,
-		ProjectId: projectID,
+		ProjectId: params.ProjectID,
 	}))
 	if err != nil {
 		return nil, err
@@ -817,20 +793,16 @@ func (s *Server) handleAdvanceStage(ctx context.Context, args json.RawMessage) (
 
 func (s *Server) handleListComments(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
-		ChangeID int64 `json:"change_id"`
+		ChangeID  int64 `json:"change_id"`
+		ProjectID int64 `json:"project_id"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
 	}
 
-	projectID, err := s.resolveProjectID(ctx, params.ChangeID)
-	if err != nil {
-		return nil, err
-	}
-
 	resp, err := s.clients.comment.ListComments(ctx, connect.NewRequest(&commentv1.ListCommentsRequest{
 		ChangeId:  params.ChangeID,
-		ProjectId: projectID,
+		ProjectId: params.ProjectID,
 	}))
 	if err != nil {
 		return nil, err
@@ -855,22 +827,18 @@ func (s *Server) handleListComments(ctx context.Context, args json.RawMessage) (
 
 func (s *Server) handleCreateComment(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
-		ChangeID int64  `json:"change_id"`
-		Content  string `json:"content"`
+		ChangeID  int64  `json:"change_id"`
+		ProjectID int64  `json:"project_id"`
+		Content   string `json:"content"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
 	}
 
-	projectID, err := s.resolveProjectID(ctx, params.ChangeID)
-	if err != nil {
-		return nil, err
-	}
-
 	resp, err := s.clients.comment.CreateComment(ctx, connect.NewRequest(&commentv1.CreateCommentRequest{
 		ChangeId:  params.ChangeID,
 		Body:      params.Content,
-		ProjectId: projectID,
+		ProjectId: params.ProjectID,
 	}))
 	if err != nil {
 		return nil, err
@@ -886,14 +854,16 @@ func (s *Server) handleCreateComment(ctx context.Context, args json.RawMessage) 
 
 func (s *Server) handleDeleteTask(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
-		TaskID int64 `json:"task_id"`
+		TaskID    int64 `json:"task_id"`
+		ProjectID int64 `json:"project_id"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
 	}
 
 	_, err := s.clients.task.DeleteTask(ctx, connect.NewRequest(&taskv1.DeleteTaskRequest{
-		Id: params.TaskID,
+		Id:        params.TaskID,
+		ProjectId: params.ProjectID,
 	}))
 	if err != nil {
 		return nil, err
@@ -960,20 +930,16 @@ func (s *Server) handleSaveMemory(ctx context.Context, args json.RawMessage) (an
 
 func (s *Server) handleGetChangeHistory(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
-		ChangeID int64 `json:"change_id"`
+		ChangeID  int64 `json:"change_id"`
+		ProjectID int64 `json:"project_id"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
 	}
 
-	projectID, err := s.resolveProjectID(ctx, params.ChangeID)
-	if err != nil {
-		return nil, err
-	}
-
 	resp, err := s.clients.workflow.GetHistory(ctx, connect.NewRequest(&workflowv1.GetHistoryRequest{
 		ChangeId:  params.ChangeID,
-		ProjectId: projectID,
+		ProjectId: params.ProjectID,
 	}))
 	if err != nil {
 		return nil, err
@@ -1144,18 +1110,14 @@ func (s *Server) handleGetProjectDashboard(ctx context.Context, args json.RawMes
 
 func (s *Server) handleGetGateStatus(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
-		ChangeID int64 `json:"change_id"`
+		ChangeID  int64 `json:"change_id"`
+		ProjectID int64 `json:"project_id"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
 	}
 
-	projectID, err := s.resolveProjectID(ctx, params.ChangeID)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := s.clients.workflow.GetStatus(ctx, connect.NewRequest(&workflowv1.GetStatusRequest{ChangeId: params.ChangeID, ProjectId: projectID}))
+	resp, err := s.clients.workflow.GetStatus(ctx, connect.NewRequest(&workflowv1.GetStatusRequest{ChangeId: params.ChangeID, ProjectId: params.ProjectID}))
 	if err != nil {
 		return nil, err
 	}
@@ -1178,22 +1140,18 @@ func (s *Server) handleGetGateStatus(ctx context.Context, args json.RawMessage) 
 
 func (s *Server) handleApproveChange(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
-		ChangeID int64  `json:"change_id"`
-		Comment  string `json:"comment"`
+		ChangeID  int64  `json:"change_id"`
+		ProjectID int64  `json:"project_id"`
+		Comment   string `json:"comment"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
 	}
 
-	projectID, err := s.resolveProjectID(ctx, params.ChangeID)
-	if err != nil {
-		return nil, err
-	}
-
 	resp, err := s.clients.workflow.Approve(ctx, connect.NewRequest(&workflowv1.ApproveRequest{
 		ChangeId:  params.ChangeID,
 		Comment:   params.Comment,
-		ProjectId: projectID,
+		ProjectId: params.ProjectID,
 	}))
 	if err != nil {
 		return nil, err
@@ -1209,8 +1167,9 @@ func (s *Server) handleApproveChange(ctx context.Context, args json.RawMessage) 
 
 func (s *Server) handleRejectChange(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
-		ChangeID int64  `json:"change_id"`
-		Reason   string `json:"reason"`
+		ChangeID  int64  `json:"change_id"`
+		ProjectID int64  `json:"project_id"`
+		Reason    string `json:"reason"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
@@ -1220,15 +1179,10 @@ func (s *Server) handleRejectChange(ctx context.Context, args json.RawMessage) (
 		return nil, fmt.Errorf("reason is required")
 	}
 
-	projectID, err := s.resolveProjectID(ctx, params.ChangeID)
-	if err != nil {
-		return nil, err
-	}
-
 	resp, err := s.clients.workflow.RequestChanges(ctx, connect.NewRequest(&workflowv1.RequestChangesRequest{
 		ChangeId:  params.ChangeID,
 		Reason:    params.Reason,
-		ProjectId: projectID,
+		ProjectId: params.ProjectID,
 	}))
 	if err != nil {
 		return nil, err
@@ -1243,20 +1197,16 @@ func (s *Server) handleRejectChange(ctx context.Context, args json.RawMessage) (
 
 func (s *Server) handleArchiveChange(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
-		ChangeID int64 `json:"change_id"`
+		ChangeID  int64 `json:"change_id"`
+		ProjectID int64 `json:"project_id"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
 	}
 
-	projectID, err := s.resolveProjectID(ctx, params.ChangeID)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = s.clients.project.ArchiveChange(ctx, connect.NewRequest(&projectv1.ArchiveChangeRequest{
+	_, err := s.clients.project.ArchiveChange(ctx, connect.NewRequest(&projectv1.ArchiveChangeRequest{
 		ChangeId:  params.ChangeID,
-		ProjectId: projectID,
+		ProjectId: params.ProjectID,
 	}))
 	if err != nil {
 		return nil, err
