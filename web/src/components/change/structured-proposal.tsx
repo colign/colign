@@ -280,7 +280,12 @@ export function StructuredProposal({ changeId, projectId, currentStage }: Struct
       />
 
       {/* Acceptance Criteria */}
-      <AcceptanceCriteria changeId={changeId} projectId={projectId} reviewMode={isReviewMode} />
+      <AcceptanceCriteria
+        changeId={changeId}
+        projectId={projectId}
+        reviewMode={isReviewMode}
+        hasProposal={!!(sections.problem || sections.scope)}
+      />
     </div>
   );
 }

@@ -5,6 +5,8 @@ import { acceptanceClient } from "@/lib/acceptance";
 import { useI18n } from "@/lib/i18n";
 import { Plus, Trash2, GripVertical, Check, X } from "lucide-react";
 import { showError } from "@/lib/toast";
+import { AIACGenerator } from "@/components/ai/ai-ac-generator";
+import type { GeneratedAC } from "@/lib/ai";
 
 interface Step {
   keyword: string;
@@ -30,10 +32,12 @@ const keywordColor: Record<string, string> = {
 
 interface AcceptanceCriteriaProps {
   changeId: bigint;
+  projectId: bigint;
   reviewMode?: boolean;
+  hasProposal?: boolean;
 }
 
-export function AcceptanceCriteria({ changeId, reviewMode = false }: AcceptanceCriteriaProps) {
+export function AcceptanceCriteria({ changeId, projectId, reviewMode = false, hasProposal = false }: AcceptanceCriteriaProps) {
   const { t } = useI18n();
   const [items, setItems] = useState<ACItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +45,7 @@ export function AcceptanceCriteria({ changeId, reviewMode = false }: AcceptanceC
 
   const loadItems = useCallback(async () => {
     try {
-      const res = await acceptanceClient.listAC({ changeId });
+      const res = await acceptanceClient.listAC({ changeId, projectId });
       setItems(
         res.criteria.map((c) => ({
           id: c.id,
@@ -56,7 +60,7 @@ export function AcceptanceCriteria({ changeId, reviewMode = false }: AcceptanceC
     } finally {
       setLoading(false);
     }
-  }, [changeId]);
+  }, [changeId, projectId]);
 
   useEffect(() => {
     loadItems();
@@ -69,6 +73,7 @@ export function AcceptanceCriteria({ changeId, reviewMode = false }: AcceptanceC
         scenario,
         steps,
         sortOrder: items.length,
+        projectId,
       });
       setAdding(false);
       loadItems();
@@ -84,6 +89,7 @@ export function AcceptanceCriteria({ changeId, reviewMode = false }: AcceptanceC
         scenario: item.scenario,
         steps: item.steps,
         sortOrder: item.sortOrder,
+        projectId,
       });
       loadItems();
     } catch (err) {
@@ -93,7 +99,7 @@ export function AcceptanceCriteria({ changeId, reviewMode = false }: AcceptanceC
 
   const handleDelete = async (id: bigint) => {
     try {
-      await acceptanceClient.deleteAC({ id });
+      await acceptanceClient.deleteAC({ id, projectId });
       loadItems();
     } catch (err) {
       showError(t("toast.acDeleteFailed"), err);
@@ -102,11 +108,25 @@ export function AcceptanceCriteria({ changeId, reviewMode = false }: AcceptanceC
 
   const handleToggle = async (id: bigint, met: boolean) => {
     try {
-      await acceptanceClient.toggleAC({ id, met });
+      await acceptanceClient.toggleAC({ id, met, projectId });
       loadItems();
     } catch (err) {
       showError(t("toast.acToggleFailed"), err);
     }
+  };
+
+  const handleAIApply = async (acs: GeneratedAC[]) => {
+    for (const ac of acs) {
+      await acceptanceClient.createAC({
+        changeId,
+        scenario: ac.scenario,
+        steps: ac.steps,
+        sortOrder: items.length,
+        projectId,
+        testRef: "",
+      });
+    }
+    loadItems();
   };
 
   const metCount = items.filter((i) => i.met).length;
@@ -130,15 +150,25 @@ export function AcceptanceCriteria({ changeId, reviewMode = false }: AcceptanceC
             </span>
           )}
         </div>
-        {!reviewMode && !adding && (
-          <button
-            onClick={() => setAdding(true)}
-            className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs text-primary hover:bg-primary/10 transition-colors"
-          >
-            <Plus className="size-3.5" />
-            {t("ac.add")}
-          </button>
-        )}
+        <div className="flex items-center gap-1">
+          {!reviewMode && items.length > 0 && (
+            <AIACGenerator
+              changeId={changeId}
+              hasProposal={hasProposal}
+              hasExistingAC={true}
+              onApply={handleAIApply}
+            />
+          )}
+          {!reviewMode && !adding && (
+            <button
+              onClick={() => setAdding(true)}
+              className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs text-primary hover:bg-primary/10 transition-colors"
+            >
+              <Plus className="size-3.5" />
+              {t("ac.add")}
+            </button>
+          )}
+        </div>
       </div>
 
       {items.length > 0 && (
@@ -172,12 +202,22 @@ export function AcceptanceCriteria({ changeId, reviewMode = false }: AcceptanceC
         <div className="rounded-lg border border-dashed border-border/50 py-6 text-center">
           <p className="text-sm text-muted-foreground">{t("ac.empty")}</p>
           {!reviewMode && (
-            <button
-              onClick={() => setAdding(true)}
-              className="mt-2 cursor-pointer text-xs text-primary hover:text-primary/80 transition-colors"
-            >
-              {t("ac.addFirst")}
-            </button>
+            <>
+              <button
+                onClick={() => setAdding(true)}
+                className="mt-2 cursor-pointer text-xs text-primary hover:text-primary/80 transition-colors"
+              >
+                {t("ac.addFirst")}
+              </button>
+              <div className="mt-3 flex justify-center">
+                <AIACGenerator
+                  changeId={changeId}
+                  hasProposal={hasProposal}
+                  hasExistingAC={false}
+                  onApply={handleAIApply}
+                />
+              </div>
+            </>
           )}
         </div>
       )}
