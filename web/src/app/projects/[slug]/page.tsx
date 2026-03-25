@@ -1107,10 +1107,25 @@ function ChangesTab({
   t: (key: string) => string;
 }) {
   const [archiveFilter, setArchiveFilter] = useState<"active" | "archived">("active");
+  const [stageFilters, setStageFilters] = useState<Set<string>>(new Set());
   const [activeChanges, setActiveChanges] = useState<Change[]>(initialChanges);
   const [archivedChanges, setArchivedChanges] = useState<Change[]>([]);
   const [archivedCount, setArchivedCount] = useState<number | null>(null);
   const [loadingArchived, setLoadingArchived] = useState(false);
+
+  const stages = ["draft", "design", "review", "ready"] as const;
+
+  function toggleStageFilter(stage: string) {
+    setStageFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(stage)) {
+        next.delete(stage);
+      } else {
+        next.add(stage);
+      }
+      return next;
+    });
+  }
 
   // Fetch archived count once on mount
   useEffect(() => {
@@ -1171,7 +1186,11 @@ function ChangesTab({
     }
   }
 
-  const displayChanges = archiveFilter === "active" ? activeChanges : archivedChanges;
+  const baseChanges = archiveFilter === "active" ? activeChanges : archivedChanges;
+  const displayChanges =
+    stageFilters.size === 0 || archiveFilter === "archived"
+      ? baseChanges
+      : baseChanges.filter((c) => stageFilters.has(c.stage));
 
   return (
     <div>
@@ -1206,6 +1225,45 @@ function ChangesTab({
           )}
         </button>
       </div>
+
+      {/* Stage Filter Chips — only for active */}
+      {archiveFilter === "active" && activeChanges.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-1.5">
+          <button
+            onClick={() => setStageFilters(new Set())}
+            className={`cursor-pointer inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              stageFilters.size === 0
+                ? "bg-foreground/10 text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+            }`}
+          >
+            {t("project.allStages")}
+            <span className="text-[10px] tabular-nums opacity-60">{activeChanges.length}</span>
+          </button>
+          {stages.map((stage) => {
+            const config = stageConfig[stage];
+            const count = activeChanges.filter((c) => c.stage === stage).length;
+            const isSelected = stageFilters.has(stage);
+            return (
+              <button
+                key={stage}
+                onClick={() => toggleStageFilter(stage)}
+                className={`cursor-pointer inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  isSelected
+                    ? "bg-foreground/10 text-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+                }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${config.color.split(" ")[0].replace("/10", "")}`}
+                />
+                {config.label}
+                <span className="text-[10px] tabular-nums opacity-60">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Create Change — only for active */}
       {archiveFilter === "active" && (
@@ -1245,9 +1303,19 @@ function ChangesTab({
           <div className="mb-5 rounded-2xl bg-primary/5 p-5">
             <FileText className="size-10 text-primary/40" />
           </div>
-          <p className="text-sm font-medium text-foreground/70">{t("project.noChanges")}</p>
-          {archiveFilter === "active" && (
-            <p className="mt-1 text-xs text-muted-foreground">{t("project.createFirstChange")}</p>
+          {archiveFilter === "active" && stageFilters.size > 0 && baseChanges.length > 0 ? (
+            <p className="text-sm font-medium text-foreground/70">
+              {t("project.noMatchingChanges")}
+            </p>
+          ) : (
+            <>
+              <p className="text-sm font-medium text-foreground/70">{t("project.noChanges")}</p>
+              {archiveFilter === "active" && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t("project.createFirstChange")}
+                </p>
+              )}
+            </>
           )}
         </div>
       ) : (

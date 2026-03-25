@@ -75,6 +75,8 @@
     "recentChanges": "최근 변경 사항",
     "viewAll": "전체 보기",
     "noChanges": "변경 사항이 없습니다",
+    "noMatchingChanges": "현재 필터에 맞는 Change가 없습니다",
+    "allStages": "전체",
     "createFirstChange": "첫 번째 Change를 만들어 SDD 워크플로우를 시작하세요",
     "newChangePlaceholder": "새 Change 이름 (예: add-user-auth)",
     "editProject": "프로젝트 수정",

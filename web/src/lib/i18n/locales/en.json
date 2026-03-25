@@ -75,6 +75,8 @@
     "recentChanges": "Recent Changes",
     "viewAll": "View all",
     "noChanges": "No changes yet",
+    "noMatchingChanges": "No changes match the current filter",
+    "allStages": "All",
     "createFirstChange": "Create your first change to start the SDD workflow",
     "newChangePlaceholder": "New change name (e.g., add-user-auth)",
     "editProject": "Edit project",
