@@ -6,7 +6,7 @@ import { commentClient } from "@/lib/comment";
 import { Check, Trash2, Send, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { showError } from "@/lib/toast";
-import { MentionTextarea, type MentionMember } from "./mention-textarea";
+import { MentionTextarea, renderMentionBody, type MentionMember } from "./mention-textarea";
 
 interface CommentData {
   id: bigint;
@@ -66,6 +66,7 @@ export function MarginComments({
   const [hoveredCommentId, setHoveredCommentId] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
+  const [replyMentionIds, setReplyMentionIds] = useState<bigint[]>([]);
   const [showResolved, setShowResolved] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -200,13 +201,25 @@ export function MarginComments({
     if (!replyText.trim() || submitting) return;
     setSubmitting(true);
     try {
-      await commentClient.createReply({ commentId, body: replyText, projectId });
+      await commentClient.createReply({
+        commentId,
+        body: replyText,
+        projectId,
+        mentionedUserIds: replyMentionIds,
+      });
       setReplyText("");
+      setReplyMentionIds([]);
       setReplyingTo(null);
       loadComments();
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const toggleReplyComposer = (id: string) => {
+    setReplyingTo((prev) => (prev === id ? null : id));
+    setReplyText("");
+    setReplyMentionIds([]);
   };
 
   const visibleComments = showResolved ? comments : comments.filter((c) => !c.resolved);
@@ -284,7 +297,7 @@ export function MarginComments({
                     </div>
                   )}
 
-                  <p className="text-foreground">{comment.body}</p>
+                  <p className="text-foreground">{renderMentionBody(comment.body, members)}</p>
 
                   {/* Replies */}
                   {comment.replies.length > 0 && (
@@ -297,7 +310,7 @@ export function MarginComments({
                               {timeAgo(reply.createdAt)}
                             </span>
                           </div>
-                          <p className="text-foreground/80">{reply.body}</p>
+                          <p className="text-foreground/80">{renderMentionBody(reply.body, members)}</p>
                         </div>
                       ))}
                     </div>
@@ -319,7 +332,7 @@ export function MarginComments({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setReplyingTo(replyingTo === id ? null : id)}
+                      onClick={() => toggleReplyComposer(id)}
                       className="h-6 cursor-pointer px-1.5 text-[10px] text-muted-foreground"
                     >
                       {t("comments.reply")}
@@ -343,6 +356,7 @@ export function MarginComments({
                         value={replyText}
                         onChange={setReplyText}
                         members={members}
+                        onMentionedIdsChange={setReplyMentionIds}
                         autoFocus
                         rows={2}
                         submitShortcut="enter"

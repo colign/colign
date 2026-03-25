@@ -100,7 +100,7 @@ export default function ChangeDetailPage() {
   const [loading, setLoading] = useState(true);
   const [animatingFrom, setAnimatingFrom] = useState<number | null>(null);
   const [showConfirmAdvance, setShowConfirmAdvance] = useState(false);
-  const [members, setMembers] = useState<Array<{ userId: bigint; userName: string }>>([]);
+  const [members, setMembers] = useState<Array<{ userId: bigint; userName: string; userEmail?: string }>>([]);
   const [projectId, setProjectId] = useState<bigint>(BigInt(0));
   const [projectName, setProjectName] = useState("");
   const [changeName, setChangeName] = useState("");
@@ -119,6 +119,7 @@ export default function ChangeDetailPage() {
         (projectRes.members || []).map((m) => ({
           userId: m.userId,
           userName: m.userName,
+          userEmail: m.userEmail,
         })),
       );
       const [statusRes, historyRes, changeRes] = await Promise.all([

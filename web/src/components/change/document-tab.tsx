@@ -88,6 +88,7 @@ export function DocumentTab({ changeId, projectId, docType, currentStage, member
   const [loading, setLoading] = useState(true);
   const [pendingQuotedText, setPendingQuotedText] = useState<string | null>(null);
   const [commentInput, setCommentInput] = useState("");
+  const [commentMentionIds, setCommentMentionIds] = useState<bigint[]>([]);
   const [commentPosition, setCommentPosition] = useState<{ top: number } | null>(null);
   const [editorDom, setEditorDom] = useState<HTMLElement | null>(null);
   const editorWrapperRef = useRef<HTMLDivElement>(null);
@@ -142,6 +143,7 @@ export function DocumentTab({ changeId, projectId, docType, currentStage, member
   ) => {
     setPendingQuotedText(quotedText);
     setCommentInput("");
+    setCommentMentionIds([]);
     setCommentPosition({ top: rect.top });
   };
 
@@ -154,12 +156,14 @@ export function DocumentTab({ changeId, projectId, docType, currentStage, member
         quotedText: pendingQuotedText,
         body: commentInput,
         projectId,
+        mentionedUserIds: commentMentionIds,
       });
       if (res.comment && editorRef.current) {
         editorRef.current.addHighlightAtSavedSelection(String(res.comment.id));
       }
       setPendingQuotedText(null);
       setCommentInput("");
+      setCommentMentionIds([]);
       setCommentPosition(null);
       commentRefreshRef.current?.();
     } catch (err) {
@@ -198,6 +202,7 @@ export function DocumentTab({ changeId, projectId, docType, currentStage, member
                   value={commentInput}
                   onChange={setCommentInput}
                   members={members}
+                  onMentionedIdsChange={setCommentMentionIds}
                   autoFocus
                   placeholder={t("comments.placeholder")}
                   className="mt-2 w-full resize-none rounded-md border border-border/50 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-primary"

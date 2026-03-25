@@ -39,7 +39,15 @@ func (h *ConnectHandler) CreateComment(ctx context.Context, req *connect.Request
 		return nil, err
 	}
 
-	comment, err := h.service.Create(ctx, req.Msg.ChangeId, req.Msg.DocumentType, req.Msg.QuotedText, req.Msg.Body, claims.UserID)
+	comment, err := h.service.Create(
+		ctx,
+		req.Msg.ChangeId,
+		req.Msg.DocumentType,
+		req.Msg.QuotedText,
+		req.Msg.Body,
+		claims.UserID,
+		req.Msg.MentionedUserIds,
+	)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -109,7 +117,7 @@ func (h *ConnectHandler) CreateReply(ctx context.Context, req *connect.Request[c
 		return nil, err
 	}
 
-	reply, err := h.service.CreateReply(ctx, req.Msg.CommentId, req.Msg.Body, claims.UserID, claims.OrgID)
+	reply, err := h.service.CreateReply(ctx, req.Msg.CommentId, req.Msg.Body, claims.UserID, claims.OrgID, req.Msg.MentionedUserIds)
 	if err != nil {
 		if errors.Is(err, ErrCommentNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, err)

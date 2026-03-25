@@ -22,7 +22,7 @@ func setupTestDB(t *testing.T) (*bun.DB, sqlmock.Sqlmock) {
 
 func TestResolve_CrossTenantBlocked(t *testing.T) {
 	db, mock := setupTestDB(t)
-	svc := NewService(db)
+	svc := NewService(db, nil)
 	ctx := context.Background()
 
 	wrongOrgID := int64(999)
@@ -37,7 +37,7 @@ func TestResolve_CrossTenantBlocked(t *testing.T) {
 
 func TestDelete_CrossTenantBlocked(t *testing.T) {
 	db, mock := setupTestDB(t)
-	svc := NewService(db)
+	svc := NewService(db, nil)
 	ctx := context.Background()
 
 	wrongOrgID := int64(999)
@@ -51,15 +51,14 @@ func TestDelete_CrossTenantBlocked(t *testing.T) {
 
 func TestCreateReply_CrossTenantBlocked(t *testing.T) {
 	db, mock := setupTestDB(t)
-	svc := NewService(db)
+	svc := NewService(db, nil)
 	ctx := context.Background()
 
 	wrongOrgID := int64(999)
 
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+	mock.ExpectQuery("SELECT").WillReturnError(sql.ErrNoRows)
 
-	result, err := svc.CreateReply(ctx, 1, "body", 1, wrongOrgID)
+	result, err := svc.CreateReply(ctx, 1, "body", 1, wrongOrgID, nil)
 	require.ErrorIs(t, err, ErrCommentNotFound)
 	require.Nil(t, result)
 	require.NoError(t, mock.ExpectationsWereMet())

@@ -154,8 +154,14 @@ func (s *Server) setupRoutes(cfg *config.Config) error {
 	workflowPath, workflowHandler := workflowv1connect.NewWorkflowServiceHandler(workflowConnectHandler, rbacOpts)
 	s.mux.Handle(workflowPath, workflowHandler)
 
+	// Notification service (Connect)
+	notifService := notification.NewService(s.db)
+	notifConnectHandler := notification.NewConnectHandler(notifService, s.jwtManager, apiTokenService, s.EventHub)
+	notifPath, notifHandler := notificationv1connect.NewNotificationServiceHandler(notifConnectHandler, rbacOpts)
+	s.mux.Handle(notifPath, notifHandler)
+
 	// Comment service (Connect)
-	commentService := comment.NewService(s.db)
+	commentService := comment.NewService(s.db, notifService)
 	commentConnectHandler := comment.NewConnectHandler(commentService, s.jwtManager, apiTokenService)
 	commentPath, commentHandler := commentv1connect.NewCommentServiceHandler(commentConnectHandler, rbacOpts)
 	s.mux.Handle(commentPath, commentHandler)
@@ -177,12 +183,6 @@ func (s *Server) setupRoutes(cfg *config.Config) error {
 	acConnectHandler := acceptance.NewConnectHandler(acService, s.jwtManager, apiTokenService)
 	acPath, acHandler := acceptancev1connect.NewAcceptanceCriteriaServiceHandler(acConnectHandler, rbacOpts)
 	s.mux.Handle(acPath, acHandler)
-
-	// Notification service (Connect)
-	notifService := notification.NewService(s.db)
-	notifConnectHandler := notification.NewConnectHandler(notifService, s.jwtManager, apiTokenService, s.EventHub)
-	notifPath, notifHandler := notificationv1connect.NewNotificationServiceHandler(notifConnectHandler, rbacOpts)
-	s.mux.Handle(notifPath, notifHandler)
 
 	// Memory service (Connect)
 	memoryService := memory.NewService(s.db)

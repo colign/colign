@@ -36,6 +36,7 @@ message CreateCommentRequest {
   string quoted_text = 3;
   string body = 4;
   int64 project_id = 5;
+  repeated int64 mentioned_user_ids = 6;
 }
 
 message CreateCommentResponse {
@@ -72,6 +73,7 @@ message CreateReplyRequest {
   int64 comment_id = 1;
   string body = 2;
   int64 project_id = 3;
+  repeated int64 mentioned_user_ids = 4;
 }
 
 message CreateReplyResponse {

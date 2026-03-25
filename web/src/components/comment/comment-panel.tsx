@@ -6,7 +6,7 @@ import { useI18n } from "@/lib/i18n";
 import { commentClient } from "@/lib/comment";
 import { MessageSquare, Check, Trash2, ChevronDown, ChevronUp, Send } from "lucide-react";
 import { showError } from "@/lib/toast";
-import { MentionTextarea, type MentionMember } from "./mention-textarea";
+import { MentionTextarea, renderMentionBody, type MentionMember } from "./mention-textarea";
 
 interface CommentData {
   id: bigint;
@@ -66,6 +66,8 @@ export function CommentPanel({
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [composeText, setComposeText] = useState("");
+  const [replyMentionIds, setReplyMentionIds] = useState<bigint[]>([]);
+  const [composeMentionIds, setComposeMentionIds] = useState<bigint[]>([]);
   const submittingRef = useRef(false);
 
   const loadComments = useCallback(async () => {
@@ -130,9 +132,15 @@ export function CommentPanel({
     }
     submittingRef.current = true;
     try {
-      await commentClient.createReply({ commentId, body: replyText, projectId });
+      await commentClient.createReply({
+        commentId,
+        body: replyText,
+        projectId,
+        mentionedUserIds: replyMentionIds,
+      });
       const threadId = String(commentId);
       setReplyText("");
+      setReplyMentionIds([]);
       setReplyingTo(null);
       setExpandedThreads((prev) => new Set(prev).add(threadId));
       loadComments();
@@ -151,8 +159,10 @@ export function CommentPanel({
         quotedText: "",
         body: composeText,
         projectId,
+        mentionedUserIds: composeMentionIds,
       });
       setComposeText("");
+      setComposeMentionIds([]);
       loadComments();
     } catch (err) {
       showError(t("toast.saveFailed"), err);
@@ -168,6 +178,12 @@ export function CommentPanel({
       else next.add(id);
       return next;
     });
+  };
+
+  const toggleReplyComposer = (id: string) => {
+    setReplyingTo((prev) => (prev === id ? null : id));
+    setReplyText("");
+    setReplyMentionIds([]);
   };
 
   const visibleComments = showResolved
@@ -233,7 +249,7 @@ export function CommentPanel({
                   )}
 
                   {/* Comment body */}
-                  <p className="mt-1.5 text-sm">{comment.body}</p>
+                  <p className="mt-1.5 text-sm">{renderMentionBody(comment.body, members)}</p>
 
                   {/* Actions */}
                   <div className="mt-2 flex items-center gap-1">
@@ -252,7 +268,7 @@ export function CommentPanel({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setReplyingTo(replyingTo === id ? null : id)}
+                        onClick={() => toggleReplyComposer(id)}
                         className="h-6 cursor-pointer gap-1 px-1.5 text-[10px] text-muted-foreground"
                       >
                         {t("comments.reply")}
@@ -293,7 +309,7 @@ export function CommentPanel({
                             <span className="text-[10px] font-medium">{reply.userName}</span>
                             <span className="text-[10px] text-muted-foreground">{timeAgo(reply.createdAt)}</span>
                           </div>
-                          <p className="ml-7 text-xs">{reply.body}</p>
+                          <p className="ml-7 text-xs">{renderMentionBody(reply.body, members)}</p>
                         </div>
                       ))}
                     </div>
@@ -306,6 +322,7 @@ export function CommentPanel({
                         value={replyText}
                         onChange={setReplyText}
                         members={members}
+                        onMentionedIdsChange={setReplyMentionIds}
                         autoFocus
                         rows={2}
                         submitShortcut="enter"
@@ -337,6 +354,7 @@ export function CommentPanel({
             value={composeText}
             onChange={setComposeText}
             members={members}
+            onMentionedIdsChange={setComposeMentionIds}
             submitShortcut="mod-enter"
             onSubmit={handleCompose}
             placeholder={t("comments.composePlaceholder")}
