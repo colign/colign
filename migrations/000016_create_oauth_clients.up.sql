@@ -20,3 +20,17 @@ CREATE TABLE oauth_authorization_codes (
 );
 
 CREATE INDEX idx_oauth_codes_code ON oauth_authorization_codes(code);
+
+CREATE TABLE oauth_refresh_tokens (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    org_id BIGINT NOT NULL,
+    client_id TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_oauth_refresh_tokens_hash ON oauth_refresh_tokens(token_hash);
+CREATE INDEX idx_oauth_refresh_tokens_client ON oauth_refresh_tokens(user_id, org_id, client_id);

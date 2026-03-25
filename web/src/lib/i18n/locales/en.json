@@ -120,7 +120,11 @@
     "restore": "Restore",
     "archived": "Archived",
     "archiveConfirm": "Archive this change?",
-    "restoreConfirm": "Restore this change?"
+    "restoreConfirm": "Restore this change?",
+    "noGateConditions": "No gate conditions",
+    "advanceTo": "Advance to {stage}",
+    "advanceGateWarning": "Gate conditions are not fully met. Advance anyway?",
+    "advanceConfirm": "Yes, advance"
   },
   "proposal": {
     "problem": "Problem",
@@ -416,7 +420,18 @@
     "newOrganization": "New organization",
     "createOrganization": "Create organization",
     "createOrganizationDesc": "Create a separate workspace with its own projects, members, and settings.",
-    "orgNameUpdated": "Organization name updated"
+    "orgNameUpdated": "Organization name updated",
+    "deleteOrg": "Delete organization",
+    "deleteOrgDesc": "Deleting an organization will permanently remove all projects, changes, specs, tasks, and member data.",
+    "deleteOrgConfirm": "Type \"{name}\" to confirm",
+    "deleteOrgTypeName": "Enter the organization name",
+    "deleteOrgConsequences1": "All projects and changes will be deleted",
+    "deleteOrgConsequences2": "All member access will be revoked",
+    "deleteOrgConsequences3": "This action cannot be undone",
+    "cannotDeleteOnlyOrg": "You cannot delete your only organization",
+    "deleting": "Deleting...",
+    "dangerZone": "Danger Zone",
+    "dangerZoneDesc": "Irreversible actions"
   },
   "projectSettings": {
     "general": "General",

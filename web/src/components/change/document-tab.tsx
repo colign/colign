@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
+import { marked } from "marked";
 import { SpecEditor } from "@/components/editor/spec-editor";
 import { MarginComments } from "@/components/comment/margin-comments";
 import { sddTemplates } from "@/components/editor/templates";
@@ -16,6 +17,67 @@ interface DocumentTabProps {
   projectId: bigint;
   docType: "proposal" | "design" | "spec";
   currentStage?: string;
+}
+
+function normalizeDocumentContent(content: string) {
+  const trimmed = content.trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("<")) {
+    if (looksLikeLegacyMarkdownHtml(trimmed)) {
+      return marked.parse(legacyHtmlToMarkdown(trimmed), { async: false }) as string;
+    }
+    return content;
+  }
+  return marked.parse(content, { async: false }) as string;
+}
+
+function looksLikeLegacyMarkdownHtml(content: string) {
+  return /<(p|li)[^>]*>\s*(\d+\.\s|\*\*|`|- |\* )/i.test(content);
+}
+
+function legacyHtmlToMarkdown(content: string) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(content, "text/html");
+  const blocks: string[] = [];
+
+  const serializeList = (list: Element, ordered: boolean) => {
+    const items = Array.from(list.children).filter((child) => child.tagName === "LI");
+    items.forEach((item, index) => {
+      const text = item.textContent?.trim();
+      if (!text) return;
+      blocks.push(`${ordered ? `${index + 1}.` : "-"} ${text}`);
+    });
+  };
+
+  Array.from(doc.body.children).forEach((element) => {
+    const text = element.textContent?.trim();
+    if (!text) return;
+
+    switch (element.tagName) {
+      case "H1":
+        blocks.push(`# ${text}`);
+        break;
+      case "H2":
+        blocks.push(`## ${text}`);
+        break;
+      case "H3":
+        blocks.push(`### ${text}`);
+        break;
+      case "H4":
+        blocks.push(`#### ${text}`);
+        break;
+      case "OL":
+        serializeList(element, true);
+        break;
+      case "UL":
+        serializeList(element, false);
+        break;
+      default:
+        blocks.push(text);
+    }
+  });
+
+  return blocks.join("\n\n");
 }
 
 export function DocumentTab({ changeId, projectId, docType, currentStage }: DocumentTabProps) {
@@ -44,7 +106,7 @@ export function DocumentTab({ changeId, projectId, docType, currentStage }: Docu
       try {
         const res = await documentClient.getDocument({ changeId, type: docType, projectId });
         if (res.document) {
-          setContent(res.document.content);
+          setContent(normalizeDocumentContent(res.document.content));
         } else {
           setContent(sddTemplates[docType] || "");
         }
@@ -56,7 +118,7 @@ export function DocumentTab({ changeId, projectId, docType, currentStage }: Docu
       }
     }
     loadDocument();
-  }, [changeId, docType]);
+  }, [changeId, docType, projectId]);
 
   // Get editor DOM once editor is ready
   useEffect(() => {
@@ -103,7 +165,7 @@ export function DocumentTab({ changeId, projectId, docType, currentStage }: Docu
     }
   };
 
-  const handleHighlightClick = (commentId: string) => {
+  const handleHighlightClick = () => {
     // handled by margin comments hover
   };
 

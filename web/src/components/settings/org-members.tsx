@@ -1,14 +1,20 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { createClient } from "@connectrpc/connect";
 import { orgClient } from "@/lib/organization";
 import { useOrg } from "@/lib/org-context";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserPlus, Trash2, Shield, User, Crown, X, Mail, Globe, Copy, Check } from "lucide-react";
+import { UserPlus, Trash2, Shield, User, Crown, X, Mail, Globe, Copy, Check, AlertTriangle } from "lucide-react";
 import { showError, showSuccess } from "@/lib/toast";
+import { AuthService } from "@/gen/proto/auth/v1/auth_pb";
+import { transport } from "@/lib/connect";
+import { DeleteOrgDialog } from "@/components/settings/delete-org-dialog";
+
+const meClient = createClient(AuthService, transport);
 
 type Member = {
   id: bigint;
@@ -40,7 +46,7 @@ const roleLabels: Record<string, string> = {
 
 export function OrgMembers() {
   const { t } = useI18n();
-  const { currentOrg, refresh } = useOrg();
+  const { currentOrg, orgs, refresh } = useOrg();
   const [members, setMembers] = useState<Member[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +59,10 @@ export function OrgMembers() {
   const [success, setSuccess] = useState("");
   const [inviteLink, setInviteLink] = useState("");
   const [copied, setCopied] = useState(false);
+
+  // Current user role
+  const [currentUserRole, setCurrentUserRole] = useState<string>("");
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Domain settings
   const [domains, setDomains] = useState<string[]>([]);
@@ -113,6 +123,17 @@ export function OrgMembers() {
     fetchOrgDetails();
   }, [fetchMembers, fetchInvitations, fetchOrgDetails]);
 
+  // Detect current user's role in this org
+  useEffect(() => {
+    if (members.length === 0) return;
+    meClient.me({}).then((res) => {
+      const me = members.find((m) => m.userId === res.userId);
+      if (me) setCurrentUserRole(me.role);
+    }).catch(() => {
+      // ignore — role stays empty, danger zone stays hidden
+    });
+  }, [members]);
+
   useEffect(() => {
     setOrgName(currentOrg?.name ?? "");
   }, [currentOrg]);
@@ -170,7 +191,7 @@ export function OrgMembers() {
   }
 
   async function handleRemove(userId: bigint, name: string) {
-    if (!confirm(t("common.removeConfirm").replace("{name}", name))) return;
+    if (!confirm(t("common.removeConfirm", { name }))) return;
     try {
       await orgClient.removeOrgMember({ userId });
       fetchMembers();
@@ -464,6 +485,46 @@ export function OrgMembers() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Danger Zone — owner only */}
+      {currentUserRole === "owner" && (
+        <Card className="border-destructive/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="size-4" />
+              {t("org.dangerZone")}
+            </CardTitle>
+            <CardDescription>{t("org.dangerZoneDesc")}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {t("org.deleteOrgDesc")}
+            </p>
+            {orgs.length <= 1 ? (
+              <p className="text-sm text-muted-foreground italic">
+                {t("org.cannotDeleteOnlyOrg")}
+              </p>
+            ) : null}
+            <Button
+              variant="outline"
+              className="cursor-pointer border-destructive/50 text-destructive hover:bg-destructive/10"
+              disabled={orgs.length <= 1}
+              onClick={() => setShowDeleteDialog(true)}
+            >
+              {t("org.deleteOrg")}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {currentOrg && (
+        <DeleteOrgDialog
+          open={showDeleteDialog}
+          onOpenChange={setShowDeleteDialog}
+          orgName={currentOrg.name}
+          orgId={currentOrg.id}
+        />
+      )}
     </div>
   );
 }

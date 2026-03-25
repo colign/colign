@@ -65,8 +65,9 @@ func TestAuthorizationServerMetadata(t *testing.T) {
 
 	grantTypes, ok := body["grant_types_supported"].([]any)
 	require.True(t, ok, "grant_types_supported should be an array")
-	require.Len(t, grantTypes, 1)
+	require.Len(t, grantTypes, 2)
 	assert.Equal(t, "authorization_code", grantTypes[0])
+	assert.Equal(t, "refresh_token", grantTypes[1])
 
 	codeMethods, ok := body["code_challenge_methods_supported"].([]any)
 	require.True(t, ok, "code_challenge_methods_supported should be an array")

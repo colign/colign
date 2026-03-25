@@ -24,6 +24,7 @@ message Task {
 
 message ListTasksRequest {
   int64 change_id = 1;
+  int64 project_id = 2;
 }
 
 message ListTasksResponse {
@@ -37,6 +38,7 @@ message CreateTaskRequest {
   string status = 4;
   string spec_ref = 5;
   optional int64 assignee_id = 6;
+  int64 project_id = 7;
 }
 
 message CreateTaskResponse {
@@ -74,6 +76,7 @@ message ReorderItem {
 message ReorderTasksRequest {
   int64 change_id = 1;
   repeated ReorderItem items = 2;
+  int64 project_id = 3;
 }
 
 message ReorderTasksResponse {}

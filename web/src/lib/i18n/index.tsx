@@ -1,52 +1,50 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import en from "./locales/en.json";
-import ko from "./locales/ko.json";
+import { startTransition, useCallback } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
+import { defaultLocale, isLocale, localeCookieName, type Locale } from "./config";
 
-const locales: Record<string, Record<string, Record<string, string>>> = { en, ko };
+type TranslationParams = Record<string, string | number | Date>;
 
-export type Locale = "en" | "ko";
-
-interface I18nContextType {
+interface I18nContextValue {
   locale: Locale;
   setLocale: (locale: Locale) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: TranslationParams) => string;
 }
 
-const I18nContext = createContext<I18nContextType | null>(null);
-
-function getStoredLocale(): Locale {
-  if (typeof window === "undefined") return "en";
-  return (localStorage.getItem("colign_locale") as Locale) || "en";
+function writeLocaleCookie(locale: Locale) {
+  document.cookie = `${localeCookieName}=${locale}; path=/; max-age=31536000; samesite=lax`;
 }
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(getStoredLocale);
+export function useI18n(): I18nContextValue {
+  const translations = useTranslations();
+  const activeLocale = useLocale();
+  const router = useRouter();
 
-  const setLocale = useCallback((newLocale: Locale) => {
-    setLocaleState(newLocale);
-    localStorage.setItem("colign_locale", newLocale);
-  }, []);
+  const locale = isLocale(activeLocale) ? activeLocale : defaultLocale;
 
-  const t = useCallback(
-    (key: string): string => {
-      // key format: "section.key" e.g. "common.save"
-      const parts = key.split(".");
-      if (parts.length !== 2) return key;
-
-      const [section, field] = parts;
-      const messages = locales[locale] ?? locales.en;
-      return messages?.[section]?.[field] ?? locales.en?.[section]?.[field] ?? key;
+  const setLocale = useCallback(
+    (nextLocale: Locale) => {
+      if (nextLocale === locale) return;
+      writeLocaleCookie(nextLocale);
+      startTransition(() => {
+        router.refresh();
+      });
     },
-    [locale],
+    [locale, router],
   );
 
-  return <I18nContext.Provider value={{ locale, setLocale, t }}>{children}</I18nContext.Provider>;
+  const t = useCallback(
+    (key: string, params?: TranslationParams) => translations(key, params),
+    [translations],
+  );
+
+  return {
+    locale,
+    setLocale,
+    t,
+  };
 }
 
-export function useI18n() {
-  const ctx = useContext(I18nContext);
-  if (!ctx) throw new Error("useI18n must be used within I18nProvider");
-  return ctx;
-}
+export type { Locale };

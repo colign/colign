@@ -9,6 +9,8 @@ const transport = createConnectTransport({
 
 export const authClient = createClient(AuthService, transport);
 
+export const AUTH_CHANGED_EVENT = "colign:auth-changed";
+
 const TOKEN_KEY = "colign_access_token";
 const REFRESH_KEY = "colign_refresh_token";
 const COOKIE_ACCESS = "colign_access_token";
@@ -19,6 +21,7 @@ export function saveTokens(accessToken: string, refreshToken: string) {
   localStorage.setItem(REFRESH_KEY, refreshToken);
   setCookie(COOKIE_ACCESS, accessToken);
   setCookie(COOKIE_REFRESH, refreshToken);
+  dispatchAuthChanged();
 }
 
 export function getAccessToken(): string | null {
@@ -34,6 +37,7 @@ export function clearTokens() {
   localStorage.removeItem(REFRESH_KEY);
   clearCookie(COOKIE_ACCESS);
   clearCookie(COOKIE_REFRESH);
+  dispatchAuthChanged();
 }
 
 export function isLoggedIn(): boolean {
@@ -94,6 +98,11 @@ function getCookie(name: string): string | null {
   if (typeof document === "undefined") return null;
   const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
   return match ? decodeURIComponent(match[1]) : null;
+}
+
+function dispatchAuthChanged() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
 }
 
 function deriveCookieDomain(hostname: string): string {

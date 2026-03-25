@@ -120,7 +120,11 @@
     "restore": "복원",
     "archived": "보관됨",
     "archiveConfirm": "이 Change를 보관할까요?",
-    "restoreConfirm": "이 Change를 복원할까요?"
+    "restoreConfirm": "이 Change를 복원할까요?",
+    "noGateConditions": "게이트 조건이 없습니다",
+    "advanceTo": "{stage}(으)로 이동",
+    "advanceGateWarning": "게이트 조건이 모두 충족되지 않았습니다. 그래도 진행할까요?",
+    "advanceConfirm": "예, 진행"
   },
   "proposal": {
     "problem": "Problem",
@@ -416,7 +420,18 @@
     "newOrganization": "새 조직",
     "createOrganization": "조직 만들기",
     "createOrganizationDesc": "별도의 프로젝트, 멤버, 설정을 가진 새 워크스페이스를 만듭니다.",
-    "orgNameUpdated": "조직 이름이 변경되었습니다"
+    "orgNameUpdated": "조직 이름이 변경되었습니다",
+    "deleteOrg": "조직 삭제",
+    "deleteOrgDesc": "조직을 삭제하면 모든 프로젝트, Change, 스펙, 태스크, 멤버 데이터가 영구적으로 삭제됩니다.",
+    "deleteOrgConfirm": "확인을 위해 \"{name}\"을 입력하세요",
+    "deleteOrgTypeName": "조직 이름을 입력하세요",
+    "deleteOrgConsequences1": "모든 프로젝트와 Change가 삭제됩니다",
+    "deleteOrgConsequences2": "모든 멤버의 접근 권한이 제거됩니다",
+    "deleteOrgConsequences3": "이 작업은 되돌릴 수 없습니다",
+    "cannotDeleteOnlyOrg": "유일한 조직은 삭제할 수 없습니다",
+    "deleting": "삭제 중...",
+    "dangerZone": "위험 영역",
+    "dangerZoneDesc": "되돌릴 수 없는 작업"
   },
   "projectSettings": {
     "general": "일반",

@@ -34,7 +34,12 @@ func (h *ConnectHandler) extractClaims(ctx context.Context, header string) (*aut
 }
 
 func (h *ConnectHandler) ListTasks(ctx context.Context, req *connect.Request[taskv1.ListTasksRequest]) (*connect.Response[taskv1.ListTasksResponse], error) {
-	tasks, err := h.service.List(ctx, req.Msg.ChangeId)
+	claims, err := h.extractClaims(ctx, req.Header().Get("Authorization"))
+	if err != nil {
+		return nil, err
+	}
+
+	tasks, err := h.service.List(ctx, req.Msg.ChangeId, req.Msg.ProjectId, claims.OrgID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -73,7 +78,10 @@ func (h *ConnectHandler) CreateTask(ctx context.Context, req *connect.Request[ta
 		t.AssigneeID = req.Msg.AssigneeId
 	}
 
-	if err := h.service.Create(ctx, t); err != nil {
+	if err := h.service.Create(ctx, t, req.Msg.ProjectId, claims.OrgID); err != nil {
+		if errors.Is(err, ErrInvalidChange) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
@@ -132,7 +140,7 @@ func (h *ConnectHandler) ReorderTasks(ctx context.Context, req *connect.Request[
 		}
 	}
 
-	if err := h.service.Reorder(ctx, req.Msg.ChangeId, items, claims.OrgID); err != nil {
+	if err := h.service.Reorder(ctx, req.Msg.ChangeId, req.Msg.ProjectId, items, claims.OrgID); err != nil {
 		if errors.Is(err, ErrInvalidChange) {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}

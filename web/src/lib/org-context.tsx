@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { orgClient } from "./organization";
-import { saveTokens, getAccessToken } from "./auth";
+import { AUTH_CHANGED_EVENT, getAccessToken, saveTokens } from "./auth";
 import { showError } from "@/lib/toast";
 
 interface Org {
@@ -35,6 +35,8 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
   const loadOrgs = useCallback(async () => {
     const token = getAccessToken();
     if (!token) {
+      setOrgs([]);
+      setCurrentOrgId(null);
       setLoading(false);
       return;
     }
@@ -57,6 +59,16 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     loadOrgs();
+  }, [loadOrgs]);
+
+  useEffect(() => {
+    const handleAuthChanged = () => {
+      setLoading(true);
+      void loadOrgs();
+    };
+
+    window.addEventListener(AUTH_CHANGED_EVENT, handleAuthChanged);
+    return () => window.removeEventListener(AUTH_CHANGED_EVENT, handleAuthChanged);
   }, [loadOrgs]);
 
   const switchOrg = useCallback(async (orgId: bigint) => {

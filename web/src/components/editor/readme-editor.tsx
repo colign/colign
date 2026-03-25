@@ -1,6 +1,6 @@
 "use client";
 
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, type Editor as TiptapEditor } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -11,6 +11,44 @@ interface ReadmeEditorProps {
   initialContent: string;
   onSave: (html: string) => void;
   placeholder?: string;
+}
+
+function toggleSmartCodeBlock(editor: TiptapEditor) {
+  if (editor.isActive("codeBlock")) {
+    editor.chain().focus().toggleCodeBlock().run();
+    return;
+  }
+
+  const { from, to, empty } = editor.state.selection;
+  if (empty) {
+    editor.chain().focus().toggleCodeBlock().run();
+    return;
+  }
+
+  let blockCount = 0;
+  editor.state.doc.nodesBetween(from, to, (node) => {
+    if (node.isBlock) {
+      blockCount += 1;
+    }
+  });
+
+  if (blockCount <= 1) {
+    editor.chain().focus().toggleCodeBlock().run();
+    return;
+  }
+
+  const selectedText = editor.state.doc.textBetween(from, to, "\n");
+  editor
+    .chain()
+    .focus()
+    .insertContentAt(
+      { from, to },
+      {
+        type: "codeBlock",
+        content: selectedText ? [{ type: "text", text: selectedText }] : [],
+      },
+    )
+    .run();
 }
 
 export function ReadmeEditor({
@@ -103,7 +141,7 @@ export function ReadmeEditor({
           )}
           {bubbleBtn(
             editor.isActive("codeBlock"),
-            () => editor.chain().focus().toggleCodeBlock().run(),
+            () => toggleSmartCodeBlock(editor),
             <Code className="size-4" />,
           )}
         </BubbleMenu>

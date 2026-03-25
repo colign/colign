@@ -149,6 +149,15 @@ message SetAllowedDomainsResponse {
   Organization organization = 1;
 }
 
+// Delete an organization permanently
+message DeleteOrganizationRequest {
+  int64 organization_id = 1;
+}
+
+message DeleteOrganizationResponse {
+  int64 next_organization_id = 1;
+}
+
 service OrganizationService {
   rpc ListOrganizations(ListOrganizationsRequest) returns (ListOrganizationsResponse) {}
   rpc SwitchOrganization(SwitchOrganizationRequest) returns (SwitchOrganizationResponse) {}
@@ -163,4 +172,5 @@ service OrganizationService {
   rpc RemoveOrgMember(RemoveOrgMemberRequest) returns (RemoveOrgMemberResponse) {}
   rpc UpdateOrgMemberRole(UpdateOrgMemberRoleRequest) returns (UpdateOrgMemberRoleResponse) {}
   rpc SetAllowedDomains(SetAllowedDomainsRequest) returns (SetAllowedDomainsResponse) {}
+  rpc DeleteOrganization(DeleteOrganizationRequest) returns (DeleteOrganizationResponse) {}
 }

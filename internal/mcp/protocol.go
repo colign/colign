@@ -408,5 +408,21 @@ func ListTools() []Tool {
 				Required: []string{"change_id"},
 			},
 		},
+		{
+			Name:        "get_me",
+			Description: "Get the current authenticated user's information (ID, name, email, organization).",
+			InputSchema: InputSchema{
+				Type:       "object",
+				Properties: map[string]Property{},
+			},
+		},
+		{
+			Name:        "list_members",
+			Description: "List all members in the current organization. Use this to find user IDs for task assignment.",
+			InputSchema: InputSchema{
+				Type:       "object",
+				Properties: map[string]Property{},
+			},
+		},
 	}
 }

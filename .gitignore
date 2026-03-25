@@ -39,3 +39,5 @@ web/src/gen/
 Thumbs.db
 /api
 .claude/
+.superpowers/
+docs/superpowers/

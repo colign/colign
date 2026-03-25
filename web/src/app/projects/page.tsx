@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useI18n } from "@/lib/i18n";
 import { projectClient } from "@/lib/project";
-import { Plus, Folder, Calendar, icons, type LucideIcon } from "lucide-react";
+import { Folder, Calendar, icons, type LucideIcon } from "lucide-react";
 import { showError } from "@/lib/toast";
+import { CreateProjectDialog } from "@/components/project/create-project-dialog";
 
 const statusConfig: Record<string, { label: string; dotColor: string }> = {
   backlog: { label: "Backlog", dotColor: "bg-muted-foreground" },
@@ -51,34 +52,35 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchProjects() {
-      try {
-        const res = await projectClient.listProjects({});
-        setProjects(
-          res.projects.map((p) => ({
-            id: p.id,
-            name: p.name,
-            slug: p.slug,
-            description: p.description,
-            status: p.status || "backlog",
-            priority: p.priority || "none",
-            health: p.health || "",
-            leadName: p.leadName || "",
-            leadAvatarUrl: p.leadAvatarUrl || "",
-            targetDate: p.targetDate || "",
-            icon: p.icon || "",
-            color: p.color || "",
-          })),
-        );
-      } catch (err) {
-        showError(t("toast.projectLoadFailed"), err);
-      } finally {
-        setLoading(false);
-      }
+  const fetchProjects = useCallback(async () => {
+    try {
+      const res = await projectClient.listProjects({});
+      setProjects(
+        res.projects.map((p) => ({
+          id: p.id,
+          name: p.name,
+          slug: p.slug,
+          description: p.description,
+          status: p.status || "backlog",
+          priority: p.priority || "none",
+          health: p.health || "",
+          leadName: p.leadName || "",
+          leadAvatarUrl: p.leadAvatarUrl || "",
+          targetDate: p.targetDate || "",
+          icon: p.icon || "",
+          color: p.color || "",
+        })),
+      );
+    } catch (err) {
+      showError(t("toast.projectLoadFailed"), err);
+    } finally {
+      setLoading(false);
     }
-    fetchProjects();
   }, []);
+
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
 
   if (loading) {
     return (
@@ -93,12 +95,7 @@ export default function ProjectsPage() {
       <main className="mx-auto max-w-6xl px-6 py-10">
         <div className="mb-8 flex items-center justify-between">
           <h1 className="text-2xl font-semibold tracking-tight">{t("projects.title")}</h1>
-          <Link href="/projects/new">
-            <Button size="sm" className="cursor-pointer">
-              <Plus className="mr-1.5 h-4 w-4" />
-              {t("projects.newProject")}
-            </Button>
-          </Link>
+          <CreateProjectDialog onCreated={fetchProjects} />
         </div>
 
         {projects.length === 0 ? (
@@ -108,9 +105,11 @@ export default function ProjectsPage() {
             </div>
             <p className="text-sm font-medium text-foreground/70">{t("projects.noProjects")}</p>
             <p className="mt-1 text-xs text-muted-foreground">{t("projects.createFirst")}</p>
-            <Link href="/projects/new" className="mt-6">
-              <Button className="cursor-pointer">{t("projects.createProject")}</Button>
-            </Link>
+            <div className="mt-6">
+              <CreateProjectDialog onCreated={fetchProjects}>
+                <Button className="cursor-pointer">{t("projects.createProject")}</Button>
+              </CreateProjectDialog>
+            </div>
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -145,50 +144,47 @@ export default function ProjectsPage() {
                       </div>
                     </div>
 
-                    {/* Metadata row */}
-                    <div className="mt-auto flex items-center gap-3 pt-3 border-t border-border/30">
-                      {/* Status */}
-                      <div className="flex items-center gap-1.5">
-                        <span className={`h-2 w-2 rounded-full ${status.dotColor}`} />
-                        <span className="text-xs text-muted-foreground">{status.label}</span>
+                    {/* Metadata */}
+                    <div className="mt-auto flex flex-col gap-2 pt-3 border-t border-border/30">
+                      {/* Row 1: Status / Priority / Health */}
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="flex h-4 w-4 items-center justify-center">
+                            <span className={`h-2 w-2 rounded-full ${status.dotColor}`} />
+                          </span>
+                          <span className="text-xs text-muted-foreground">{status.label}</span>
+                        </div>
+                        {priority.label && (
+                          <span className={`text-xs ${priority.color}`}>{priority.label}</span>
+                        )}
+                        {health && (
+                          <div className="flex items-center gap-1.5">
+                            <span className={`h-1.5 w-1.5 rounded-full ${health.dotColor}`} />
+                            <span className="text-xs text-muted-foreground">{health.label}</span>
+                          </div>
+                        )}
                       </div>
 
-                      {/* Priority */}
-                      {priority.label && (
-                        <span className={`text-xs ${priority.color}`}>
-                          {priority.label}
-                        </span>
-                      )}
-
-                      {/* Health */}
-                      {health && (
-                        <div className="flex items-center gap-1.5">
-                          <span className={`h-1.5 w-1.5 rounded-full ${health.dotColor}`} />
-                          <span className="text-xs text-muted-foreground">{health.label}</span>
-                        </div>
-                      )}
-
-                      {/* Spacer */}
-                      <div className="flex-1" />
-
-                      {/* Lead */}
-                      {project.leadName && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Avatar size="sm" className="size-4">
-                            <AvatarImage src={project.leadAvatarUrl} alt={project.leadName} />
-                            <AvatarFallback className="bg-primary/10 text-[9px] font-medium text-primary">
-                              {project.leadName.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="max-w-[60px] truncate">{project.leadName}</span>
-                        </div>
-                      )}
-
-                      {/* Target date */}
-                      {project.targetDate && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Calendar className="h-3 w-3" />
-                          <span>{formatDate(project.targetDate)}</span>
+                      {/* Row 2: Lead / Target date */}
+                      {(project.leadName || project.targetDate) && (
+                        <div className="flex items-center gap-2">
+                          {project.leadName && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Avatar size="sm" className="size-4">
+                                <AvatarImage src={project.leadAvatarUrl} alt={project.leadName} />
+                                <AvatarFallback className="bg-primary/10 text-[9px] font-medium text-primary">
+                                  {project.leadName.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="max-w-[80px] truncate">{project.leadName}</span>
+                            </div>
+                          )}
+                          {project.targetDate && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Calendar className="h-3 w-3" />
+                              <span>{formatDate(project.targetDate)}</span>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

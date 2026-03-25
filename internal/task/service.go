@@ -50,12 +50,16 @@ func NewService(db *bun.DB, opts ...Option) *Service {
 	return s
 }
 
-func (s *Service) List(ctx context.Context, changeID int64) ([]models.Task, error) {
+func (s *Service) List(ctx context.Context, changeID, projectID, orgID int64) ([]models.Task, error) {
 	tasks := make([]models.Task, 0)
 	err := s.db.NewSelect().Model(&tasks).
 		Relation("Assignee").
 		Relation("Creator").
+		Join("JOIN changes AS c ON c.id = t.change_id").
+		Join("JOIN projects AS p ON p.id = c.project_id").
 		Where("t.change_id = ?", changeID).
+		Where("c.project_id = ?", projectID).
+		Where("p.organization_id = ?", orgID).
 		OrderExpr("t.status ASC, t.order_index ASC").
 		Scan(ctx)
 	if err != nil {
@@ -64,9 +68,24 @@ func (s *Service) List(ctx context.Context, changeID int64) ([]models.Task, erro
 	return tasks, nil
 }
 
-func (s *Service) Create(ctx context.Context, task *models.Task) error {
+func (s *Service) Create(ctx context.Context, task *models.Task, projectID, orgID int64) error {
+	exists, err := s.db.NewSelect().
+		TableExpr("changes c").
+		Join("JOIN projects p ON p.id = c.project_id").
+		ColumnExpr("1").
+		Where("c.id = ?", task.ChangeID).
+		Where("c.project_id = ?", projectID).
+		Where("p.organization_id = ?", orgID).
+		Exists(ctx)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrInvalidChange
+	}
+
 	var maxOrderIndex int
-	err := s.db.NewSelect().
+	err = s.db.NewSelect().
 		TableExpr("tasks").
 		ColumnExpr("COALESCE(MAX(order_index), -1)").
 		Where("change_id = ?", task.ChangeID).
@@ -184,7 +203,7 @@ func (s *Service) Delete(ctx context.Context, id int64, orgID int64) error {
 	return nil
 }
 
-func (s *Service) Reorder(ctx context.Context, changeID int64, items []ReorderItem, orgID int64) error {
+func (s *Service) Reorder(ctx context.Context, changeID, projectID int64, items []ReorderItem, orgID int64) error {
 	return s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		// Verify change belongs to org
 		exists, err := tx.NewSelect().
@@ -192,6 +211,7 @@ func (s *Service) Reorder(ctx context.Context, changeID int64, items []ReorderIt
 			Join("JOIN projects p ON p.id = c.project_id").
 			ColumnExpr("1").
 			Where("c.id = ?", changeID).
+			Where("c.project_id = ?", projectID).
 			Where("p.organization_id = ?", orgID).
 			Exists(ctx)
 		if err != nil {

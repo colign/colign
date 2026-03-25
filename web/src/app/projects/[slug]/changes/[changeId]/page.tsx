@@ -454,13 +454,13 @@ export default function ChangeDetailPage() {
                   </div>
                 ))}
                 {conditions.length === 0 && (
-                  <span className="text-xs text-muted-foreground">No gate conditions</span>
+                  <span className="text-xs text-muted-foreground">{t("change.noGateConditions")}</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
                 {stage !== "ready" && !archivedAt && (
                   <Button onClick={handleAdvance} size="sm" className="cursor-pointer" disabled={!!archivedAt}>
-                    Advance to {stageConfig[stages[currentIdx + 1]]?.label ?? "next"}
+                    {t("change.advanceTo", { stage: t(`stages.${stages[currentIdx + 1]}`) })}
                   </Button>
                 )}
                 {stage === "ready" && !archivedAt && (
@@ -493,9 +493,7 @@ export default function ChangeDetailPage() {
             {/* Confirm dialog for advancing with unmet gates */}
             {showConfirmAdvance && (
               <div className="mt-3 rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3">
-                <p className="text-sm text-yellow-400">
-                  Gate conditions are not fully met. Advance anyway?
-                </p>
+                <p className="text-sm text-yellow-400">{t("change.advanceGateWarning")}</p>
                 <div className="mt-2 flex gap-2">
                   <Button
                     onClick={doAdvance}
@@ -503,7 +501,7 @@ export default function ChangeDetailPage() {
                     variant="outline"
                     className="cursor-pointer"
                   >
-                    Yes, advance
+                    {t("change.advanceConfirm")}
                   </Button>
                   <Button
                     onClick={() => setShowConfirmAdvance(false)}
@@ -511,7 +509,7 @@ export default function ChangeDetailPage() {
                     variant="ghost"
                     className="cursor-pointer"
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </Button>
                 </div>
               </div>

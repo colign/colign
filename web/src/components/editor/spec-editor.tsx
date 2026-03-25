@@ -1,10 +1,11 @@
 "use client";
 
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, type Editor as TiptapEditor } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Collaboration from "@tiptap/extension-collaboration";
+import type { AnyExtension } from "@tiptap/core";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import { CommentHighlight } from "./extensions/comment-highlight";
 import { useEffect, useRef, useState } from "react";
@@ -26,6 +27,44 @@ interface SpecEditorProps {
   } | null>;
   documentId: string;
   userName?: string;
+}
+
+function toggleSmartCodeBlock(editor: TiptapEditor) {
+  if (editor.isActive("codeBlock")) {
+    editor.chain().focus().toggleCodeBlock().run();
+    return;
+  }
+
+  const { from, to, empty } = editor.state.selection;
+  if (empty) {
+    editor.chain().focus().toggleCodeBlock().run();
+    return;
+  }
+
+  let blockCount = 0;
+  editor.state.doc.nodesBetween(from, to, (node) => {
+    if (node.isBlock) {
+      blockCount += 1;
+    }
+  });
+
+  if (blockCount <= 1) {
+    editor.chain().focus().toggleCodeBlock().run();
+    return;
+  }
+
+  const selectedText = editor.state.doc.textBetween(from, to, "\n");
+  editor
+    .chain()
+    .focus()
+    .insertContentAt(
+      { from, to },
+      {
+        type: "codeBlock",
+        content: selectedText ? [{ type: "text", text: selectedText }] : [],
+      },
+    )
+    .run();
 }
 
 // Outer component: manages Y.js lifecycle
@@ -103,9 +142,8 @@ function SpecEditorInner({
   const savedSelectionRef = useRef<{ from: number; to: number } | null>(null);
   const initializedRef = useRef(false);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const extensions: any[] = [
-    StarterKit.configure({ undoRedo: false } as any),
+  const extensions: AnyExtension[] = [
+    StarterKit.configure({ undoRedo: false }),
     Placeholder.configure({ placeholder }),
     CommentHighlight,
     Collaboration.configure({
@@ -131,7 +169,7 @@ function SpecEditorInner({
     // Check if Y.js fragment has real structured content (headings, lists, etc.)
     const fragment = collab.ydoc.getXmlFragment("default");
     const hasStructure = fragment.toArray().some((node) => {
-      const name = (node as any).nodeName;
+      const name = node instanceof Y.XmlElement ? node.nodeName : null;
       return name && name !== "paragraph";
     });
 
@@ -259,14 +297,22 @@ function SpecEditorInner({
             )}
             {bubbleBtn(
               editor.isActive("codeBlock"),
-              () => editor.chain().focus().toggleCodeBlock().run(),
+              () => toggleSmartCodeBlock(editor),
               <Code className="size-4" />,
             )}
 
             {onAddComment && (
               <>
                 <div className="mx-0.5 h-5 w-px bg-border" />
-                {bubbleBtn(false, handleCommentClick, <MessageSquarePlus className="size-4" />)}
+                <button
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleCommentClick();
+                  }}
+                  className="flex cursor-pointer items-center justify-center rounded px-1.5 py-1 text-muted-foreground transition-colors hover:bg-accent"
+                >
+                  <MessageSquarePlus className="size-4" />
+                </button>
               </>
             )}
           </BubbleMenu>

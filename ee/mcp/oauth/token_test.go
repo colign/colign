@@ -71,7 +71,7 @@ func TestTokenHandler_WrongGrantType(t *testing.T) {
 	err := json.NewDecoder(rec.Body).Decode(&body)
 	require.NoError(t, err)
 	assert.Equal(t, "unsupported_grant_type", body["error"])
-	assert.Equal(t, "only authorization_code is supported", body["error_description"])
+	assert.Equal(t, "only authorization_code and refresh_token are supported", body["error_description"])
 }
 
 func TestTokenHandler_MissingCode(t *testing.T) {
@@ -110,4 +110,23 @@ func TestTokenHandler_MissingCodeVerifier(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "invalid_request", body["error"])
 	assert.Equal(t, "code and code_verifier are required", body["error_description"])
+}
+
+func TestTokenHandler_MissingRefreshToken(t *testing.T) {
+	handler := &TokenHandler{}
+
+	req := httptest.NewRequest(http.MethodPost, "/oauth/token",
+		strings.NewReader("grant_type=refresh_token"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+	var body map[string]string
+	err := json.NewDecoder(rec.Body).Decode(&body)
+	require.NoError(t, err)
+	assert.Equal(t, "invalid_request", body["error"])
+	assert.Equal(t, "refresh_token is required", body["error_description"])
 }

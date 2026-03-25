@@ -296,6 +296,36 @@ func (h *ConnectHandler) UpdateOrgMemberRole(ctx context.Context, req *connect.R
 	}), nil
 }
 
+func (h *ConnectHandler) DeleteOrganization(ctx context.Context, req *connect.Request[organizationv1.DeleteOrganizationRequest]) (*connect.Response[organizationv1.DeleteOrganizationResponse], error) {
+	claims, err := h.extractClaims(ctx, req.Header().Get("Authorization"))
+	if err != nil {
+		return nil, err
+	}
+
+	// Verify request org_id matches JWT org_id
+	if req.Msg.OrganizationId != claims.OrgID {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("can only delete the current organization"))
+	}
+
+	nextOrgID, err := h.service.Delete(ctx, claims.OrgID, claims.UserID)
+	if err != nil {
+		if errors.Is(err, ErrNotOwner) {
+			return nil, connect.NewError(connect.CodePermissionDenied, err)
+		}
+		if errors.Is(err, ErrLastOrganization) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		}
+		if errors.Is(err, ErrOrgNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&organizationv1.DeleteOrganizationResponse{
+		NextOrganizationId: nextOrgID,
+	}), nil
+}
+
 func memberToProto(m *models.OrganizationMember) *organizationv1.OrganizationMember {
 	proto := &organizationv1.OrganizationMember{
 		Id:             m.ID,

@@ -58,6 +58,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const { locale, setLocale, t } = useI18n();
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
+  const [selectedLocale, setSelectedLocale] = useState(locale);
 
   // Profile state
   const [name, setName] = useState("");
@@ -128,6 +129,10 @@ export default function SettingsPage() {
       loadTokens();
     }
   }, [activeTab, loadTokens]);
+
+  useEffect(() => {
+    setSelectedLocale(locale);
+  }, [locale]);
 
   async function handleCreateToken() {
     if (!newTokenName.trim()) return;
@@ -656,7 +661,14 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>{t("settings.language")}</Label>
-                  <Select value={locale} onValueChange={(v) => setLocale(v as "en" | "ko")}>
+                  <Select
+                    value={selectedLocale}
+                    onValueChange={(v) => {
+                      const nextLocale = v as "en" | "ko";
+                      setSelectedLocale(nextLocale);
+                      setLocale(nextLocale);
+                    }}
+                  >
                     <SelectTrigger className="cursor-pointer">
                       <SelectValue />
                     </SelectTrigger>

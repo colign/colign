@@ -30,3 +30,16 @@ type OAuthAuthorizationCode struct {
 	Used          bool      `bun:"used,notnull,default:false"`
 	CreatedAt     time.Time `bun:"created_at,notnull,default:current_timestamp"`
 }
+
+type OAuthRefreshToken struct {
+	bun.BaseModel `bun:"table:oauth_refresh_tokens,alias:ort"`
+
+	ID        int64     `bun:"id,pk,autoincrement"`
+	UserID    int64     `bun:"user_id,notnull"`
+	OrgID     int64     `bun:"org_id,notnull"`
+	ClientID  string    `bun:"client_id,notnull"`
+	TokenHash string    `bun:"token_hash,notnull,unique"`
+	ExpiresAt time.Time `bun:"expires_at,notnull"`
+	Used      bool      `bun:"used,notnull,default:false"`
+	CreatedAt time.Time `bun:"created_at,notnull,default:current_timestamp"`
+}

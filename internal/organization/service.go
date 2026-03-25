@@ -19,6 +19,8 @@ var (
 	ErrOrgNotFound        = errors.New("organization not found")
 	ErrInvitationNotFound = errors.New("invitation not found or expired")
 	ErrAlreadyMember      = errors.New("user is already a member of this organization")
+	ErrNotOwner           = errors.New("only organization owners can perform this action")
+	ErrLastOrganization   = errors.New("cannot delete your only organization")
 )
 
 type Service struct {
@@ -391,6 +393,58 @@ func (s *Service) Update(ctx context.Context, id int64, name string) (*models.Or
 		return nil, err
 	}
 	return org, nil
+}
+
+// Delete permanently removes an organization and all its data (CASCADE).
+// Only an owner of the target org can delete it, and the user must belong to at least one other org.
+func (s *Service) Delete(ctx context.Context, orgID, userID int64) (int64, error) {
+	// Verify the user is an owner of this organization
+	member := new(models.OrganizationMember)
+	err := s.db.NewSelect().Model(member).
+		Where("organization_id = ?", orgID).
+		Where("user_id = ?", userID).
+		Scan(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, ErrOrgNotFound
+		}
+		return 0, err
+	}
+	if models.OrgRole(member.Role) != models.OrgRoleOwner {
+		return 0, ErrNotOwner
+	}
+
+	// Count total orgs the user belongs to
+	count, err := s.db.NewSelect().Model((*models.OrganizationMember)(nil)).
+		Where("user_id = ?", userID).
+		Count(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if count <= 1 {
+		return 0, ErrLastOrganization
+	}
+
+	// Find the next org to switch to
+	nextOrg := new(models.OrganizationMember)
+	err = s.db.NewSelect().Model(nextOrg).
+		Where("user_id = ?", userID).
+		Where("organization_id != ?", orgID).
+		Limit(1).
+		Scan(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	// Delete the organization (CASCADE handles related data)
+	_, err = s.db.NewDelete().Model((*models.Organization)(nil)).
+		Where("id = ?", orgID).
+		Exec(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	return nextOrg.OrganizationID, nil
 }
 
 func generateOrgSlug(name string) string {

@@ -69,7 +69,7 @@ func TestTaskReorder_CrossTenantBlocked(t *testing.T) {
 
 	mock.ExpectRollback()
 
-	err := svc.Reorder(ctx, 1, []ReorderItem{{ID: 1, Status: "todo", OrderIndex: 0}}, wrongOrgID)
+	err := svc.Reorder(ctx, 1, 1, []ReorderItem{{ID: 1, Status: "todo", OrderIndex: 0}}, wrongOrgID)
 	require.ErrorIs(t, err, ErrTaskNotFound)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
