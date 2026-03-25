@@ -2,6 +2,7 @@ package document
 
 import (
 	"context"
+	"encoding/json"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -9,6 +10,7 @@ import (
 	documentv1 "github.com/gobenpark/colign/gen/proto/document/v1"
 	"github.com/gobenpark/colign/gen/proto/document/v1/documentv1connect"
 	"github.com/gobenpark/colign/internal/auth"
+	"github.com/gobenpark/colign/internal/events"
 	"github.com/gobenpark/colign/internal/models"
 )
 
@@ -16,12 +18,13 @@ type ConnectHandler struct {
 	service           *Service
 	jwtManager        *auth.JWTManager
 	apiTokenValidator auth.APITokenValidator
+	hub               *events.Hub
 }
 
 var _ documentv1connect.DocumentServiceHandler = (*ConnectHandler)(nil)
 
-func NewConnectHandler(service *Service, jwtManager *auth.JWTManager, apiTokenValidator auth.APITokenValidator) *ConnectHandler {
-	return &ConnectHandler{service: service, jwtManager: jwtManager, apiTokenValidator: apiTokenValidator}
+func NewConnectHandler(service *Service, jwtManager *auth.JWTManager, apiTokenValidator auth.APITokenValidator, hub *events.Hub) *ConnectHandler {
+	return &ConnectHandler{service: service, jwtManager: jwtManager, apiTokenValidator: apiTokenValidator, hub: hub}
 }
 
 func (h *ConnectHandler) GetDocument(ctx context.Context, req *connect.Request[documentv1.GetDocumentRequest]) (*connect.Response[documentv1.GetDocumentResponse], error) {
@@ -57,6 +60,18 @@ func (h *ConnectHandler) SaveDocument(ctx context.Context, req *connect.Request[
 	}, claims.OrgID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if h.hub != nil {
+		payload, _ := json.Marshal(map[string]any{
+			"docType": doc.Type,
+			"version": doc.Version,
+		})
+		h.hub.Publish(events.Event{
+			Type:     "document_updated",
+			ChangeID: doc.ChangeID,
+			Payload:  string(payload),
+		})
 	}
 
 	return connect.NewResponse(&documentv1.SaveDocumentResponse{

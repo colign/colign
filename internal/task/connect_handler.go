@@ -2,6 +2,7 @@ package task
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	"connectrpc.com/connect"
@@ -10,6 +11,7 @@ import (
 	taskv1 "github.com/gobenpark/colign/gen/proto/task/v1"
 	"github.com/gobenpark/colign/gen/proto/task/v1/taskv1connect"
 	"github.com/gobenpark/colign/internal/auth"
+	"github.com/gobenpark/colign/internal/events"
 	"github.com/gobenpark/colign/internal/models"
 )
 
@@ -17,10 +19,11 @@ type ConnectHandler struct {
 	service           *Service
 	jwtManager        *auth.JWTManager
 	apiTokenValidator auth.APITokenValidator
+	hub               *events.Hub
 }
 
-func NewConnectHandler(service *Service, jwtManager *auth.JWTManager, apiTokenValidator auth.APITokenValidator) *ConnectHandler {
-	return &ConnectHandler{service: service, jwtManager: jwtManager, apiTokenValidator: apiTokenValidator}
+func NewConnectHandler(service *Service, jwtManager *auth.JWTManager, apiTokenValidator auth.APITokenValidator, hub *events.Hub) *ConnectHandler {
+	return &ConnectHandler{service: service, jwtManager: jwtManager, apiTokenValidator: apiTokenValidator, hub: hub}
 }
 
 var _ taskv1connect.TaskServiceHandler = (*ConnectHandler)(nil)
@@ -85,6 +88,8 @@ func (h *ConnectHandler) CreateTask(ctx context.Context, req *connect.Request[ta
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
+	h.publishTaskEvent("task_created", t)
+
 	return connect.NewResponse(&taskv1.CreateTaskResponse{
 		Task: taskToProto(t),
 	}), nil
@@ -103,6 +108,8 @@ func (h *ConnectHandler) UpdateTask(ctx context.Context, req *connect.Request[ta
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+
+	h.publishTaskEvent("task_updated", t)
 
 	return connect.NewResponse(&taskv1.UpdateTaskResponse{
 		Task: taskToProto(t),
@@ -175,4 +182,20 @@ func taskToProto(t *models.Task) *taskv1.Task {
 		pt.CreatorName = t.Creator.Name
 	}
 	return pt
+}
+
+func (h *ConnectHandler) publishTaskEvent(eventType string, t *models.Task) {
+	if h.hub == nil || t == nil {
+		return
+	}
+
+	payload, _ := json.Marshal(map[string]any{
+		"taskId": t.ID,
+		"status": t.Status,
+	})
+	h.hub.Publish(events.Event{
+		Type:     eventType,
+		ChangeID: t.ChangeID,
+		Payload:  string(payload),
+	})
 }

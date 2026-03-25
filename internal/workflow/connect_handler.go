@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	"connectrpc.com/connect"
@@ -13,6 +14,7 @@ import (
 	"github.com/uptrace/bun"
 
 	"github.com/gobenpark/colign/internal/auth"
+	"github.com/gobenpark/colign/internal/events"
 	"github.com/gobenpark/colign/internal/models"
 )
 
@@ -21,12 +23,13 @@ type ConnectHandler struct {
 	db                *bun.DB
 	jwtManager        *auth.JWTManager
 	apiTokenValidator auth.APITokenValidator
+	hub               *events.Hub
 }
 
 var _ workflowv1connect.WorkflowServiceHandler = (*ConnectHandler)(nil)
 
-func NewConnectHandler(service *Service, db *bun.DB, jwtManager *auth.JWTManager, apiTokenValidator auth.APITokenValidator) *ConnectHandler {
-	return &ConnectHandler{service: service, db: db, jwtManager: jwtManager, apiTokenValidator: apiTokenValidator}
+func NewConnectHandler(service *Service, db *bun.DB, jwtManager *auth.JWTManager, apiTokenValidator auth.APITokenValidator, hub *events.Hub) *ConnectHandler {
+	return &ConnectHandler{service: service, db: db, jwtManager: jwtManager, apiTokenValidator: apiTokenValidator, hub: hub}
 }
 
 func (h *ConnectHandler) extractClaims(ctx context.Context, header string) (*auth.Claims, error) {
@@ -79,6 +82,8 @@ func (h *ConnectHandler) Advance(ctx context.Context, req *connect.Request[workf
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+
+	h.publishChangeEvent(req.Msg.ChangeId, string(newStage))
 
 	return connect.NewResponse(&workflowv1.AdvanceResponse{
 		NewStage: string(newStage),
@@ -137,6 +142,10 @@ func (h *ConnectHandler) Approve(ctx context.Context, req *connect.Request[workf
 		}
 	}
 
+	if resp.NewStage != "" {
+		h.publishChangeEvent(req.Msg.ChangeId, resp.NewStage)
+	}
+
 	return connect.NewResponse(resp), nil
 }
 
@@ -158,6 +167,8 @@ func (h *ConnectHandler) RequestChanges(ctx context.Context, req *connect.Reques
 		Scan(ctx); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+
+	h.publishChangeEvent(req.Msg.ChangeId, string(change.Stage))
 
 	return connect.NewResponse(&workflowv1.RequestChangesResponse{
 		NewStage: string(change.Stage),
@@ -183,9 +194,27 @@ func (h *ConnectHandler) Revert(ctx context.Context, req *connect.Request[workfl
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
+	h.publishChangeEvent(req.Msg.ChangeId, string(change.Stage))
+
 	return connect.NewResponse(&workflowv1.RevertResponse{
 		NewStage: string(change.Stage),
 	}), nil
+}
+
+func (h *ConnectHandler) publishChangeEvent(changeID int64, stage string) {
+	if h.hub == nil {
+		return
+	}
+
+	payload, _ := json.Marshal(map[string]any{
+		"changeId": changeID,
+		"stage":    stage,
+	})
+	h.hub.Publish(events.Event{
+		Type:     "change_updated",
+		ChangeID: changeID,
+		Payload:  string(payload),
+	})
 }
 
 func (h *ConnectHandler) GetHistory(ctx context.Context, req *connect.Request[workflowv1.GetHistoryRequest]) (*connect.Response[workflowv1.GetHistoryResponse], error) {

@@ -139,7 +139,7 @@ func (s *Server) setupRoutes(cfg *config.Config) error {
 	cronCtx, cronCancel := context.WithCancel(context.Background())
 	_ = cronCancel // TODO: call on server shutdown
 	archiveService.StartCron(cronCtx)
-	projectConnectHandler := project.NewConnectHandler(projectService, archiveService, s.jwtManager, apiTokenService)
+	projectConnectHandler := project.NewConnectHandler(projectService, archiveService, s.jwtManager, apiTokenService, s.EventHub)
 	projectPath, projectHandler := projectv1connect.NewProjectServiceHandler(projectConnectHandler, rbacOpts)
 	s.mux.Handle(projectPath, projectHandler)
 
@@ -150,7 +150,7 @@ func (s *Server) setupRoutes(cfg *config.Config) error {
 
 	// Workflow service (Connect)
 	workflowService := workflow.NewService(s.db)
-	workflowConnectHandler := workflow.NewConnectHandler(workflowService, s.db, s.jwtManager, apiTokenService)
+	workflowConnectHandler := workflow.NewConnectHandler(workflowService, s.db, s.jwtManager, apiTokenService, s.EventHub)
 	workflowPath, workflowHandler := workflowv1connect.NewWorkflowServiceHandler(workflowConnectHandler, rbacOpts)
 	s.mux.Handle(workflowPath, workflowHandler)
 
@@ -162,13 +162,13 @@ func (s *Server) setupRoutes(cfg *config.Config) error {
 
 	// Document service (Connect)
 	documentService := document.NewService(s.db)
-	documentConnectHandler := document.NewConnectHandler(documentService, s.jwtManager, apiTokenService)
+	documentConnectHandler := document.NewConnectHandler(documentService, s.jwtManager, apiTokenService, s.EventHub)
 	documentPath, documentHandler := documentv1connect.NewDocumentServiceHandler(documentConnectHandler, rbacOpts)
 	s.mux.Handle(documentPath, documentHandler)
 
 	// Task service (Connect)
 	taskService := task.NewService(s.db, task.WithArchiveEvaluator(archiveService))
-	taskConnectHandler := task.NewConnectHandler(taskService, s.jwtManager, apiTokenService)
+	taskConnectHandler := task.NewConnectHandler(taskService, s.jwtManager, apiTokenService, s.EventHub)
 	taskPath, taskHandler := taskv1connect.NewTaskServiceHandler(taskConnectHandler, rbacOpts)
 	s.mux.Handle(taskPath, taskHandler)
 

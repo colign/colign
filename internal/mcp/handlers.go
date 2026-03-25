@@ -237,6 +237,9 @@ func (s *Server) handleWriteSpec(ctx context.Context, args json.RawMessage) (any
 			if err := s.updateViaHocuspocus(params.ChangeID.Int64(), params.DocType, content); err != nil {
 				log.Printf("hocuspocus update failed, falling back to direct save: %v", err)
 			} else {
+				s.publishEvent("document_updated", params.ChangeID.Int64(), map[string]any{
+					"docType": params.DocType,
+				})
 				return map[string]any{
 					"change_id": params.ChangeID.Int64(),
 					"doc_type":  params.DocType,
@@ -258,6 +261,10 @@ func (s *Server) handleWriteSpec(ctx context.Context, args json.RawMessage) (any
 			return nil, err
 		}
 		d := resp.Msg.Document
+		s.publishEvent("document_updated", params.ChangeID.Int64(), map[string]any{
+			"docType": params.DocType,
+			"version": d.Version,
+		})
 		return map[string]any{
 			"id":      d.Id,
 			"version": d.Version,
@@ -278,6 +285,10 @@ func (s *Server) handleWriteSpec(ctx context.Context, args json.RawMessage) (any
 	}
 
 	d := resp.Msg.Document
+	s.publishEvent("document_updated", params.ChangeID.Int64(), map[string]any{
+		"docType": params.DocType,
+		"version": d.Version,
+	})
 	return map[string]any{
 		"id":      d.Id,
 		"version": d.Version,

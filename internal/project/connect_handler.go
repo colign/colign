@@ -2,6 +2,7 @@ package project
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/gobenpark/colign/gen/proto/project/v1/projectv1connect"
 	"github.com/gobenpark/colign/internal/archive"
 	"github.com/gobenpark/colign/internal/auth"
+	"github.com/gobenpark/colign/internal/events"
 	"github.com/gobenpark/colign/internal/models"
 )
 
@@ -20,12 +22,13 @@ type ConnectHandler struct {
 	archiveService    *archive.Service
 	jwtManager        *auth.JWTManager
 	apiTokenValidator auth.APITokenValidator
+	hub               *events.Hub
 }
 
 var _ projectv1connect.ProjectServiceHandler = (*ConnectHandler)(nil)
 
-func NewConnectHandler(service *Service, archiveService *archive.Service, jwtManager *auth.JWTManager, apiTokenValidator auth.APITokenValidator) *ConnectHandler {
-	return &ConnectHandler{service: service, archiveService: archiveService, jwtManager: jwtManager, apiTokenValidator: apiTokenValidator}
+func NewConnectHandler(service *Service, archiveService *archive.Service, jwtManager *auth.JWTManager, apiTokenValidator auth.APITokenValidator, hub *events.Hub) *ConnectHandler {
+	return &ConnectHandler{service: service, archiveService: archiveService, jwtManager: jwtManager, apiTokenValidator: apiTokenValidator, hub: hub}
 }
 
 func (h *ConnectHandler) extractClaims(ctx context.Context, header string) (*auth.Claims, error) {
@@ -304,6 +307,8 @@ func (h *ConnectHandler) CreateChange(ctx context.Context, req *connect.Request[
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
+	h.publishChangeEvent("change_created", change)
+
 	return connect.NewResponse(&projectv1.CreateChangeResponse{
 		Change: changeToProto(change),
 	}), nil
@@ -389,6 +394,8 @@ func (h *ConnectHandler) ArchiveChange(ctx context.Context, req *connect.Request
 		}
 	}
 
+	h.publishChangeEvent("change_updated", change)
+
 	return connect.NewResponse(&projectv1.ArchiveChangeResponse{
 		Change: changeToProto(change),
 	}), nil
@@ -412,9 +419,27 @@ func (h *ConnectHandler) UnarchiveChange(ctx context.Context, req *connect.Reque
 		}
 	}
 
+	h.publishChangeEvent("change_updated", change)
+
 	return connect.NewResponse(&projectv1.UnarchiveChangeResponse{
 		Change: changeToProto(change),
 	}), nil
+}
+
+func (h *ConnectHandler) publishChangeEvent(eventType string, change *models.Change) {
+	if h.hub == nil || change == nil {
+		return
+	}
+
+	payload, _ := json.Marshal(map[string]any{
+		"changeId": change.ID,
+		"stage":    change.Stage,
+	})
+	h.hub.Publish(events.Event{
+		Type:     eventType,
+		ChangeID: change.ID,
+		Payload:  string(payload),
+	})
 }
 
 func (h *ConnectHandler) GetArchivePolicy(ctx context.Context, req *connect.Request[projectv1.GetArchivePolicyRequest]) (*connect.Response[projectv1.GetArchivePolicyResponse], error) {
