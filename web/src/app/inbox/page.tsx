@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { useI18n } from "@/lib/i18n";
 import { notificationClient } from "@/lib/notification";
+import { NOTIFICATIONS_UPDATED_EVENT } from "@/lib/notification-events";
 import { showError } from "@/lib/toast";
 import {
   Eye,
@@ -75,6 +76,10 @@ export default function InboxPage() {
   const [filter, setFilter] = useState<FilterType>("all");
   const [loading, setLoading] = useState(true);
 
+  function notifyUnreadChanged() {
+    window.dispatchEvent(new CustomEvent(NOTIFICATIONS_UPDATED_EVENT));
+  }
+
   async function load() {
     try {
       const res = await notificationClient.listNotifications({ filter });
@@ -110,6 +115,7 @@ export default function InboxPage() {
       await notificationClient.markRead({ id, read: !currentRead });
       setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: !currentRead } : n)));
       setUnreadCount((prev) => prev + (currentRead ? 1 : -1));
+      notifyUnreadChanged();
     } catch (err) {
       showError("Failed to load notifications", err);
     }
@@ -120,6 +126,7 @@ export default function InboxPage() {
       await notificationClient.markAllRead({});
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
+      notifyUnreadChanged();
     } catch (err) {
       showError("Failed to load notifications", err);
     }

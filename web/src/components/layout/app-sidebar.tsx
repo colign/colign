@@ -27,6 +27,7 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
@@ -36,6 +37,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CreateOrganizationDialog } from "@/components/organization/create-organization-dialog";
 import { useOrg } from "@/lib/org-context";
 import { projectClient } from "@/lib/project";
+import { notificationClient } from "@/lib/notification";
+import { NOTIFICATIONS_UPDATED_EVENT } from "@/lib/notification-events";
+import { useEvents } from "@/lib/events";
 import { useI18n } from "@/lib/i18n";
 import { clearTokens, getTokenPayload } from "@/lib/auth";
 import { showError } from "@/lib/toast";
@@ -53,9 +57,11 @@ const meClient = createClient(AuthService, transport);
 export function AppSidebar() {
   const pathname = usePathname();
   const { toggleSidebar, state } = useSidebar();
+  const { on } = useEvents();
   const { t } = useI18n();
   const { currentOrg, orgs, switchOrg } = useOrg();
   const [projects, setProjects] = useState<Project[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [orgMenuOpen, setOrgMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const payload = typeof window !== "undefined" ? getTokenPayload() : null;
@@ -89,6 +95,35 @@ export function AppSidebar() {
     window.addEventListener("colign:profile-updated", handleProfileUpdated);
     return () => window.removeEventListener("colign:profile-updated", handleProfileUpdated);
   }, []);
+
+  useEffect(() => {
+    function fetchUnread() {
+      notificationClient
+        .getUnreadCount({})
+        .then((res) => setUnreadCount(res.count))
+        .catch(() => {});
+    }
+
+    fetchUnread();
+    const handleNotificationsUpdated = () => fetchUnread();
+    window.addEventListener(NOTIFICATIONS_UPDATED_EVENT, handleNotificationsUpdated);
+    const interval = setInterval(fetchUnread, 30000);
+    return () => {
+      window.removeEventListener(NOTIFICATIONS_UPDATED_EVENT, handleNotificationsUpdated);
+      clearInterval(interval);
+    };
+  }, [currentOrg, pathname]);
+
+  useEffect(() => {
+    return on((event) => {
+      if (event.type.startsWith("notification_")) {
+        notificationClient
+          .getUnreadCount({})
+          .then((res) => setUnreadCount(res.count))
+          .catch(() => {});
+      }
+    });
+  }, [on]);
 
   useEffect(() => {
     async function loadProjects() {
@@ -146,6 +181,11 @@ export function AppSidebar() {
                     <item.icon className="size-4" />
                     <span>{item.label}</span>
                   </SidebarMenuButton>
+                  {item.href === "/inbox" && unreadCount > 0 && (
+                    <SidebarMenuBadge className="top-1.5 right-1 bg-primary/15 text-primary group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:h-4 group-data-[collapsible=icon]:min-w-4 group-data-[collapsible=icon]:rounded-full group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:text-[10px]">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </SidebarMenuBadge>
+                  )}
                 </SidebarMenuItem>
               ))}
               <SidebarMenuItem>

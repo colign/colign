@@ -105,8 +105,10 @@ var skipRPCs = map[string]bool{
 
 	// NotificationService
 	"/notification.v1.NotificationService/ListNotifications": true,
-	"/notification.v1.NotificationService/MarkAsRead":        true,
+	"/notification.v1.NotificationService/MarkRead":          true,
+	"/notification.v1.NotificationService/MarkAllRead":       true,
 	"/notification.v1.NotificationService/GetUnreadCount":    true,
+	"/notification.v1.NotificationService/Subscribe":         true,
 }
 
 // GetRule returns the auth rule for the given RPC procedure.
