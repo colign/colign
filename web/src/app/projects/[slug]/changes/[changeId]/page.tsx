@@ -12,6 +12,7 @@ import { Header } from "@/components/layout/header";
 import { DocumentTab } from "@/components/change/document-tab";
 import { StructuredProposal } from "@/components/change/structured-proposal";
 import { TaskBoard } from "@/components/task/task-board";
+import { useEvents } from "@/lib/events";
 
 interface GateCondition {
   name: string;
@@ -78,6 +79,7 @@ export default function ChangeDetailPage() {
   const slug = params.slug as string;
   const changeId = BigInt(params.changeId as string);
   const { t } = useI18n();
+  const { on } = useEvents();
 
   const tabParam = searchParams.get("tab") as TabId | null;
   const initialTab = tabParam && validTabs.includes(tabParam) ? tabParam : "proposal";
@@ -107,7 +109,7 @@ export default function ChangeDetailPage() {
 
   const prevStageRef = useRef(stage);
 
-  async function loadAll() {
+  const loadAll = useCallback(async () => {
     try {
       const projectRes = await projectClient.getProject({ slug });
       const pid = projectRes.project!.id;
@@ -145,7 +147,7 @@ export default function ChangeDetailPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [slug, changeId, t]);
 
   async function handleArchive() {
     setArchiving(true);
@@ -173,7 +175,20 @@ export default function ChangeDetailPage() {
 
   useEffect(() => {
     loadAll();
-  }, []);
+  }, [loadAll]);
+
+  useEffect(() => {
+    return on((event) => {
+      if (event.changeId !== changeId) return;
+      if (
+        event.type === "change_updated" ||
+        event.type === "task_created" ||
+        event.type === "task_updated"
+      ) {
+        loadAll();
+      }
+    });
+  }, [on, changeId, loadAll]);
 
   // Trigger particle animation on stage change
   useEffect(() => {
@@ -520,9 +535,9 @@ export default function ChangeDetailPage() {
 
           {/* Tab Content */}
           {activeTab === "proposal" && projectId > 0 && (
-            <StructuredProposal changeId={changeId} projectId={projectId} currentStage={stage} />
+            <StructuredProposal changeId={changeId} projectId={projectId} currentStage={stage} members={members} />
           )}
-          {activeTab === "design" && projectId > 0 && <DocumentTab changeId={changeId} projectId={projectId} docType="design" />}
+          {activeTab === "design" && projectId > 0 && <DocumentTab changeId={changeId} projectId={projectId} docType="design" members={members} />}
           {activeTab === "tasks" && projectId > 0 && (
             <div className="min-h-0 max-h-[calc(100svh-20rem)] overflow-y-auto pr-1 md:max-h-[calc(100svh-18rem)]">
               <TaskBoard changeId={changeId} projectId={projectId} members={members} />
