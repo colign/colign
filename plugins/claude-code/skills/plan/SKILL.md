@@ -11,6 +11,14 @@ Read the proposal from Colign, design the implementation approach, and create or
 
 ## Workflow
 
+### Phase 0: Select Project & Change
+
+1. Call `mcp__colign__list_projects` to get available projects
+2. If multiple projects exist, present the list and ask the user which project to work on
+3. Call `mcp__colign__list_changes` for the selected project
+4. Present changes and ask the user which change to plan
+5. If the user already specified a project or change (by name or ID), skip the corresponding selection step
+
 ### Phase 1: Read Context
 
 1. Call `mcp__colign__get_change` to see the change's current stage

@@ -11,6 +11,14 @@ Verify all work is done, check gate conditions, and advance the change to the ne
 
 ## Workflow
 
+### Step 0: Select Project & Change
+
+1. Call `mcp__colign__list_projects` to get available projects
+2. If multiple projects exist, present the list and ask the user which project to work on
+3. Call `mcp__colign__list_changes` for the selected project
+4. Present changes that are in progress and ask the user which change to complete
+5. If the user already specified a project or change (by name or ID), skip the corresponding selection step
+
 ### Step 1: Check Task Completion
 
 Call `mcp__colign__list_tasks` to verify all tasks are `done`.

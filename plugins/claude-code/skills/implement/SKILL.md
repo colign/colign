@@ -11,7 +11,15 @@ Read the spec from Colign, implement the code locally, and update task progress 
 
 ## Workflow
 
-### Setup
+### Select Project & Change
+
+1. Call `mcp__colign__list_projects` to get available projects
+2. If multiple projects exist, present the list and ask the user which project to work on
+3. Call `mcp__colign__list_changes` for the selected project
+4. Present changes that have tasks (filter out empty drafts) and ask the user which change to implement
+5. If the user already specified a project or change (by name or ID), skip the corresponding selection step
+
+### Load Spec & Tasks
 
 1. Call `mcp__colign__get_change` to see the change's current stage and metadata
 2. Call `mcp__colign__read_spec` with `doc_type: design` to read the design
