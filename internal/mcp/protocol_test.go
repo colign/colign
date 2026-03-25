@@ -45,8 +45,8 @@ func TestUpdateTaskToolHasAssigneeParams(t *testing.T) {
 	assert.Equal(t, "integer", updateTask.InputSchema.Properties["assignee_id"].Type)
 	assert.Equal(t, "boolean", updateTask.InputSchema.Properties["clear_assignee"].Type)
 
-	// status should no longer be required (only task_id is)
-	assert.Equal(t, []string{"task_id"}, updateTask.InputSchema.Required)
+	// status should no longer be required (only task_id and project_id are)
+	assert.Equal(t, []string{"task_id", "project_id"}, updateTask.InputSchema.Required)
 }
 
 func TestLinkACToTestToolDefinition(t *testing.T) {
@@ -63,7 +63,7 @@ func TestLinkACToTestToolDefinition(t *testing.T) {
 
 	assert.Contains(t, linkTool.InputSchema.Properties, "ac_id")
 	assert.Contains(t, linkTool.InputSchema.Properties, "test_ref")
-	assert.Equal(t, []string{"ac_id", "test_ref"}, linkTool.InputSchema.Required)
+	assert.Equal(t, []string{"ac_id", "project_id", "test_ref"}, linkTool.InputSchema.Required)
 }
 
 func TestCreateACToolHasTestRefParam(t *testing.T) {
@@ -94,7 +94,7 @@ func TestGetChangeHistoryToolDefinition(t *testing.T) {
 	require.NotNil(t, historyTool, "get_change_history tool not found")
 
 	assert.Contains(t, historyTool.InputSchema.Properties, "change_id")
-	assert.Equal(t, []string{"change_id"}, historyTool.InputSchema.Required)
+	assert.Equal(t, []string{"change_id", "project_id"}, historyTool.InputSchema.Required)
 }
 
 func TestPOToolsExist(t *testing.T) {
@@ -131,7 +131,7 @@ func TestApproveChangeToolDefinition(t *testing.T) {
 	require.NotNil(t, tool)
 	assert.Contains(t, tool.InputSchema.Properties, "change_id")
 	assert.Contains(t, tool.InputSchema.Properties, "comment")
-	assert.Equal(t, []string{"change_id"}, tool.InputSchema.Required, "only change_id required, comment is optional")
+	assert.Equal(t, []string{"change_id", "project_id"}, tool.InputSchema.Required, "change_id and project_id required, comment is optional")
 }
 
 func TestRejectChangeToolDefinition(t *testing.T) {
@@ -146,7 +146,7 @@ func TestRejectChangeToolDefinition(t *testing.T) {
 	}
 	require.NotNil(t, tool)
 	assert.Contains(t, tool.InputSchema.Properties, "reason")
-	assert.Equal(t, []string{"change_id", "reason"}, tool.InputSchema.Required, "reason is required")
+	assert.Equal(t, []string{"change_id", "project_id", "reason"}, tool.InputSchema.Required, "change_id, project_id and reason are required")
 }
 
 func TestGetWorkContextToolDefinition(t *testing.T) {
