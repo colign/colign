@@ -57,6 +57,29 @@ export function htmlToYXmlFragment(
       }
 
       fragment.insert(fragment.length, [listEl]);
+    } else if (token.type === "blockquote") {
+      const el = new Y.XmlElement("blockquote");
+      // Parse inner content (may contain <p> tags)
+      const innerParagraphs = token.content.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+      if (innerParagraphs) {
+        for (const pMatch of innerParagraphs) {
+          const pContent = pMatch.replace(/^<p[^>]*>/i, "").replace(/<\/p>$/i, "");
+          const p = new Y.XmlElement("paragraph");
+          const text = new Y.XmlText();
+          applyInlineFormatting(text, pContent);
+          p.insert(0, [text]);
+          el.insert(el.length, [p]);
+        }
+      } else {
+        // No <p> wrapper — treat as single paragraph
+        const p = new Y.XmlElement("paragraph");
+        const text = new Y.XmlText();
+        applyInlineFormatting(text, token.content);
+        p.insert(0, [text]);
+        el.insert(el.length, [p]);
+      }
+      fragment.insert(fragment.length, [el]);
+      i++;
     } else {
       i++;
     }
@@ -64,7 +87,7 @@ export function htmlToYXmlFragment(
 }
 
 interface Token {
-  type: "heading" | "paragraph" | "listitem" | "codeblock";
+  type: "heading" | "paragraph" | "listitem" | "codeblock" | "blockquote";
   content: string;
   level?: number;
   listType?: "ul" | "ol";
@@ -73,7 +96,7 @@ interface Token {
 function tokenize(html: string): Token[] {
   const tokens: Token[] = [];
   // Match top-level HTML elements
-  const tagRegex = /<(h[1-6]|p|ul|ol|pre)([^>]*)>([\s\S]*?)<\/\1>/gi;
+  const tagRegex = /<(h[1-6]|p|ul|ol|pre|blockquote)([^>]*)>([\s\S]*?)<\/\1>/gi;
   let match: RegExpExecArray | null;
 
   while ((match = tagRegex.exec(html)) !== null) {
@@ -108,6 +131,11 @@ function tokenize(html: string): Token[] {
       tokens.push({
         type: "codeblock",
         content: codeMatch ? codeMatch[1] : stripTags(content),
+      });
+    } else if (tag === "blockquote") {
+      tokens.push({
+        type: "blockquote",
+        content: content,
       });
     }
   }
@@ -149,11 +177,7 @@ function applyInlineFormatting(xmlText: Y.XmlText, html: string): void {
     if (seg.strike) attrs.strike = true;
 
     const text = unescapeHtml(seg.text);
-    if (Object.keys(attrs).length > 0) {
-      xmlText.insert(offset, text, attrs);
-    } else {
-      xmlText.insert(offset, text);
-    }
+    xmlText.insert(offset, text, attrs);
     offset += text.length;
   }
 }

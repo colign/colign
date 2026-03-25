@@ -153,6 +153,113 @@ function elementChildren(el: Y.XmlElement): string {
   console.log("PASS: inline formatting");
 }
 
+// Test blockquote conversion
+{
+  const doc = convert("<blockquote><p>This is a quote</p></blockquote>");
+  const fragment = doc.getXmlFragment("default");
+
+  console.assert(fragment.length === 1, `Expected 1 blockquote, got ${fragment.length}`);
+
+  const bq = fragment.get(0) as Y.XmlElement;
+  console.assert(bq.nodeName === "blockquote", `Expected blockquote, got ${bq.nodeName}`);
+
+  const p = bq.get(0) as Y.XmlElement;
+  console.assert(p.nodeName === "paragraph", `Expected paragraph inside blockquote, got ${p.nodeName}`);
+
+  const text = p.get(0) as Y.XmlText;
+  console.assert(text.toString() === "This is a quote", `Expected 'This is a quote', got '${text.toString()}'`);
+
+  console.log("PASS: blockquote");
+}
+
+// Test blockquote with multiple paragraphs
+{
+  const doc = convert("<blockquote><p>First line</p><p>Second line</p></blockquote>");
+  const fragment = doc.getXmlFragment("default");
+
+  console.assert(fragment.length === 1, `Expected 1 blockquote, got ${fragment.length}`);
+
+  const bq = fragment.get(0) as Y.XmlElement;
+  let childCount = 0;
+  bq.forEach(() => childCount++);
+  console.assert(childCount === 2, `Expected 2 paragraphs inside blockquote, got ${childCount}`);
+
+  console.log("PASS: blockquote with multiple paragraphs");
+}
+
+// Test blockquote without <p> wrapper
+{
+  const doc = convert("<blockquote>Plain quoted text</blockquote>");
+  const fragment = doc.getXmlFragment("default");
+
+  const bq = fragment.get(0) as Y.XmlElement;
+  console.assert(bq.nodeName === "blockquote", `Expected blockquote`);
+
+  const p = bq.get(0) as Y.XmlElement;
+  console.assert(p.nodeName === "paragraph", `Expected paragraph inside blockquote`);
+
+  console.log("PASS: blockquote without p wrapper");
+}
+
+// Test blockquote with real marked.parse() output (contains newlines)
+{
+  const doc = convert("<blockquote>\n<p>Quoted via marked</p>\n</blockquote>");
+  const fragment = doc.getXmlFragment("default");
+
+  console.assert(fragment.length === 1, `Expected 1 blockquote, got ${fragment.length}`);
+
+  const bq = fragment.get(0) as Y.XmlElement;
+  console.assert(bq.nodeName === "blockquote", `Expected blockquote, got ${bq.nodeName}`);
+
+  const p = bq.get(0) as Y.XmlElement;
+  console.assert(p.nodeName === "paragraph", `Expected paragraph inside blockquote`);
+
+  const text = p.get(0) as Y.XmlText;
+  console.assert(text.toString() === "Quoted via marked", `Expected 'Quoted via marked', got '${text.toString()}'`);
+
+  console.log("PASS: blockquote with marked.parse() newlines");
+}
+
+// Test blockquote with inline formatting
+{
+  const doc = convert("<blockquote><p>This is <strong>important</strong> text</p></blockquote>");
+  const fragment = doc.getXmlFragment("default");
+
+  const bq = fragment.get(0) as Y.XmlElement;
+  const p = bq.get(0) as Y.XmlElement;
+  const text = p.get(0) as Y.XmlText;
+  const delta = text.toDelta();
+
+  console.assert(
+    delta.some((op: { insert: string; attributes?: { bold?: boolean } }) => op.attributes?.bold && op.insert === "important"),
+    "Expected bold formatting preserved in blockquote",
+  );
+  console.assert(
+    delta.some((op: { insert: string; attributes?: Record<string, boolean> }) => !op.attributes?.bold && (op.insert as string).includes("text")),
+    "Expected plain text after bold to NOT inherit bold",
+  );
+
+  console.log("PASS: blockquote with inline formatting");
+}
+
+// Test blockquote in mixed content
+{
+  const doc = convert("<h2>Title</h2><blockquote><p>A quote</p></blockquote><p>After quote</p>");
+  const fragment = doc.getXmlFragment("default");
+
+  console.assert(fragment.length === 3, `Expected 3 elements (h2, blockquote, p), got ${fragment.length}`);
+
+  const el0 = fragment.get(0) as Y.XmlElement;
+  const el1 = fragment.get(1) as Y.XmlElement;
+  const el2 = fragment.get(2) as Y.XmlElement;
+
+  console.assert(el0.nodeName === "heading", `[0] Expected heading, got ${el0.nodeName}`);
+  console.assert(el1.nodeName === "blockquote", `[1] Expected blockquote, got ${el1.nodeName}`);
+  console.assert(el2.nodeName === "paragraph", `[2] Expected paragraph, got ${el2.nodeName}`);
+
+  console.log("PASS: blockquote in mixed content");
+}
+
 // Test empty input
 {
   const doc = convert("");
