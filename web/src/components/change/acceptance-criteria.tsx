@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { acceptanceClient } from "@/lib/acceptance";
 import { useI18n } from "@/lib/i18n";
 import { Plus, Trash2, GripVertical, Check, X } from "lucide-react";
@@ -377,19 +377,33 @@ function EditACCard({
   t: (key: string) => string;
 }) {
   const [editing, setEditing] = useState(false);
+  const formRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!editing) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (formRef.current && !formRef.current.contains(e.target as Node)) {
+        setEditing(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [editing]);
 
   if (editing) {
     return (
-      <ACForm
-        t={t}
-        initialScenario={item.scenario}
-        initialSteps={item.steps}
-        onSave={(scenario, steps) => {
-          onUpdate({ ...item, scenario, steps });
-          setEditing(false);
-        }}
-        onCancel={() => setEditing(false)}
-      />
+      <div ref={formRef}>
+        <ACForm
+          t={t}
+          initialScenario={item.scenario}
+          initialSteps={item.steps}
+          onSave={(scenario, steps) => {
+            onUpdate({ ...item, scenario, steps });
+            setEditing(false);
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      </div>
     );
   }
 

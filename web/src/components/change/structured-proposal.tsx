@@ -345,9 +345,9 @@ export function StructuredProposal({ changeId, projectId, currentStage, members 
 
       {/* Comment Panel — desktop */}
       <div className="hidden shrink-0 md:block">
-        <div className="sticky top-20">
+        <div className="sticky top-56">
           {commentsOpen ? (
-            <div className="w-80 rounded-xl border border-border/40 bg-card/50" style={{ maxHeight: "calc(100vh - 8rem)" }}>
+            <div className="w-80 rounded-xl border border-border/40 bg-card/50" style={{ maxHeight: "calc(100vh - 15rem)" }}>
               <div className="flex items-center justify-end border-b border-border/50 px-2 py-1">
                 <button
                   onClick={() => setCommentsOpen(false)}

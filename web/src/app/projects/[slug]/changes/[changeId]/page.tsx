@@ -252,22 +252,113 @@ export default function ChangeDetailPage() {
       {/* Main Content */}
       <div className="relative isolate flex-1 overflow-y-auto overflow-x-hidden">
         <div className="mx-auto max-w-5xl overflow-hidden px-6 py-6">
-          {/* Stage Progress — Desktop */}
-          <div className="mb-4 hidden md:block">
-            <div className="flex items-start">
-              {stages.map((s, i) => {
-                const cfg = stageConfig[s];
-                const isActive = i === currentIdx;
-                const isPast = i < currentIdx;
-                return (
-                  <div key={s} className="contents">
-                    {/* Stage icon */}
-                    <div className="relative flex shrink-0 flex-col items-center">
+          <div className="sticky top-0 z-20 -mx-6 mb-6 border-b border-border/40 bg-background/95 px-6 pb-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+            {/* Stage Progress — Desktop */}
+            <div className="mb-4 hidden pt-2 md:block">
+              <div className="flex items-start">
+                {stages.map((s, i) => {
+                  const cfg = stageConfig[s];
+                  const isActive = i === currentIdx;
+                  const isPast = i < currentIdx;
+                  return (
+                    <div key={s} className="contents">
+                      {/* Stage icon */}
+                      <div className="relative flex shrink-0 flex-col items-center">
+                        <div className="relative flex items-center justify-center">
+                          {isActive && (
+                            <>
+                              <div
+                                className="animate-stepper-ripple absolute h-9 w-9 rounded-full"
+                                style={{
+                                  background:
+                                    "radial-gradient(circle, transparent 40%, var(--color-primary) 60%, transparent 75%)",
+                                }}
+                              />
+                              <div className="animate-stepper-glow absolute h-10 w-10 rounded-full bg-primary/20 blur-md" />
+                            </>
+                          )}
+                          <div
+                            className={`relative flex h-9 w-9 items-center justify-center rounded-full border-2 bg-background transition-all duration-300 ${
+                              isActive
+                                ? cfg.activeColor
+                                : isPast
+                                  ? "border-emerald-500 bg-emerald-500/10"
+                                  : "border-border bg-muted"
+                            }`}
+                          >
+                            <svg
+                              className={`h-4 w-4 ${isActive ? cfg.color : isPast ? "text-emerald-400" : "text-muted-foreground"}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d={isPast ? "M5 13l4 4L19 7" : cfg.icon}
+                              />
+                            </svg>
+                          </div>
+                        </div>
+                        <span
+                          className={`mt-1.5 text-[11px] font-medium ${isActive ? "text-foreground" : "text-muted-foreground"}`}
+                        >
+                          {t(`stages.${s}`)}
+                        </span>
+                      </div>
+                      {/* Connection line */}
+                      {i < stages.length - 1 && (
+                        <div className="relative mx-3 mt-[18px] flex-1" style={{ height: "2px" }}>
+                          {isPast && i === currentIdx - 1 ? (
+                            <div
+                              className="animate-stepper-dots-flow h-full rounded-full"
+                              style={{
+                                backgroundImage:
+                                  "repeating-linear-gradient(90deg, var(--color-primary) 0, var(--color-primary) 4px, transparent 4px, transparent 12px)",
+                                backgroundSize: "24px 2px",
+                              }}
+                            />
+                          ) : (
+                            <div
+                              className={`h-full rounded-full transition-colors duration-500 ${
+                                isPast ? "bg-emerald-500/50" : ""
+                              }`}
+                              style={
+                                isPast
+                                  ? undefined
+                                  : {
+                                      backgroundImage:
+                                        "repeating-linear-gradient(90deg, var(--color-border) 0, var(--color-border) 6px, transparent 6px, transparent 12px)",
+                                    }
+                              }
+                            />
+                          )}
+                          {animatingFrom === i && (
+                            <div className="animate-stepper-particle absolute top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-primary shadow-[0_0_8px_var(--color-primary)]" />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Stage Progress — Mobile */}
+            <div className="mb-4 pt-2 md:hidden">
+              <div className="relative flex items-center justify-center gap-4">
+                {getMobileVisibleStages().map(({ index: i, stage: s }) => {
+                  const cfg = stageConfig[s];
+                  const isActive = i === currentIdx;
+                  const isPast = i < currentIdx;
+                  return (
+                    <div key={s} className="flex flex-col items-center">
                       <div className="relative flex items-center justify-center">
                         {isActive && (
                           <>
                             <div
-                              className="animate-stepper-ripple absolute h-9 w-9 rounded-full"
+                              className="animate-stepper-ripple absolute h-10 w-10 rounded-full"
                               style={{
                                 background:
                                   "radial-gradient(circle, transparent 40%, var(--color-primary) 60%, transparent 75%)",
@@ -277,16 +368,16 @@ export default function ChangeDetailPage() {
                           </>
                         )}
                         <div
-                          className={`relative flex h-9 w-9 items-center justify-center rounded-full border-2 bg-background transition-all duration-300 ${
+                          className={`relative flex items-center justify-center rounded-full border-2 transition-all duration-300 ${
                             isActive
-                              ? cfg.activeColor
+                              ? `h-10 w-10 ${cfg.activeColor}`
                               : isPast
-                                ? "border-emerald-500 bg-emerald-500/10"
-                                : "border-border bg-muted"
+                                ? "h-8 w-8 border-emerald-500 bg-emerald-500/10"
+                                : "h-8 w-8 border-border bg-muted"
                           }`}
                         >
                           <svg
-                            className={`h-4 w-4 ${isActive ? cfg.color : isPast ? "text-emerald-400" : "text-muted-foreground"}`}
+                            className={`${isActive ? "h-4.5 w-4.5" : "h-3.5 w-3.5"} ${isActive ? cfg.color : isPast ? "text-emerald-400" : "text-muted-foreground"}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -301,109 +392,18 @@ export default function ChangeDetailPage() {
                         </div>
                       </div>
                       <span
-                        className={`mt-1.5 text-[11px] font-medium ${isActive ? "text-foreground" : "text-muted-foreground"}`}
+                        className={`mt-1 text-[10px] font-medium ${isActive ? "text-foreground" : "text-muted-foreground"}`}
                       >
                         {t(`stages.${s}`)}
                       </span>
                     </div>
-                    {/* Connection line */}
-                    {i < stages.length - 1 && (
-                      <div className="relative mx-3 mt-[18px] flex-1" style={{ height: "2px" }}>
-                        {isPast && i === currentIdx - 1 ? (
-                          /* Active segment: flowing dots from completed to current */
-                          <div
-                            className="animate-stepper-dots-flow h-full rounded-full"
-                            style={{
-                              backgroundImage:
-                                "repeating-linear-gradient(90deg, var(--color-primary) 0, var(--color-primary) 4px, transparent 4px, transparent 12px)",
-                              backgroundSize: "24px 2px",
-                            }}
-                          />
-                        ) : (
-                          <div
-                            className={`h-full rounded-full transition-colors duration-500 ${
-                              isPast ? "bg-emerald-500/50" : ""
-                            }`}
-                            style={
-                              isPast
-                                ? undefined
-                                : {
-                                    backgroundImage:
-                                      "repeating-linear-gradient(90deg, var(--color-border) 0, var(--color-border) 6px, transparent 6px, transparent 12px)",
-                                  }
-                            }
-                          />
-                        )}
-                        {animatingFrom === i && (
-                          <div className="animate-stepper-particle absolute top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-primary shadow-[0_0_8px_var(--color-primary)]" />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
 
-          {/* Stage Progress — Mobile */}
-          <div className="mb-4 md:hidden">
-            <div className="relative flex items-center justify-center gap-4">
-              {getMobileVisibleStages().map(({ index: i, stage: s }) => {
-                const cfg = stageConfig[s];
-                const isActive = i === currentIdx;
-                const isPast = i < currentIdx;
-                return (
-                  <div key={s} className="flex flex-col items-center">
-                    <div className="relative flex items-center justify-center">
-                      {isActive && (
-                        <>
-                          <div
-                            className="animate-stepper-ripple absolute h-10 w-10 rounded-full"
-                            style={{
-                              background:
-                                "radial-gradient(circle, transparent 40%, var(--color-primary) 60%, transparent 75%)",
-                            }}
-                          />
-                          <div className="animate-stepper-glow absolute h-10 w-10 rounded-full bg-primary/20 blur-md" />
-                        </>
-                      )}
-                      <div
-                        className={`relative flex items-center justify-center rounded-full border-2 transition-all duration-300 ${
-                          isActive
-                            ? `h-10 w-10 ${cfg.activeColor}`
-                            : isPast
-                              ? "h-8 w-8 border-emerald-500 bg-emerald-500/10"
-                              : "h-8 w-8 border-border bg-muted"
-                        }`}
-                      >
-                        <svg
-                          className={`${isActive ? "h-4.5 w-4.5" : "h-3.5 w-3.5"} ${isActive ? cfg.color : isPast ? "text-emerald-400" : "text-muted-foreground"}`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d={isPast ? "M5 13l4 4L19 7" : cfg.icon}
-                          />
-                        </svg>
-                      </div>
-                    </div>
-                    <span
-                      className={`mt-1 text-[10px] font-medium ${isActive ? "text-foreground" : "text-muted-foreground"}`}
-                    >
-                      {t(`stages.${s}`)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Gate Conditions + Advance (always visible below stepper) */}
-          <div className="mb-6 rounded-lg border border-border/50 p-4">
+            {/* Gate Conditions + Advance */}
+            <div className="mb-4 rounded-lg border border-border/50 p-4">
             {/* Archived banner */}
             {archivedAt && (
               <div className="mb-3 flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2">
@@ -515,23 +515,24 @@ export default function ChangeDetailPage() {
                 </div>
               </div>
             )}
-          </div>
+            </div>
 
-          {/* Tab Navigation */}
-          <div className="mb-6 flex gap-1 overflow-x-auto border-b border-border/50">
-            {(Object.keys(tabI18nKeys) as TabId[]).map((tabId) => (
-              <button
-                key={tabId}
-                onClick={() => setActiveTab(tabId)}
-                className={`cursor-pointer whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-colors duration-200 ${
-                  activeTab === tabId
-                    ? "border-b-2 border-primary text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {t(tabI18nKeys[tabId])}
-              </button>
-            ))}
+            {/* Tab Navigation */}
+            <div className="flex gap-1 overflow-x-auto border-b border-border/50">
+              {(Object.keys(tabI18nKeys) as TabId[]).map((tabId) => (
+                <button
+                  key={tabId}
+                  onClick={() => setActiveTab(tabId)}
+                  className={`cursor-pointer whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-colors duration-200 ${
+                    activeTab === tabId
+                      ? "border-b-2 border-primary text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t(tabI18nKeys[tabId])}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Tab Content */}

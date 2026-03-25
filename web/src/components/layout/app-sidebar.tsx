@@ -182,8 +182,11 @@ export function AppSidebar() {
                     <span>{item.label}</span>
                   </SidebarMenuButton>
                   {item.href === "/inbox" && unreadCount > 0 && (
-                    <SidebarMenuBadge className="top-1.5 right-1 bg-primary/15 text-primary group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:h-4 group-data-[collapsible=icon]:min-w-4 group-data-[collapsible=icon]:rounded-full group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:text-[10px]">
-                      {unreadCount > 99 ? "99+" : unreadCount}
+                    <SidebarMenuBadge className="top-1.5 right-1 bg-red-500 text-white peer-hover/menu-button:text-white peer-data-active/menu-button:text-white group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:h-4 group-data-[collapsible=icon]:min-w-4 group-data-[collapsible=icon]:rounded-full group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:text-[10px]">
+                      <span className="group-data-[collapsible=icon]:hidden">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                      <span className="hidden h-2 w-2 rounded-full bg-white group-data-[collapsible=icon]:block" />
                     </SidebarMenuBadge>
                   )}
                 </SidebarMenuItem>
