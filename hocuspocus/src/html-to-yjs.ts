@@ -2,7 +2,7 @@ import * as Y from "yjs";
 
 /**
  * Converts simple HTML (from TipTap/markdownToHTML) into Y.js XmlFragment nodes.
- * Handles: headings, paragraphs, bullet/ordered lists, code blocks, bold, italic, code.
+ * Handles: headings, paragraphs, lists, code blocks, blockquotes, tables, and inline marks.
  */
 export function htmlToYXmlFragment(
   doc: Y.Doc,
@@ -80,6 +80,24 @@ export function htmlToYXmlFragment(
       }
       fragment.insert(fragment.length, [el]);
       i++;
+    } else if (token.type === "table") {
+      const table = new Y.XmlElement("table");
+
+      const headerRows = token.headerRows ?? [];
+      const bodyRows = token.bodyRows ?? [];
+
+      if (headerRows.length > 0) {
+        for (const row of headerRows) {
+          table.insert(table.length, [createTableRow(row, true)]);
+        }
+      }
+
+      for (const row of bodyRows) {
+        table.insert(table.length, [createTableRow(row, false)]);
+      }
+
+      fragment.insert(fragment.length, [table]);
+      i++;
     } else {
       i++;
     }
@@ -87,16 +105,18 @@ export function htmlToYXmlFragment(
 }
 
 interface Token {
-  type: "heading" | "paragraph" | "listitem" | "codeblock" | "blockquote";
+  type: "heading" | "paragraph" | "listitem" | "codeblock" | "blockquote" | "table";
   content: string;
   level?: number;
   listType?: "ul" | "ol";
+  headerRows?: string[][];
+  bodyRows?: string[][];
 }
 
 function tokenize(html: string): Token[] {
   const tokens: Token[] = [];
   // Match top-level HTML elements
-  const tagRegex = /<(h[1-6]|p|ul|ol|pre|blockquote)([^>]*)>([\s\S]*?)<\/\1>/gi;
+  const tagRegex = /<(h[1-6]|p|ul|ol|pre|blockquote|table)([^>]*)>([\s\S]*?)<\/\1>/gi;
   let match: RegExpExecArray | null;
 
   while ((match = tagRegex.exec(html)) !== null) {
@@ -137,10 +157,67 @@ function tokenize(html: string): Token[] {
         type: "blockquote",
         content: content,
       });
+    } else if (tag === "table") {
+      tokens.push({
+        type: "table",
+        content,
+        ...parseTable(content),
+      });
     }
   }
 
   return tokens;
+}
+
+function parseTable(html: string): { headerRows: string[][]; bodyRows: string[][] } {
+  const headerRows: string[][] = [];
+  const bodyRows: string[][] = [];
+  const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  let rowMatch: RegExpExecArray | null;
+
+  while ((rowMatch = rowRegex.exec(html)) !== null) {
+    const rowHtml = rowMatch[1];
+    const headerCells = extractCells(rowHtml, "th");
+    if (headerCells.length > 0) {
+      headerRows.push(headerCells);
+      continue;
+    }
+
+    const bodyCells = extractCells(rowHtml, "td");
+    if (bodyCells.length > 0) {
+      bodyRows.push(bodyCells);
+    }
+  }
+
+  return { headerRows, bodyRows };
+}
+
+function extractCells(rowHtml: string, tagName: "th" | "td"): string[] {
+  const cells: string[] = [];
+  const cellRegex = new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)<\\/${tagName}>`, "gi");
+  let cellMatch: RegExpExecArray | null;
+
+  while ((cellMatch = cellRegex.exec(rowHtml)) !== null) {
+    cells.push(cellMatch[1].trim());
+  }
+
+  return cells;
+}
+
+function createTableRow(cells: string[], isHeader: boolean): Y.XmlElement {
+  const row = new Y.XmlElement("tableRow");
+
+  for (const cellHtml of cells) {
+    const cell = new Y.XmlElement(isHeader ? "tableHeader" : "tableCell");
+    const paragraph = new Y.XmlElement("paragraph");
+    const text = new Y.XmlText();
+    applyInlineFormatting(text, stripWrappingParagraph(cellHtml));
+    paragraph.insert(0, [text]);
+    cell.insert(0, [paragraph]);
+    row.insert(row.length, [cell]);
+  }
+
+  return row;
 }
 
 function stripTags(html: string): string {

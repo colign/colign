@@ -4,6 +4,7 @@ import { useEditor, EditorContent, type Editor as TiptapEditor } from "@tiptap/r
 import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
+import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
 import { useEffect, useRef, useCallback } from "react";
 import { Bold, Italic, Heading2, Heading3, List, Code } from "lucide-react";
 
@@ -60,7 +61,16 @@ export function ReadmeEditor({
   const lastSavedRef = useRef(initialContent);
 
   const editor = useEditor({
-    extensions: [StarterKit, Placeholder.configure({ placeholder })],
+    extensions: [
+      StarterKit,
+      Placeholder.configure({ placeholder }),
+      Table.configure({
+        resizable: false,
+      }),
+      TableRow,
+      TableHeader,
+      TableCell,
+    ],
     content: initialContent || undefined,
     immediatelyRender: false,
     onUpdate: ({ editor: e }) => {

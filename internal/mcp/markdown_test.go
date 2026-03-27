@@ -23,3 +23,23 @@ func TestMarkdownToHTMLSupportsCommonFormatting(t *testing.T) {
 		}
 	}
 }
+
+func TestMarkdownToHTMLSupportsTables(t *testing.T) {
+	input := "| Stage | Owner |\n| --- | --- |\n| Design | Ben |\n| Review | Team |\n"
+	html, err := markdownToHTML(input)
+	if err != nil {
+		t.Fatalf("markdownToHTML returned error: %v", err)
+	}
+
+	for _, want := range []string{
+		"<table>",
+		"<thead>",
+		"<tbody>",
+		"<th>Stage</th>",
+		"<td>Design</td>",
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("expected HTML to contain %q, got %q", want, html)
+		}
+	}
+}

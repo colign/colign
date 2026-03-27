@@ -5,7 +5,8 @@ import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Collaboration from "@tiptap/extension-collaboration";
-import type { AnyExtension } from "@tiptap/core";
+import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
+import type { AnyExtension, JSONContent } from "@tiptap/core";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import { CommentHighlight } from "./extensions/comment-highlight";
 import { useEffect, useRef, useState } from "react";
@@ -30,10 +31,20 @@ interface SpecEditorProps {
   userName?: string;
 }
 
-function normalizeInitialContent(content: string | undefined): string {
+function normalizeInitialContent(content: string | undefined): string | JSONContent {
   if (!content) return "";
   const trimmed = content.trim();
   if (!trimmed) return "";
+  if (trimmed.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(trimmed) as JSONContent;
+      if (parsed?.type === "doc") {
+        return parsed;
+      }
+    } catch {
+      // fall through
+    }
+  }
   if (trimmed.startsWith("<")) return content;
   return marked.parse(content, { async: false }) as string;
 }
@@ -154,6 +165,12 @@ function SpecEditorInner({
   const extensions: AnyExtension[] = [
     StarterKit.configure({ undoRedo: false }),
     Placeholder.configure({ placeholder }),
+    Table.configure({
+      resizable: false,
+    }),
+    TableRow,
+    TableHeader,
+    TableCell,
     CommentHighlight,
     Collaboration.configure({
       fragment: collab.ydoc.getXmlFragment("default"),
@@ -173,7 +190,8 @@ function SpecEditorInner({
     initializedRef.current = true;
 
     const yMeta = collab.ydoc.getMap("meta");
-    const legacyHtml = normalizeInitialContent(yMeta.get("initialHtml") as string | undefined);
+    const collabInitialContent = normalizeInitialContent(yMeta.get("initialContent") as string | undefined);
+    const propInitialContent = normalizeInitialContent(initialContent);
 
     // Check if Y.js fragment has real structured content (headings, lists, etc.)
     const fragment = collab.ydoc.getXmlFragment("default");
@@ -183,11 +201,11 @@ function SpecEditorInner({
     });
 
     // Initialize if editor is empty OR Y.js has no structured content
-    if ((editor.isEmpty || !hasStructure) && (legacyHtml || initialContent)) {
-      const contentToUse = legacyHtml || normalizeInitialContent(initialContent);
+    if ((editor.isEmpty || !hasStructure) && (collabInitialContent || propInitialContent)) {
+      const contentToUse = collabInitialContent || propInitialContent;
       editor.commands.setContent(contentToUse);
-      if (legacyHtml) {
-        yMeta.delete("initialHtml");
+      if (collabInitialContent) {
+        yMeta.delete("initialContent");
       }
     }
   }, [editor, initialContent, collab.ydoc]);

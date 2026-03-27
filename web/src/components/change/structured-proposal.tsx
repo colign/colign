@@ -1,12 +1,31 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import { BubbleMenu } from "@tiptap/react/menus";
+import StarterKit from "@tiptap/starter-kit";
+import Placeholder from "@tiptap/extension-placeholder";
+import { marked } from "marked";
 import { useI18n } from "@/lib/i18n";
 import { documentClient } from "@/lib/document";
 import { useEvents } from "@/lib/events";
 import { showError } from "@/lib/toast";
 import { AcceptanceCriteria } from "@/components/change/acceptance-criteria";
-import { ChevronDown, ChevronRight, ExternalLink, Figma, Link2, Plus, Trash2 } from "lucide-react";
+import {
+  Bold,
+  ChevronDown,
+  ChevronRight,
+  Code,
+  ExternalLink,
+  Figma,
+  Heading2,
+  Heading3,
+  Italic,
+  Link2,
+  List,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { AIProposalGenerator } from "@/components/ai/ai-proposal-generator";
 import { CommentPanel } from "@/components/comment/comment-panel";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -38,7 +57,6 @@ interface SectionConfig {
   i18nKey: string;
   placeholderKey: string;
   required: boolean;
-  minRows: number;
 }
 
 const SECTIONS: SectionConfig[] = [
@@ -47,50 +65,65 @@ const SECTIONS: SectionConfig[] = [
     i18nKey: "proposal.problem",
     placeholderKey: "proposal.problemPlaceholder",
     required: true,
-    minRows: 3,
   },
   {
     key: "scope",
     i18nKey: "proposal.scope",
     placeholderKey: "proposal.scopePlaceholder",
     required: true,
-    minRows: 4,
   },
   {
     key: "outOfScope",
     i18nKey: "proposal.outOfScope",
     placeholderKey: "proposal.outOfScopePlaceholder",
     required: false,
-    minRows: 2,
   },
   {
     key: "approach",
     i18nKey: "proposal.approach",
     placeholderKey: "proposal.approachPlaceholder",
     required: false,
-    minRows: 3,
   },
 ];
+
+function normalizeSectionContent(content: string): string {
+  const trimmed = content.trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("<")) return content;
+  return marked.parse(content, { async: false }) as string;
+}
+
+function getPlainText(content: string): string {
+  const normalized = content
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|li|h1|h2|h3|h4|h5|h6|blockquote)>/gi, "\n")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\u00a0/g, " ");
+  return normalized.replace(/\s+\n/g, "\n").replace(/\n\s+/g, "\n").replace(/\s+/g, " ").trim();
+}
 
 function parseContent(content: string): ProposalSections {
   try {
     const parsed = JSON.parse(content);
     if (parsed && typeof parsed.problem === "string") {
-      return { ...EMPTY_SECTIONS, ...parsed };
+      return {
+        ...EMPTY_SECTIONS,
+        ...parsed,
+        problem: normalizeSectionContent(parsed.problem ?? ""),
+        scope: normalizeSectionContent(parsed.scope ?? ""),
+        outOfScope: normalizeSectionContent(parsed.outOfScope ?? ""),
+        approach: normalizeSectionContent(parsed.approach ?? ""),
+      };
     }
   } catch {
     // Legacy HTML content — put it all in problem
     if (content.trim()) {
-      // Strip HTML tags for plain text
-      const text = content
-        .replace(/<[^>]*>/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
+      const text = getPlainText(content);
       if (
         text &&
         text !== "Explain the motivation for this change. What problem does this solve?"
       ) {
-        return { ...EMPTY_SECTIONS, problem: text };
+        return { ...EMPTY_SECTIONS, problem: normalizeSectionContent(text) };
       }
     }
   }
@@ -130,8 +163,8 @@ export function StructuredProposal({ changeId, projectId, currentStage, members 
         const parsed = parseContent(res.document.content);
         setSections(parsed);
         setCollapsed({
-          outOfScope: !parsed.outOfScope,
-          approach: !parsed.approach,
+          outOfScope: !getPlainText(parsed.outOfScope),
+          approach: !getPlainText(parsed.approach),
         });
       } else {
         setSections(EMPTY_SECTIONS);
@@ -245,18 +278,24 @@ export function StructuredProposal({ changeId, projectId, currentStage, members 
   const isReviewMode = currentStage === "review" || currentStage === "ready";
 
   const isProposalEmpty =
-    !sections.problem.trim() &&
-    !sections.scope.trim() &&
-    !sections.outOfScope.trim() &&
-    !sections.approach.trim();
+    !getPlainText(sections.problem) &&
+    !getPlainText(sections.scope) &&
+    !getPlainText(sections.outOfScope) &&
+    !getPlainText(sections.approach);
 
   function handleAIApply(applied: { problem: string; scope: string; outOfScope: string; approach: string }) {
-    setSections((prev) => ({ ...prev, ...applied }));
+    setSections((prev) => ({
+      ...prev,
+      problem: normalizeSectionContent(applied.problem),
+      scope: normalizeSectionContent(applied.scope),
+      outOfScope: normalizeSectionContent(applied.outOfScope),
+      approach: normalizeSectionContent(applied.approach),
+    }));
     localRevisionRef.current += 1;
     // Expand optional sections that now have content
     setCollapsed({
-      outOfScope: !applied.outOfScope,
-      approach: !applied.approach,
+      outOfScope: !applied.outOfScope.trim(),
+      approach: !applied.approach.trim(),
     });
     save();
   }
@@ -272,8 +311,9 @@ export function StructuredProposal({ changeId, projectId, currentStage, members 
         />
       )}
       {SECTIONS.map((section) => {
-        const isCollapsed = collapsed[section.key] && !sections[section.key];
-        const hasContent = !!sections[section.key].trim();
+        const plainText = getPlainText(sections[section.key]);
+        const isCollapsed = !section.required && !!collapsed[section.key];
+        const hasContent = !!plainText;
 
         return (
           <div
@@ -311,13 +351,12 @@ export function StructuredProposal({ changeId, projectId, currentStage, members 
             {/* Section body */}
             {(!isCollapsed || section.required) && (
               <div className="border-t border-border/30 px-5 py-4">
-                <textarea
-                  value={sections[section.key]}
-                  onChange={(e) => updateSection(section.key, e.target.value)}
+                <ProposalSectionEditor
+                  content={sections[section.key]}
+                  onChange={(value) => updateSection(section.key, value)}
                   placeholder={t(section.placeholderKey)}
                   readOnly={isReviewMode}
-                  rows={Math.max(section.minRows, sections[section.key].split("\n").length + 1)}
-                  className="w-full resize-none bg-transparent text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/40"
+                  plainTextLength={plainText.length}
                 />
               </div>
             )}
@@ -339,7 +378,7 @@ export function StructuredProposal({ changeId, projectId, currentStage, members 
         changeId={changeId}
         projectId={projectId}
         reviewMode={isReviewMode}
-        hasProposal={!!(sections.problem || sections.scope)}
+        hasProposal={!!(getPlainText(sections.problem) || getPlainText(sections.scope))}
       />
       </div>
 
@@ -405,6 +444,134 @@ export function StructuredProposal({ changeId, projectId, currentStage, members 
           </SheetContent>
         </Sheet>
       )}
+    </div>
+  );
+}
+
+interface ProposalSectionEditorProps {
+  content: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  readOnly: boolean;
+  plainTextLength: number;
+}
+
+function ProposalSectionEditor({
+  content,
+  onChange,
+  placeholder,
+  readOnly,
+  plainTextLength,
+}: ProposalSectionEditorProps) {
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Placeholder.configure({ placeholder }),
+    ],
+    content: content || undefined,
+    editable: !readOnly,
+    immediatelyRender: false,
+    onUpdate: ({ editor: currentEditor }) => {
+      onChange(currentEditor.getHTML());
+    },
+  });
+
+  useEffect(() => {
+    if (!editor) return;
+    const nextContent = content || "";
+    if (editor.getHTML() === nextContent) return;
+    if (editor.isFocused) return;
+    editor.commands.setContent(nextContent || "<p></p>");
+  }, [editor, content]);
+
+  useEffect(() => {
+    if (!editor) return;
+    editor.setEditable(!readOnly);
+  }, [editor, readOnly]);
+
+  const toolbarBtn = (
+    active: boolean,
+    onClick: () => void,
+    children: React.ReactNode,
+    label: string,
+  ) => (
+    <button
+      onMouseDown={(e) => {
+        e.preventDefault();
+        onClick();
+      }}
+      className={`flex h-8 min-w-8 cursor-pointer items-center justify-center rounded-md border px-2 transition-colors ${
+        active
+          ? "border-primary/40 bg-primary/10 text-foreground"
+          : "border-transparent text-muted-foreground hover:border-border/50 hover:bg-accent"
+      }`}
+      title={label}
+      aria-label={label}
+    >
+      {children}
+    </button>
+  );
+
+  const shouldScroll = plainTextLength > 3000;
+
+  return (
+    <div className="space-y-2">
+      {editor && !readOnly && (
+        <BubbleMenu
+          editor={editor}
+          className="flex items-center gap-1 rounded-lg border border-border/40 bg-popover/95 p-1.5 shadow-xl backdrop-blur"
+        >
+          {toolbarBtn(
+            editor.isActive("bold"),
+            () => editor.chain().focus().toggleBold().run(),
+            <Bold className="size-4" />,
+            "Bold",
+          )}
+          {toolbarBtn(
+            editor.isActive("italic"),
+            () => editor.chain().focus().toggleItalic().run(),
+            <Italic className="size-4" />,
+            "Italic",
+          )}
+          {toolbarBtn(
+            editor.isActive("heading", { level: 2 }),
+            () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
+            <Heading2 className="size-4" />,
+            "Heading 2",
+          )}
+          {toolbarBtn(
+            editor.isActive("heading", { level: 3 }),
+            () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
+            <Heading3 className="size-4" />,
+            "Heading 3",
+          )}
+          {toolbarBtn(
+            editor.isActive("bulletList"),
+            () => editor.chain().focus().toggleBulletList().run(),
+            <List className="size-4" />,
+            "Bullet list",
+          )}
+          {toolbarBtn(
+            editor.isActive("codeBlock"),
+            () => editor.chain().focus().toggleCodeBlock().run(),
+            <Code className="size-4" />,
+            "Code block",
+          )}
+        </BubbleMenu>
+      )}
+
+      <div
+        className={`rounded-xl border border-border/20 bg-background/20 transition-colors ${
+          readOnly ? "" : "focus-within:border-primary/40 focus-within:bg-background/30"
+        }`}
+      >
+        <EditorContent
+          editor={editor}
+          className={`prose max-w-none px-4 py-3 text-sm dark:prose-invert [&_.ProseMirror]:min-h-[7rem] [&_.ProseMirror]:leading-relaxed [&_.ProseMirror]:outline-none [&_.ProseMirror_h2]:mt-5 [&_.ProseMirror_h2]:mb-2 [&_.ProseMirror_h2]:text-lg [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h3]:mt-4 [&_.ProseMirror_h3]:mb-2 [&_.ProseMirror_h3]:text-base [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_ul]:my-2 [&_.ProseMirror_ul]:pl-6 [&_.ProseMirror_li]:my-1 [&_.ProseMirror_code]:rounded [&_.ProseMirror_code]:bg-muted [&_.ProseMirror_code]:px-1 [&_.ProseMirror_code]:py-0.5 [&_.ProseMirror_pre]:overflow-x-auto [&_.ProseMirror_pre]:rounded-lg [&_.ProseMirror_pre]:bg-muted/70 [&_.ProseMirror_pre]:p-3 [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-muted-foreground/40 [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] ${
+            shouldScroll ? "[&_.ProseMirror]:max-h-[32rem] [&_.ProseMirror]:overflow-y-auto [&_.ProseMirror]:pr-2" : ""
+          }`}
+        />
+      </div>
     </div>
   );
 }

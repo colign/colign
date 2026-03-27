@@ -4,6 +4,12 @@ import { Pool } from "pg";
 import * as Y from "yjs";
 import * as crypto from "crypto";
 import { htmlToYXmlFragment } from "./html-to-yjs";
+import {
+  isProseMirrorJSONContent,
+  proseMirrorJSONToYXmlFragment,
+  yXmlFragmentToProseMirrorJSON,
+  type PMNode,
+} from "./prosemirror";
 
 const dbUrl = new URL(
   process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/colign",
@@ -109,9 +115,11 @@ const server = new Hocuspocus({
       if (result.rows.length > 0 && result.rows[0].content) {
         const yXmlFragment = document.getXmlFragment("default");
         if (yXmlFragment.length === 0) {
-          const html = fixTiptapNodeNames(result.rows[0].content);
-          const yMeta = document.getMap("meta");
-          yMeta.set("initialHtml", html);
+          const content = result.rows[0].content as string;
+          if (!isProseMirrorJSONContent(content)) {
+            throw new Error(`document ${documentName} is not ProseMirror JSON; run the migration first`);
+          }
+          proseMirrorJSONToYXmlFragment(document, yXmlFragment, JSON.parse(content) as PMNode);
         }
       }
     } catch (err) {
@@ -128,7 +136,7 @@ const server = new Hocuspocus({
 
     try {
       const yXmlFragment = document.getXmlFragment("default");
-      const content = yXmlFragmentToHtml(yXmlFragment);
+      const content = JSON.stringify(yXmlFragmentToProseMirrorJSON(yXmlFragment));
 
       if (!content) return;
 
@@ -195,8 +203,11 @@ async function handleDocumentUpdate(req: IncomingMessage, res: ServerResponse): 
         fragment.delete(0, 1);
       }
 
-      // Convert HTML to Y.js XML nodes and insert
-      htmlToYXmlFragment(doc, fragment, payload.content);
+      if (isProseMirrorJSONContent(payload.content)) {
+        proseMirrorJSONToYXmlFragment(doc, fragment, JSON.parse(payload.content) as PMNode);
+      } else {
+        htmlToYXmlFragment(doc, fragment, payload.content);
+      }
     });
 
     await connection.disconnect();
@@ -212,132 +223,3 @@ server.listen();
 console.log(`Hocuspocus listening on port ${process.env.PORT ?? 1234}`);
 
 // ── Utility functions ──
-
-function fixTiptapNodeNames(html: string): string {
-  return html
-    .replace(/<paragraph>/g, "<p>")
-    .replace(/<\/paragraph>/g, "</p>")
-    .replace(/<heading level="(\d)">/g, (_m, level) => `<h${level}>`)
-    .replace(/<\/heading>/g, (match, offset, str) => {
-      const before = str.substring(0, offset);
-      const lastOpen = before.lastIndexOf("<h");
-      if (lastOpen >= 0) {
-        const level = before[lastOpen + 2];
-        return `</h${level}>`;
-      }
-      return "</h2>";
-    })
-    .replace(/<bulletList>/g, "<ul>")
-    .replace(/<\/bulletList>/g, "</ul>")
-    .replace(/<orderedList>/g, "<ol>")
-    .replace(/<\/orderedList>/g, "</ol>")
-    .replace(/<listItem>/g, "<li>")
-    .replace(/<\/listItem>/g, "</li>")
-    .replace(/<codeBlock[^>]*>/g, "<pre><code>")
-    .replace(/<\/codeBlock>/g, "</code></pre>")
-    .replace(/<hardBreak\s*\/?>/g, "<br />")
-    .replace(/<horizontalRule\s*\/?>/g, "<hr />");
-}
-
-const NODE_TO_TAG: Record<string, string> = {
-  paragraph: "p",
-  bulletList: "ul",
-  orderedList: "ol",
-  listItem: "li",
-  blockquote: "blockquote",
-  codeBlock: "pre",
-  hardBreak: "br",
-  horizontalRule: "hr",
-  taskList: "ul",
-  taskItem: "li",
-};
-
-const SELF_CLOSING = new Set(["br", "hr", "img"]);
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-function yXmlFragmentToHtml(fragment: Y.XmlFragment): string {
-  let html = "";
-  fragment.forEach((item) => {
-    if (item instanceof Y.XmlElement) {
-      html += xmlElementToHtml(item);
-    } else if (item instanceof Y.XmlText) {
-      html += xmlTextToHtml(item);
-    }
-  });
-  return html;
-}
-
-function xmlTextToHtml(text: Y.XmlText): string {
-  let result = "";
-  const delta = text.toDelta();
-  for (const op of delta) {
-    if (typeof op.insert === "string") {
-      let content = escapeHtml(op.insert);
-      if (op.attributes) {
-        if (op.attributes.bold) content = `<strong>${content}</strong>`;
-        if (op.attributes.italic) content = `<em>${content}</em>`;
-        if (op.attributes.code) content = `<code>${content}</code>`;
-        if (op.attributes.underline) content = `<u>${content}</u>`;
-        if (op.attributes.strike) content = `<s>${content}</s>`;
-        if (op.attributes.commentHighlight) {
-          const commentId = op.attributes.commentHighlight.commentId;
-          if (commentId) {
-            content = `<span data-comment-id="${commentId}" class="comment-highlight">${content}</span>`;
-          }
-        }
-      }
-      result += content;
-    }
-  }
-  return result;
-}
-
-function xmlElementToHtml(element: Y.XmlElement): string {
-  const nodeName = element.nodeName;
-  const attrs = element.getAttributes();
-
-  let tag: string;
-  if (nodeName === "heading") {
-    const level = attrs.level || 1;
-    tag = `h${level}`;
-  } else {
-    tag = NODE_TO_TAG[nodeName] || nodeName;
-  }
-
-  let attrStr = "";
-  for (const [key, value] of Object.entries(attrs)) {
-    if (nodeName === "heading" && key === "level") continue;
-    if (nodeName === "taskItem" && key === "checked") {
-      attrStr += ` data-checked="${value}"`;
-      continue;
-    }
-    attrStr += ` ${key}="${value}"`;
-  }
-  if (nodeName === "taskList") attrStr += ' data-type="taskList"';
-  if (nodeName === "taskItem") attrStr += ' data-type="taskItem"';
-
-  if (SELF_CLOSING.has(tag)) {
-    return `<${tag}${attrStr} />`;
-  }
-
-  let inner = "";
-  element.forEach((child) => {
-    if (child instanceof Y.XmlElement) {
-      inner += xmlElementToHtml(child);
-    } else if (child instanceof Y.XmlText) {
-      inner += xmlTextToHtml(child);
-    }
-  });
-
-  if (nodeName === "codeBlock") {
-    inner = `<code>${inner}</code>`;
-  }
-
-  return `<${tag}${attrStr}>${inner}</${tag}>`;
-}

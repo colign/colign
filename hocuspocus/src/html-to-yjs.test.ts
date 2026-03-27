@@ -138,15 +138,15 @@ function elementChildren(el: Y.XmlElement): string {
   const listDelta = listItemText.toDelta();
 
   console.assert(
-    headingDelta.some((op) => typeof op.insert === "string" && op.attributes?.code),
+    headingDelta.some((op: { insert?: unknown; attributes?: { code?: boolean } }) => typeof op.insert === "string" && op.attributes?.code),
     "Expected heading inline code formatting to be preserved",
   );
   console.assert(
-    listDelta.some((op) => typeof op.insert === "string" && op.attributes?.bold),
+    listDelta.some((op: { insert?: unknown; attributes?: { bold?: boolean } }) => typeof op.insert === "string" && op.attributes?.bold),
     "Expected list item bold formatting to be preserved",
   );
   console.assert(
-    listDelta.some((op) => typeof op.insert === "string" && op.attributes?.code),
+    listDelta.some((op: { insert?: unknown; attributes?: { code?: boolean } }) => typeof op.insert === "string" && op.attributes?.code),
     "Expected list item inline code formatting to be preserved",
   );
 
@@ -298,6 +298,41 @@ function elementChildren(el: Y.XmlElement): string {
   console.assert(paragraph.nodeName === "paragraph", `Expected paragraph inside listItem, got ${paragraph.nodeName}`);
 
   console.log("PASS: listItem contains paragraph");
+}
+
+// Test table conversion
+{
+  const doc = convert(
+    "<table><thead><tr><th>Stage</th><th>Owner</th></tr></thead><tbody><tr><td>Design</td><td>Ben</td></tr></tbody></table>",
+  );
+  const fragment = doc.getXmlFragment("default");
+
+  console.assert(fragment.length === 1, `Expected 1 table, got ${fragment.length}`);
+
+  const table = fragment.get(0) as Y.XmlElement;
+  console.assert(table.nodeName === "table", `Expected table, got ${table.nodeName}`);
+
+  const headerRow = table.get(0) as Y.XmlElement;
+  const bodyRow = table.get(1) as Y.XmlElement;
+  console.assert(headerRow.nodeName === "tableRow", `Expected tableRow, got ${headerRow.nodeName}`);
+  console.assert(bodyRow.nodeName === "tableRow", `Expected tableRow, got ${bodyRow.nodeName}`);
+
+  const headerCell = headerRow.get(0) as Y.XmlElement;
+  const bodyCell = bodyRow.get(0) as Y.XmlElement;
+  console.assert(headerCell.nodeName === "tableHeader", `Expected tableHeader, got ${headerCell.nodeName}`);
+  console.assert(bodyCell.nodeName === "tableCell", `Expected tableCell, got ${bodyCell.nodeName}`);
+
+  const headerParagraph = headerCell.get(0) as Y.XmlElement;
+  const bodyParagraph = bodyCell.get(0) as Y.XmlElement;
+  console.assert(headerParagraph.nodeName === "paragraph", `Expected paragraph inside header cell`);
+  console.assert(bodyParagraph.nodeName === "paragraph", `Expected paragraph inside body cell`);
+
+  const headerText = headerParagraph.get(0) as Y.XmlText;
+  const bodyText = bodyParagraph.get(0) as Y.XmlText;
+  console.assert(headerText.toString() === "Stage", `Expected 'Stage', got '${headerText.toString()}'`);
+  console.assert(bodyText.toString() === "Design", `Expected 'Design', got '${bodyText.toString()}'`);
+
+  console.log("PASS: table conversion");
 }
 
 console.log("\nAll tests passed!");

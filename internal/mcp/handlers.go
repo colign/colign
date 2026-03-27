@@ -11,7 +11,6 @@ import (
 	"sync"
 
 	"connectrpc.com/connect"
-	"github.com/yuin/goldmark"
 
 	acceptancev1 "github.com/gobenpark/colign/gen/proto/acceptance/v1"
 	authv1 "github.com/gobenpark/colign/gen/proto/auth/v1"
@@ -203,12 +202,20 @@ func (s *Server) handleReadSpec(ctx context.Context, args json.RawMessage) (any,
 	}
 
 	d := resp.Msg.Document
+	content := d.Content
+	if params.DocType != "proposal" {
+		exported, err := exportDocumentToMarkdown(d.Content)
+		if err != nil {
+			return nil, err
+		}
+		content = exported
+	}
 	return map[string]any{
 		"id":        d.Id,
 		"change_id": d.ChangeId,
 		"doc_type":  d.Type,
 		"title":     d.Title,
-		"content":   d.Content,
+		"content":   content,
 		"version":   d.Version,
 		"exists":    true,
 	}, nil
@@ -235,7 +242,7 @@ func (s *Server) handleWriteSpec(ctx context.Context, args json.RawMessage) (any
 
 		if s.clients.hocuspocusURL != "" {
 			if err := s.updateViaHocuspocus(params.ChangeID.Int64(), params.DocType, content); err != nil {
-				log.Printf("hocuspocus update failed, falling back to direct save: %v", err)
+				log.Printf("hocuspocus update failed: %v", err)
 			} else {
 				s.publishEvent("document_updated", params.ChangeID.Int64(), map[string]any{
 					"docType": params.DocType,
@@ -249,27 +256,7 @@ func (s *Server) handleWriteSpec(ctx context.Context, args json.RawMessage) (any
 			}
 		}
 
-		// Fallback: direct DB save
-		resp, err := s.clients.document.SaveDocument(ctx, connect.NewRequest(&documentv1.SaveDocumentRequest{
-			ChangeId:  params.ChangeID.Int64(),
-			Type:      params.DocType,
-			Title:     params.DocType,
-			Content:   content,
-			ProjectId: params.ProjectID.Int64(),
-		}))
-		if err != nil {
-			return nil, err
-		}
-		d := resp.Msg.Document
-		s.publishEvent("document_updated", params.ChangeID.Int64(), map[string]any{
-			"docType": params.DocType,
-			"version": d.Version,
-		})
-		return map[string]any{
-			"id":      d.Id,
-			"version": d.Version,
-			"saved":   true,
-		}, nil
+		return nil, fmt.Errorf("write_spec for %q requires hocuspocus to persist ProseMirror JSON", params.DocType)
 	}
 
 	// Proposal: direct DB save (JSON format, not TipTap)
@@ -503,9 +490,18 @@ func (s *Server) handleSuggestSpec(ctx context.Context, args json.RawMessage) (a
 		}, nil
 	}
 
+	currentContent := resp.Msg.Document.Content
+	if params.DocType != "proposal" {
+		exported, err := exportDocumentToMarkdown(resp.Msg.Document.Content)
+		if err != nil {
+			return nil, err
+		}
+		currentContent = exported
+	}
+
 	// Return the current content for the AI client to analyze and suggest improvements
 	return map[string]any{
-		"current_content": resp.Msg.Document.Content,
+		"current_content": currentContent,
 		"doc_type":        params.DocType,
 		"suggestion":      "Review the current content and suggest improvements based on the document type. For proposals, ensure Problem, Scope, and Approach sections are clear. For designs, ensure architecture decisions and implementation steps are well-defined.",
 	}, nil
@@ -683,11 +679,10 @@ func (s *Server) handleUpdateProject(ctx context.Context, args json.RawMessage) 
 	}
 	if params.Readme != nil {
 		// Convert markdown to HTML for Tiptap editor
-		var buf bytes.Buffer
-		if err := goldmark.Convert([]byte(*params.Readme), &buf); err != nil {
+		html, err := markdownToHTML(*params.Readme)
+		if err != nil {
 			return nil, fmt.Errorf("failed to convert markdown: %w", err)
 		}
-		html := buf.String()
 		req.Readme = &html
 	}
 

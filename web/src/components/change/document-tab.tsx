@@ -1,7 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
-import { marked } from "marked";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { SpecEditor } from "@/components/editor/spec-editor";
 import { MarginComments } from "@/components/comment/margin-comments";
 import { sddTemplates } from "@/components/editor/templates";
@@ -10,6 +9,7 @@ import { documentClient } from "@/lib/document";
 import { showError } from "@/lib/toast";
 import { getTokenPayload } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { useEvents } from "@/lib/events";
 import { AcceptanceCriteria } from "@/components/change/acceptance-criteria";
 import { MentionTextarea, type MentionMember } from "@/components/comment/mention-textarea";
 
@@ -21,71 +21,12 @@ interface DocumentTabProps {
   members?: MentionMember[];
 }
 
-function normalizeDocumentContent(content: string) {
-  const trimmed = content.trim();
-  if (!trimmed) return "";
-  if (trimmed.startsWith("<")) {
-    if (looksLikeLegacyMarkdownHtml(trimmed)) {
-      return marked.parse(legacyHtmlToMarkdown(trimmed), { async: false }) as string;
-    }
-    return content;
-  }
-  return marked.parse(content, { async: false }) as string;
-}
-
-function looksLikeLegacyMarkdownHtml(content: string) {
-  return /<(p|li)[^>]*>\s*(\d+\.\s|\*\*|`|- |\* )/i.test(content);
-}
-
-function legacyHtmlToMarkdown(content: string) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(content, "text/html");
-  const blocks: string[] = [];
-
-  const serializeList = (list: Element, ordered: boolean) => {
-    const items = Array.from(list.children).filter((child) => child.tagName === "LI");
-    items.forEach((item, index) => {
-      const text = item.textContent?.trim();
-      if (!text) return;
-      blocks.push(`${ordered ? `${index + 1}.` : "-"} ${text}`);
-    });
-  };
-
-  Array.from(doc.body.children).forEach((element) => {
-    const text = element.textContent?.trim();
-    if (!text) return;
-
-    switch (element.tagName) {
-      case "H1":
-        blocks.push(`# ${text}`);
-        break;
-      case "H2":
-        blocks.push(`## ${text}`);
-        break;
-      case "H3":
-        blocks.push(`### ${text}`);
-        break;
-      case "H4":
-        blocks.push(`#### ${text}`);
-        break;
-      case "OL":
-        serializeList(element, true);
-        break;
-      case "UL":
-        serializeList(element, false);
-        break;
-      default:
-        blocks.push(text);
-    }
-  });
-
-  return blocks.join("\n\n");
-}
-
 export function DocumentTab({ changeId, projectId, docType, currentStage, members = [] }: DocumentTabProps) {
   const { t } = useI18n();
+  const { on } = useEvents();
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
+  const [editorVersion, setEditorVersion] = useState(0);
   const [pendingQuotedText, setPendingQuotedText] = useState<string | null>(null);
   const [commentInput, setCommentInput] = useState("");
   const [commentMentionIds, setCommentMentionIds] = useState<bigint[]>([]);
@@ -104,14 +45,17 @@ export function DocumentTab({ changeId, projectId, docType, currentStage, member
   const commentRefreshRef = useRef<(() => void) | null>(null);
 
   // Load document from server
-  useEffect(() => {
-    async function loadDocument() {
+  const loadDocument = useCallback(
+    async (options?: { remountEditor?: boolean }) => {
       try {
         const res = await documentClient.getDocument({ changeId, type: docType, projectId });
         if (res.document) {
-          setContent(normalizeDocumentContent(res.document.content));
+          setContent(res.document.content);
         } else {
           setContent(sddTemplates[docType] || "");
+        }
+        if (options?.remountEditor) {
+          setEditorVersion((prev) => prev + 1);
         }
       } catch (err) {
         showError("Failed to load document", err);
@@ -119,9 +63,26 @@ export function DocumentTab({ changeId, projectId, docType, currentStage, member
       } finally {
         setLoading(false);
       }
-    }
-    loadDocument();
-  }, [changeId, docType, projectId]);
+    },
+    [changeId, docType, projectId],
+  );
+
+  useEffect(() => {
+    void loadDocument();
+  }, [loadDocument]);
+
+  useEffect(() => {
+    return on((event) => {
+      if (event.type !== "document_updated" || event.changeId !== changeId) return;
+      try {
+        const payload = event.payload ? JSON.parse(event.payload) : {};
+        if (payload.docType !== docType) return;
+        void loadDocument({ remountEditor: true });
+      } catch {
+        // Ignore malformed payloads.
+      }
+    });
+  }, [on, changeId, docType, loadDocument]);
 
   // Get editor DOM once editor is ready
   useEffect(() => {
@@ -237,6 +198,7 @@ export function DocumentTab({ changeId, projectId, docType, currentStage, member
           )}
 
           <SpecEditor
+            key={`spec-editor-${String(changeId)}-${docType}-${editorVersion}`}
             initialContent={content}
             placeholder={`Start writing your ${docType}...`}
             onAddComment={handleAddComment}
