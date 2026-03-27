@@ -95,7 +95,8 @@
     "resources": "Resources",
     "addResource": "Add link...",
     "addSummary": "Add a short summary...",
-    "settings": "Settings"
+    "settings": "Settings",
+    "searchPlaceholder": "Search changes..."
   },
   "change": {
     "workflow": "Workflow",

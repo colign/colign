@@ -95,7 +95,8 @@
     "resources": "리소스",
     "addResource": "링크 추가...",
     "addSummary": "짧은 요약을 추가하세요...",
-    "settings": "설정"
+    "settings": "설정",
+    "searchPlaceholder": "체인지 검색..."
   },
   "change": {
     "workflow": "워크플로우",

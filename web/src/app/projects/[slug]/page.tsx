@@ -43,6 +43,7 @@ import {
   Brain,
   User,
   Signal,
+  Search,
 } from "lucide-react";
 
 const stageConfig: Record<string, { label: string; color: string; icon: string; glow: string }> = {
@@ -674,13 +675,13 @@ export default function ProjectDetailPage() {
             <DatePicker
               value={project.startDate}
               placeholder="Start date"
-              onChange={(value) => handlePropertyUpdate("startDate", value)}
+              onChange={(value) => handlePropertyUpdate("startDate", value ?? "")}
             />
 
             <DatePicker
               value={project.targetDate}
               placeholder="Target date"
-              onChange={(value) => handlePropertyUpdate("targetDate", value)}
+              onChange={(value) => handlePropertyUpdate("targetDate", value ?? "")}
             />
 
             {/* Members count */}
@@ -1072,7 +1073,7 @@ function OverviewTab({
                       <span className="text-sm">{change.name}</span>
                     </div>
                     <span className={`text-xs font-medium ${config.color.split(" ")[1]}`}>
-                      {config.label}
+                      {t(`stages.${change.stage}`)}
                     </span>
                   </div>
                 </Link>
@@ -1108,10 +1109,17 @@ function ChangesTab({
 }) {
   const [archiveFilter, setArchiveFilter] = useState<"active" | "archived">("active");
   const [stageFilters, setStageFilters] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
   const [activeChanges, setActiveChanges] = useState<Change[]>(initialChanges);
   const [archivedChanges, setArchivedChanges] = useState<Change[]>([]);
   const [archivedCount, setArchivedCount] = useState<number | null>(null);
   const [loadingArchived, setLoadingArchived] = useState(false);
+
+  // Sync activeChanges when parent updates initialChanges (e.g. after create)
+  useEffect(() => {
+    setActiveChanges(initialChanges);
+  }, [initialChanges]);
 
   const stages = ["draft", "design", "review", "ready"] as const;
 
@@ -1126,6 +1134,13 @@ function ChangesTab({
       return next;
     });
   }
+
+  // Close create dialog on successful creation
+  useEffect(() => {
+    if (!creating && createOpen && !newChangeName.trim()) {
+      setCreateOpen(false);
+    }
+  }, [creating, createOpen, newChangeName]);
 
   // Fetch archived count once on mount
   useEffect(() => {
@@ -1187,111 +1202,117 @@ function ChangesTab({
   }
 
   const baseChanges = archiveFilter === "active" ? activeChanges : archivedChanges;
-  const displayChanges =
+  const filteredByStage =
     stageFilters.size === 0 || archiveFilter === "archived"
       ? baseChanges
       : baseChanges.filter((c) => stageFilters.has(c.stage));
+  const displayChanges = searchQuery.trim()
+    ? filteredByStage.filter((c) =>
+        c.name.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
+    : filteredByStage;
 
   return (
     <div>
-      {/* Archive Filter Tabs */}
-      <div className="mb-4 flex gap-1 border-b border-border/50">
-        <button
-          onClick={() => switchToFilter("active")}
-          className={`cursor-pointer whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-colors duration-200 ${
-            archiveFilter === "active"
-              ? "border-b-2 border-primary text-foreground"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          {t("project.activeChanges")}
-          <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-            {activeChanges.length}
-          </span>
-        </button>
-        <button
-          onClick={() => switchToFilter("archived")}
-          className={`cursor-pointer whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-colors duration-200 ${
-            archiveFilter === "archived"
-              ? "border-b-2 border-primary text-foreground"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          {t("project.archivedChanges")}
-          {archivedCount !== null && (
-            <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-              {archivedCount}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {/* Stage Filter Chips — only for active */}
-      {archiveFilter === "active" && activeChanges.length > 0 && (
-        <div className="mb-4 flex flex-wrap gap-1.5">
+      {/* Control Bar */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {/* Archive Filter */}
+        <div className="flex items-center gap-0.5 rounded-lg bg-muted/50 p-0.5">
           <button
-            onClick={() => setStageFilters(new Set())}
-            className={`cursor-pointer inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-              stageFilters.size === 0
-                ? "bg-foreground/10 text-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+            onClick={() => switchToFilter("active")}
+            className={`cursor-pointer rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              archiveFilter === "active"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            {t("project.allStages")}
-            <span className="text-[10px] tabular-nums opacity-60">{activeChanges.length}</span>
+            {t("project.activeChanges")}
+            <span className="ml-1 tabular-nums opacity-60">{activeChanges.length}</span>
           </button>
-          {stages.map((stage) => {
-            const config = stageConfig[stage];
-            const count = activeChanges.filter((c) => c.stage === stage).length;
-            const isSelected = stageFilters.has(stage);
-            return (
-              <button
-                key={stage}
-                onClick={() => toggleStageFilter(stage)}
-                className={`cursor-pointer inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  isSelected
-                    ? "bg-foreground/10 text-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-                }`}
-              >
-                <span
-                  className={`h-1.5 w-1.5 rounded-full ${config.color.split(" ")[0].replace("/10", "")}`}
-                />
-                {config.label}
-                <span className="text-[10px] tabular-nums opacity-60">{count}</span>
-              </button>
-            );
-          })}
+          <button
+            onClick={() => switchToFilter("archived")}
+            className={`cursor-pointer rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              archiveFilter === "archived"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t("project.archivedChanges")}
+            {archivedCount !== null && (
+              <span className="ml-1 tabular-nums opacity-60">{archivedCount}</span>
+            )}
+          </button>
         </div>
-      )}
 
-      {/* Create Change — only for active */}
-      {archiveFilter === "active" && (
-        <form onSubmit={onCreateChange} className="mb-6">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Plus className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/50" />
-              <Input
-                value={newChangeName}
-                onChange={(e) => setNewChangeName(e.target.value)}
-                placeholder={t("project.newChangePlaceholder")}
-                className="pl-9 bg-card/50 border-border/40 focus:border-primary/50 transition-colors"
-              />
-            </div>
-            <Button
-              type="submit"
-              disabled={creating || !newChangeName.trim()}
-              className="cursor-pointer px-5"
+        {/* Separator */}
+        <div className="h-4 w-px bg-border/50" />
+
+        {/* Stage Filter Pills — only for active */}
+        {archiveFilter === "active" && (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setStageFilters(new Set())}
+              className={`cursor-pointer inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                stageFilters.size === 0
+                  ? "bg-foreground/10 text-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+              }`}
             >
-              {creating ? (
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
-              ) : (
-                t("common.create")
-              )}
-            </Button>
+              {t("project.allStages")}
+            </button>
+            {stages.map((stage) => {
+              const config = stageConfig[stage];
+              const count = activeChanges.filter((c) => c.stage === stage).length;
+              if (count === 0) return null;
+              const isSelected = stageFilters.has(stage);
+              return (
+                <button
+                  key={stage}
+                  onClick={() => toggleStageFilter(stage)}
+                  className={`cursor-pointer inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                    isSelected
+                      ? "bg-foreground/10 text-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+                  }`}
+                >
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${config.color.split(" ")[0].replace("/10", "")}`}
+                  />
+                  {t(`stages.${stage}`)}
+                  <span className="text-[10px] tabular-nums opacity-60">{count}</span>
+                </button>
+              );
+            })}
           </div>
-        </form>
-      )}
+        )}
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground/50" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t("project.searchPlaceholder")}
+            className="h-8 w-44 rounded-md border border-border/40 bg-transparent pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary/50 focus:outline-none transition-colors"
+          />
+        </div>
+
+        {/* Create Button */}
+        {archiveFilter === "active" && (
+          <Button
+            size="sm"
+            onClick={() => setCreateOpen(true)}
+            className="cursor-pointer gap-1.5"
+          >
+            <Plus className="size-3.5" />
+            {t("common.create")}
+          </Button>
+        )}
+      </div>
 
       {/* Changes List */}
       {loadingArchived ? (
@@ -1303,7 +1324,8 @@ function ChangesTab({
           <div className="mb-5 rounded-2xl bg-primary/5 p-5">
             <FileText className="size-10 text-primary/40" />
           </div>
-          {archiveFilter === "active" && stageFilters.size > 0 && baseChanges.length > 0 ? (
+          {(stageFilters.size > 0 || searchQuery.trim()) &&
+          baseChanges.length > 0 ? (
             <p className="text-sm font-medium text-foreground/70">
               {t("project.noMatchingChanges")}
             </p>
@@ -1319,50 +1341,66 @@ function ChangesTab({
           )}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="divide-y divide-border/30">
           {displayChanges.map((change) => {
             const config = stageConfig[change.stage] ?? stageConfig.draft;
             return (
-              <Link key={String(change.id)} href={`/projects/${projectSlug}/changes/${change.id}`}>
-                <div
-                  className={`group flex cursor-pointer items-center justify-between rounded-xl border border-border/40 bg-card/50 px-5 py-4 transition-all duration-200 hover:border-primary/20 hover:bg-card/80 hover:shadow-lg ${config.glow}`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`flex h-8 w-8 items-center justify-center rounded-lg border ${config.color}`}
-                    >
-                      <svg
-                        className="h-3.5 w-3.5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={1.5}
-                          d={config.icon}
-                        />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium group-hover:text-foreground transition-colors">
-                        {change.name}
-                      </p>
-                      <span
-                        className={`inline-flex items-center text-xs font-medium mt-0.5 ${config.color.split(" ")[1]}`}
-                      >
-                        {config.label}
-                      </span>
-                    </div>
-                  </div>
-                  <ChevronRight className="size-4 text-muted-foreground/30 transition-all duration-200 group-hover:text-muted-foreground group-hover:translate-x-0.5" />
+              <Link
+                key={String(change.id)}
+                href={`/projects/${projectSlug}/changes/${change.id}`}
+                className="group flex cursor-pointer items-center justify-between px-3 py-2.5 transition-colors duration-150 hover:bg-foreground/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-inset"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <span
+                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${config.color.split(" ")[0].replace("/10", "")}`}
+                  />
+                  <span className="truncate text-sm font-medium text-foreground">
+                    {change.name}
+                  </span>
                 </div>
+                <span
+                  className={`ml-3 inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-xs font-medium ${config.color}`}
+                >
+                  {t(`stages.${change.stage}`)}
+                </span>
               </Link>
             );
           })}
         </div>
       )}
+
+      {/* Create Change Dialog */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("common.create")}</DialogTitle>
+            <DialogDescription>{t("project.createFirstChange")}</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={onCreateChange}>
+            <div className="py-2">
+              <Input
+                value={newChangeName}
+                onChange={(e) => setNewChangeName(e.target.value)}
+                placeholder={t("project.newChangePlaceholder")}
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="submit"
+                disabled={creating || !newChangeName.trim()}
+                className="cursor-pointer"
+              >
+                {creating ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                ) : (
+                  t("common.create")
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
