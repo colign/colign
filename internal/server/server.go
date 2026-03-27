@@ -121,6 +121,7 @@ func (s *Server) setupRoutes(cfg *config.Config) error {
 
 	// API Token service (Connect) — must be created first as it serves as APITokenValidator
 	apiTokenService := apitoken.NewService(s.db)
+	authService.SetAPITokenValidator(apiTokenService)
 	apiTokenConnectHandler := apitoken.NewConnectHandler(apiTokenService, s.jwtManager)
 	apiTokenPath, apiTokenHandler := apitokenv1connect.NewApiTokenServiceHandler(apiTokenConnectHandler)
 	s.mux.Handle(apiTokenPath, apiTokenHandler)

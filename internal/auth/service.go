@@ -32,9 +32,10 @@ type OrgJoiner interface {
 }
 
 type Service struct {
-	db         *bun.DB
-	jwtManager *JWTManager
-	orgJoiner  OrgJoiner
+	db                *bun.DB
+	jwtManager        *JWTManager
+	orgJoiner         OrgJoiner
+	apiTokenValidator APITokenValidator
 }
 
 func NewService(db *bun.DB, jwtManager *JWTManager) *Service {
@@ -44,6 +45,11 @@ func NewService(db *bun.DB, jwtManager *JWTManager) *Service {
 // SetOrgJoiner sets the OrgJoiner after construction to avoid circular dependency.
 func (s *Service) SetOrgJoiner(oj OrgJoiner) {
 	s.orgJoiner = oj
+}
+
+// SetAPITokenValidator sets the API token validator to support MCP OAuth tokens.
+func (s *Service) SetAPITokenValidator(v APITokenValidator) {
+	s.apiTokenValidator = v
 }
 
 type RegisterRequest struct {
@@ -324,7 +330,7 @@ func (s *Service) SwitchOrg(ctx context.Context, userID int64, email, name strin
 }
 
 func (s *Service) Me(ctx context.Context, authHeader string) (*models.User, int64, error) {
-	claims, err := ExtractClaims(s.jwtManager, authHeader)
+	claims, err := ResolveFromHeader(s.jwtManager, s.apiTokenValidator, ctx, authHeader)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -342,7 +348,7 @@ func (s *Service) Me(ctx context.Context, authHeader string) (*models.User, int6
 }
 
 func (s *Service) UpdateProfile(ctx context.Context, authHeader, name, avatarURL string) (*models.User, int64, error) {
-	claims, err := ExtractClaims(s.jwtManager, authHeader)
+	claims, err := ResolveFromHeader(s.jwtManager, s.apiTokenValidator, ctx, authHeader)
 	if err != nil {
 		return nil, 0, err
 	}
