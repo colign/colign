@@ -642,7 +642,7 @@ export default function SettingsPage() {
               <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <Label>{t("settings.theme")}</Label>
-                  <Select value={theme} onValueChange={setTheme}>
+                  <Select value={theme} onValueChange={(value) => value !== null && setTheme(value)}>
                     <SelectTrigger className="cursor-pointer">
                       <SelectValue />
                     </SelectTrigger>

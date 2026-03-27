@@ -27,6 +27,7 @@ import {
 import { projectClient } from "@/lib/project";
 import { orgClient } from "@/lib/organization";
 import { memoryClient } from "@/lib/memory";
+import { useEvents } from "@/lib/events";
 import { useI18n } from "@/lib/i18n";
 import { showError, showSuccess } from "@/lib/toast";
 import { marked } from "marked";
@@ -158,6 +159,11 @@ export default function ProjectDetailPage() {
   const tabParam = searchParams.get("tab") as TabId | null;
   const initialProjectTab = tabParam && validProjectTabs.includes(tabParam) ? tabParam : "overview";
   const [activeTab, setActiveTabState] = useState<TabId>(initialProjectTab);
+
+  useEffect(() => {
+    const nextTab = tabParam && validProjectTabs.includes(tabParam) ? tabParam : "overview";
+    setActiveTabState(nextTab);
+  }, [tabParam]);
 
   const setActiveTab = useCallback(
     (tab: TabId) => {
@@ -1107,6 +1113,7 @@ function ChangesTab({
   onCreateChange: (e: React.FormEvent) => void;
   t: (key: string) => string;
 }) {
+  const { on } = useEvents();
   const [archiveFilter, setArchiveFilter] = useState<"active" | "archived">("active");
   const [stageFilters, setStageFilters] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
@@ -1120,6 +1127,40 @@ function ChangesTab({
   useEffect(() => {
     setActiveChanges(initialChanges);
   }, [initialChanges]);
+
+  const reloadChanges = useCallback(async () => {
+    const [activeRes, archivedRes] = await Promise.all([
+      projectClient.listChanges({ projectId, filter: "active" }),
+      projectClient.listChanges({ projectId, filter: "archived" }),
+    ]);
+
+    setActiveChanges(
+      activeRes.changes.map((c) => ({
+        id: c.id,
+        name: c.name,
+        stage: c.stage,
+        archivedAt: c.archivedAt,
+      })),
+    );
+    setArchivedChanges(
+      archivedRes.changes.map((c) => ({
+        id: c.id,
+        name: c.name,
+        stage: c.stage,
+        archivedAt: c.archivedAt,
+      })),
+    );
+    setArchivedCount(archivedRes.changes.length);
+  }, [projectId]);
+
+  useEffect(() => {
+    return on((event) => {
+      if (event.type !== "change_created" && event.type !== "change_updated") return;
+      void reloadChanges().catch((err) => {
+        showError(t("toast.changesLoadFailed"), err);
+      });
+    });
+  }, [on, reloadChanges, t]);
 
   const stages = ["draft", "design", "review", "ready"] as const;
 

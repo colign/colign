@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { useI18n } from "@/lib/i18n";
 import { notificationClient } from "@/lib/notification";
 import { NOTIFICATIONS_UPDATED_EVENT } from "@/lib/notification-events";
+import { orgClient } from "@/lib/organization";
+import { getTokenPayload, saveTokens } from "@/lib/auth";
 import { showError } from "@/lib/toast";
 import {
   Eye,
@@ -30,6 +32,7 @@ interface Notification {
   changeId: bigint;
   projectName: string;
   projectSlug: string;
+  organizationId: bigint;
   stage: string;
   commentPreview: string;
   createdAt?: { seconds: bigint };
@@ -71,6 +74,7 @@ const typeColor: Record<string, string> = {
 
 export default function InboxPage() {
   const { t } = useI18n();
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [filter, setFilter] = useState<FilterType>("all");
@@ -93,6 +97,7 @@ export default function InboxPage() {
           changeId: n.changeId,
           projectName: n.projectName,
           projectSlug: n.projectSlug,
+          organizationId: n.organizationId,
           stage: n.stage,
           commentPreview: n.commentPreview,
           createdAt: n.createdAt ? { seconds: n.createdAt.seconds } : undefined,
@@ -110,12 +115,22 @@ export default function InboxPage() {
     load();
   }, [filter]);
 
+  function updateNotificationReadState(id: bigint, read: boolean) {
+    setNotifications((prev) => {
+      if (filter === "unread" && read) {
+        return prev.filter((n) => n.id !== id);
+      }
+      return prev.map((n) => (n.id === id ? { ...n, read } : n));
+    });
+    setUnreadCount((prev) => Math.max(0, prev + (read ? -1 : 1)));
+    notifyUnreadChanged();
+  }
+
   async function toggleRead(id: bigint, currentRead: boolean) {
     try {
-      await notificationClient.markRead({ id, read: !currentRead });
-      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: !currentRead } : n)));
-      setUnreadCount((prev) => prev + (currentRead ? 1 : -1));
-      notifyUnreadChanged();
+      const nextRead = !currentRead;
+      await notificationClient.markRead({ id, read: nextRead });
+      updateNotificationReadState(id, nextRead);
     } catch (err) {
       showError("Failed to load notifications", err);
     }
@@ -136,6 +151,25 @@ export default function InboxPage() {
     if (n.type === "invite") return `/projects/${n.projectSlug}`;
     if (n.changeId) return `/projects/${n.projectSlug}/changes/${n.changeId}`;
     return `/projects/${n.projectSlug}`;
+  }
+
+  async function navigateToNotification(n: Notification) {
+    const targetHref = getNotificationHref(n);
+    const currentOrgId = getTokenPayload()?.org_id;
+
+    try {
+      if (!n.read) {
+        await notificationClient.markRead({ id: n.id, read: true });
+        updateNotificationReadState(n.id, true);
+      }
+      if (n.organizationId > 0n && currentOrgId !== Number(n.organizationId)) {
+        const res = await orgClient.switchOrganization({ organizationId: n.organizationId });
+        saveTokens(res.accessToken, res.refreshToken);
+      }
+      router.push(targetHref);
+    } catch (err) {
+      showError("Failed to open notification target", err);
+    }
   }
 
   function renderNotificationText(n: Notification) {
@@ -296,8 +330,9 @@ export default function InboxPage() {
                     </div>
 
                     {/* Content */}
-                    <Link
-                      href={getNotificationHref(notification)}
+                    <button
+                      type="button"
+                      onClick={() => void navigateToNotification(notification)}
                       className="min-w-0 flex-1 cursor-pointer"
                     >
                       {renderNotificationText(notification)}
@@ -306,7 +341,7 @@ export default function InboxPage() {
                         <span>·</span>
                         <span>{timeAgo(notification.createdAt?.seconds)}</span>
                       </div>
-                    </Link>
+                    </button>
 
                     {/* Actions */}
                     <button

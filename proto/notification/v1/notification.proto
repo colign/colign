@@ -21,6 +21,7 @@ message Notification {
   string stage = 12;
   string comment_preview = 13;
   google.protobuf.Timestamp created_at = 14;
+  int64 organization_id = 15;
 }
 
 message ListNotificationsRequest {

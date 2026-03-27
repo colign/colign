@@ -85,6 +85,11 @@ export default function ChangeDetailPage() {
   const initialTab = tabParam && validTabs.includes(tabParam) ? tabParam : "proposal";
   const [activeTab, setActiveTabState] = useState<TabId>(initialTab);
 
+  useEffect(() => {
+    const nextTab = tabParam && validTabs.includes(tabParam) ? tabParam : "proposal";
+    setActiveTabState(nextTab);
+  }, [tabParam]);
+
   const setActiveTab = useCallback(
     (tab: TabId) => {
       setActiveTabState(tab);

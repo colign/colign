@@ -148,6 +148,7 @@ func notificationToProto(n *models.Notification) *notificationv1.Notification {
 	if n.Project != nil {
 		proto.ProjectName = n.Project.Name
 		proto.ProjectSlug = n.Project.Slug
+		proto.OrganizationId = n.Project.OrganizationID
 	}
 	return proto
 }
