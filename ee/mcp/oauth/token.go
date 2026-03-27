@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -21,7 +22,7 @@ type TokenHandler struct {
 }
 
 const (
-	oauthAccessTokenTTL  = time.Hour
+	oauthAccessTokenTTL  = 30 * 24 * time.Hour
 	oauthRefreshTokenTTL = 30 * 24 * time.Hour
 )
 
@@ -37,6 +38,7 @@ func (h *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	grantType := r.FormValue("grant_type")
+	slog.Info("oauth token request", "grant_type", grantType, "client_id", r.FormValue("client_id"))
 	switch grantType {
 	case "authorization_code":
 		h.handleAuthorizationCodeGrant(w, r)
@@ -82,10 +84,12 @@ func (h *TokenHandler) handleAuthorizationCodeGrant(w http.ResponseWriter, r *ht
 
 	accessToken, refreshToken, err := h.issueTokens(r.Context(), authCode.UserID, authCode.OrgID, authCode.ClientID)
 	if err != nil {
+		slog.Error("oauth token issue failed", "grant_type", "authorization_code", "error", err)
 		writeTokenError(w, "server_error", "failed to create oauth tokens")
 		return
 	}
 
+	slog.Info("oauth token issued", "grant_type", "authorization_code", "user_id", authCode.UserID, "client_id", authCode.ClientID)
 	h.writeTokenResponse(w, accessToken, refreshToken)
 }
 
@@ -103,12 +107,14 @@ func (h *TokenHandler) handleRefreshTokenGrant(w http.ResponseWriter, r *http.Re
 		Where("ort.expires_at > ?", time.Now()).
 		Scan(r.Context())
 	if err != nil {
+		slog.Warn("oauth refresh token lookup failed", "error", err)
 		writeTokenError(w, "invalid_grant", "invalid or expired refresh token")
 		return
 	}
 
 	clientID := r.FormValue("client_id")
 	if clientID != "" && clientID != refreshToken.ClientID {
+		slog.Warn("oauth refresh token client mismatch", "expected", refreshToken.ClientID, "got", clientID)
 		writeTokenError(w, "invalid_grant", "refresh token does not match client")
 		return
 	}
@@ -121,10 +127,12 @@ func (h *TokenHandler) handleRefreshTokenGrant(w http.ResponseWriter, r *http.Re
 
 	accessToken, newRefreshToken, err := h.issueTokens(r.Context(), refreshToken.UserID, refreshToken.OrgID, refreshToken.ClientID)
 	if err != nil {
+		slog.Error("oauth token issue failed", "grant_type", "refresh_token", "error", err)
 		writeTokenError(w, "server_error", "failed to refresh oauth tokens")
 		return
 	}
 
+	slog.Info("oauth token refreshed", "user_id", refreshToken.UserID, "client_id", refreshToken.ClientID)
 	h.writeTokenResponse(w, accessToken, newRefreshToken)
 }
 
@@ -136,11 +144,13 @@ func (h *TokenHandler) issueTokens(ctx context.Context, userID, orgID int64, cli
 	}
 
 	// Replace existing refresh tokens for the same MCP client.
-	_, _ = h.db.NewDelete().Model((*OAuthRefreshToken)(nil)).
+	if _, err := h.db.NewDelete().Model((*OAuthRefreshToken)(nil)).
 		Where("user_id = ?", userID).
 		Where("org_id = ?", orgID).
 		Where("client_id = ?", clientID).
-		Exec(ctx)
+		Exec(ctx); err != nil {
+		slog.Warn("oauth old refresh token cleanup failed", "user_id", userID, "error", err)
+	}
 
 	rawRefreshToken, err := generateOAuthRefreshToken()
 	if err != nil {
