@@ -337,7 +337,7 @@ export default function InboxPage() {
                     <button
                       type="button"
                       onClick={() => void navigateToNotification(notification)}
-                      className="min-w-0 flex-1 cursor-pointer"
+                      className="min-w-0 flex-1 cursor-pointer text-left"
                     >
                       {renderNotificationText(notification)}
                       <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground/50">
