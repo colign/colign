@@ -22,6 +22,8 @@ var rpcRules = map[string]AuthRule{
 	"/project.v1.ProjectService/DeleteChange":        {Resource: "change", Action: "delete"},
 	"/project.v1.ProjectService/ArchiveChange":       {Resource: "change", Action: "archive"},
 	"/project.v1.ProjectService/UnarchiveChange":     {Resource: "change", Action: "unarchive"},
+	"/project.v1.ProjectService/AssignChangeLabel":   {Resource: "change", Action: "update"},
+	"/project.v1.ProjectService/RemoveChangeLabel":   {Resource: "change", Action: "update"},
 	"/project.v1.ProjectService/GetArchivePolicy":    {Resource: "archive_policy", Action: "read"},
 	"/project.v1.ProjectService/UpdateArchivePolicy": {Resource: "archive_policy", Action: "update"},
 
@@ -102,6 +104,7 @@ var skipRPCs = map[string]bool{
 	"/project.v1.ProjectService/ListProjects":  true,
 	"/project.v1.ProjectService/CreateLabel":   true,
 	"/project.v1.ProjectService/ListLabels":    true,
+	"/project.v1.ProjectService/DeleteLabel":   true,
 	"/project.v1.ProjectService/Search":        true,
 
 	// NotificationService

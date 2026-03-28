@@ -135,6 +135,8 @@
     "addLabel": "Add label",
     "removeLabel": "Remove label",
     "newLabel": "Create new label",
+    "deleteLabel": "Delete label",
+    "deleteLabelConfirm": "Delete this label? It will be removed from all changes.",
     "delete": "Delete",
     "deleteConfirm": "Are you sure you want to delete this change? This action cannot be undone.",
     "deleteConfirmButton": "Delete",
@@ -414,6 +416,7 @@
     "restoreFailed": "Failed to restore",
     "deleteFailed": "Failed to delete change",
     "renameFailed": "Failed to rename change",
+    "deleteLabelFailed": "Failed to delete label",
     "networkError": "Network error. Please check your connection.",
     "retryAction": "Retry"
   },

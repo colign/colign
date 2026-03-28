@@ -491,16 +491,21 @@ export default function ProjectDetailClient() {
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-2xl font-bold tracking-tight">{project.name}</h1>
-              {project.description ? (
-                <p className="mt-1 text-sm text-muted-foreground">{project.description}</p>
-              ) : (
-                <Link
-                  href={`${toProjectPath(project)}/settings`}
-                  className="mt-1 block text-sm text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors"
-                >
-                  {t("project.addSummary")}
-                </Link>
-              )}
+              <InlineSummary
+                value={project.description}
+                placeholder={t("project.addSummary")}
+                onSave={async (desc) => {
+                  const res = await projectClient.updateProject({
+                    id: project.id,
+                    description: desc,
+                    projectId: project.id,
+                  });
+                  if (res.project) {
+                    setProject(mapProjectDetail(res.project));
+                    showSuccess(t("toast.saveSuccess"));
+                  }
+                }}
+              />
             </div>
             <div className="relative" ref={menuRef}>
               <button
@@ -1763,5 +1768,72 @@ function MemoryTab({
         />
       </div>
     </div>
+  );
+}
+
+function InlineSummary({
+  value,
+  placeholder,
+  onSave,
+}: {
+  value: string;
+  placeholder: string;
+  onSave: (value: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const committedRef = useRef(false);
+
+  useEffect(() => {
+    setText(value);
+  }, [value]);
+
+  useEffect(() => {
+    if (editing) {
+      committedRef.current = false;
+      inputRef.current?.focus();
+    }
+  }, [editing]);
+
+  function commit() {
+    if (committedRef.current) return;
+    committedRef.current = true;
+    const trimmed = text.trim();
+    if (trimmed !== value) {
+      onSave(trimmed);
+    }
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+          if (e.key === "Escape") {
+            setText(value);
+            setEditing(false);
+          }
+        }}
+        placeholder={placeholder}
+        className="mt-1 w-full rounded-md border border-primary/50 bg-transparent px-1.5 py-0.5 text-sm text-muted-foreground outline-none"
+      />
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setEditing(true)}
+      className={`mt-1 block cursor-pointer rounded-md px-1.5 py-0.5 text-sm transition-colors hover:bg-accent ${
+        value ? "text-muted-foreground" : "text-muted-foreground/40 hover:text-muted-foreground/60"
+      }`}
+    >
+      {value || placeholder}
+    </button>
   );
 }

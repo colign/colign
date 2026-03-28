@@ -155,6 +155,12 @@ message RemoveLabelRequest {
 
 message RemoveLabelResponse {}
 
+message DeleteLabelRequest {
+  int64 id = 1;
+}
+
+message DeleteLabelResponse {}
+
 // Change CRUD
 
 message CreateChangeRequest {
@@ -291,6 +297,7 @@ service ProjectService {
   rpc ListLabels(ListLabelsRequest) returns (ListLabelsResponse) {}
   rpc AssignLabel(AssignLabelRequest) returns (AssignLabelResponse) {}
   rpc RemoveLabel(RemoveLabelRequest) returns (RemoveLabelResponse) {}
+  rpc DeleteLabel(DeleteLabelRequest) returns (DeleteLabelResponse) {}
   rpc CreateChange(CreateChangeRequest) returns (CreateChangeResponse) {}
   rpc ListChanges(ListChangesRequest) returns (ListChangesResponse) {}
   rpc GetChange(GetChangeRequest) returns (GetChangeResponse) {}

@@ -219,6 +219,7 @@ function EditableBreadcrumb({
   const actualValue = editableValue ?? label;
   const [value, setValue] = useState(actualValue);
   const inputRef = useRef<HTMLInputElement>(null);
+  const committedRef = useRef(false);
 
   useEffect(() => {
     setValue(editableValue ?? label);
@@ -226,11 +227,14 @@ function EditableBreadcrumb({
 
   useEffect(() => {
     if (editing) {
+      committedRef.current = false;
       inputRef.current?.select();
     }
   }, [editing]);
 
   function commit() {
+    if (committedRef.current) return;
+    committedRef.current = true;
     const trimmed = value.trim();
     if (trimmed && trimmed !== actualValue) {
       onSave(trimmed);

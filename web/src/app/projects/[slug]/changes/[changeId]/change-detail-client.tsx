@@ -244,6 +244,16 @@ export default function ChangeDetailClient() {
     }
   }
 
+  async function handleDeleteLabel(labelId: bigint) {
+    try {
+      await projectClient.deleteLabel({ id: labelId });
+      setOrgLabels((prev) => prev.filter((l) => l.id !== labelId));
+      setChangeLabels((prev) => prev.filter((l) => l.id !== labelId));
+    } catch (err) {
+      showError(t("toast.deleteLabelFailed"), err);
+    }
+  }
+
   async function handleUnarchive() {
     setArchiving(true);
     try {
@@ -731,20 +741,31 @@ export default function ChangeDetailClient() {
                       orgLabels
                         .filter((ol) => !changeLabels.some((cl) => cl.id === ol.id))
                         .map((label) => (
-                          <button
+                          <div
                             key={String(label.id)}
-                            onClick={() => {
-                              handleAssignLabel(label.id);
-                              setLabelDropdownOpen(false);
-                            }}
-                            className="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-left text-xs transition-colors hover:bg-accent"
+                            className="group/label flex items-center rounded-md transition-colors hover:bg-accent"
                           >
-                            <span
-                              className="h-2 w-2 shrink-0 rounded-full"
-                              style={{ backgroundColor: label.color }}
-                            />
-                            {label.name}
-                          </button>
+                            <button
+                              onClick={() => {
+                                handleAssignLabel(label.id);
+                                setLabelDropdownOpen(false);
+                              }}
+                              className="flex flex-1 cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs"
+                            >
+                              <span
+                                className="h-2 w-2 shrink-0 rounded-full"
+                                style={{ backgroundColor: label.color }}
+                              />
+                              {label.name}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteLabel(label.id)}
+                              className="cursor-pointer px-2 py-1.5 text-muted-foreground/0 transition-colors group-hover/label:text-muted-foreground hover:!text-destructive"
+                              title={t("change.deleteLabel")}
+                            >
+                              <Trash2 className="size-3" />
+                            </button>
+                          </div>
                         ))
                     )}
                     {/* Create new label */}

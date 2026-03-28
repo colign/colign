@@ -265,6 +265,21 @@ func (h *ConnectHandler) ListLabels(ctx context.Context, req *connect.Request[pr
 	}), nil
 }
 
+func (h *ConnectHandler) DeleteLabel(ctx context.Context, req *connect.Request[projectv1.DeleteLabelRequest]) (*connect.Response[projectv1.DeleteLabelResponse], error) {
+	claims, err := h.extractClaims(ctx, req.Header().Get("Authorization"))
+	if err != nil {
+		return nil, err
+	}
+
+	if err := h.service.DeleteLabel(ctx, req.Msg.Id, claims.OrgID); err != nil {
+		if errors.Is(err, ErrProjectNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&projectv1.DeleteLabelResponse{}), nil
+}
+
 func (h *ConnectHandler) AssignLabel(ctx context.Context, req *connect.Request[projectv1.AssignLabelRequest]) (*connect.Response[projectv1.AssignLabelResponse], error) {
 	claims, err := h.extractClaims(ctx, req.Header().Get("Authorization"))
 	if err != nil {

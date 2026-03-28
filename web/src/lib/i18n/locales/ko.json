@@ -135,6 +135,8 @@
     "addLabel": "라벨 추가",
     "removeLabel": "라벨 제거",
     "newLabel": "새 라벨 만들기",
+    "deleteLabel": "라벨 삭제",
+    "deleteLabelConfirm": "이 라벨을 삭제하시겠습니까? 모든 Change에서 제거됩니다.",
     "delete": "삭제",
     "deleteConfirm": "이 Change를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
     "deleteConfirmButton": "삭제",
@@ -414,6 +416,7 @@
     "restoreFailed": "복원 처리에 실패했습니다",
     "deleteFailed": "Change 삭제에 실패했습니다",
     "renameFailed": "Change 이름 변경에 실패했습니다",
+    "deleteLabelFailed": "라벨 삭제에 실패했습니다",
     "networkError": "네트워크 오류입니다. 연결 상태를 확인하세요.",
     "retryAction": "재시도"
   },

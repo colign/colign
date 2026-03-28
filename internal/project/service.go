@@ -495,6 +495,24 @@ func (s *Service) ListLabels(ctx context.Context, orgID int64) ([]models.Project
 	return labels, nil
 }
 
+func (s *Service) DeleteLabel(ctx context.Context, id int64, orgID int64) error {
+	res, err := s.db.NewDelete().Model((*models.ProjectLabel)(nil)).
+		Where("id = ?", id).
+		Where("organization_id = ?", orgID).
+		Exec(ctx)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrProjectNotFound
+	}
+	return nil
+}
+
 func (s *Service) AssignLabel(ctx context.Context, projectID, labelID int64, orgID int64) error {
 	// Verify project belongs to org
 	exists, err := s.db.NewSelect().Model((*models.Project)(nil)).
@@ -844,17 +862,28 @@ func (s *Service) UpdateChange(ctx context.Context, id int64, name string, orgID
 		Where("ch.project_id IN (SELECT id FROM projects WHERE organization_id = ?)", orgID).
 		Scan(ctx)
 	if err != nil {
-		return nil, ErrProjectNotFound
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrProjectNotFound
+		}
+		return nil, err
 	}
 
 	change.Name = name
 	change.UpdatedAt = time.Now()
-	_, err = s.db.NewUpdate().Model(change).
+	res, err := s.db.NewUpdate().Model(change).
 		Column("name", "updated_at").
 		Where("id = ?", id).
+		Where("project_id IN (SELECT id FROM projects WHERE organization_id = ?)", orgID).
 		Exec(ctx)
 	if err != nil {
 		return nil, err
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	if rowsAffected == 0 {
+		return nil, ErrProjectNotFound
 	}
 	return change, nil
 }
