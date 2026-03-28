@@ -125,6 +125,9 @@ export default function ChangeDetailClient() {
   const [creatingLabel, setCreatingLabel] = useState(false);
   const [newLabelName, setNewLabelName] = useState("");
   const [newLabelColor, setNewLabelColor] = useState("#6B7280");
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [pickerHue, setPickerHue] = useState(0);
+  const [hexInput, setHexInput] = useState("");
 
   const prevStageRef = useRef(stage);
 
@@ -799,12 +802,107 @@ export default function ChangeDetailClient() {
                             ].map((c) => (
                               <button
                                 key={c}
-                                onClick={() => setNewLabelColor(c)}
+                                onClick={() => {
+                                  setNewLabelColor(c);
+                                  setShowColorPicker(false);
+                                }}
                                 className={`h-4 w-4 rounded-full cursor-pointer transition-transform ${newLabelColor === c ? "ring-2 ring-primary ring-offset-1 ring-offset-background scale-110" : "hover:scale-110"}`}
                                 style={{ backgroundColor: c }}
                               />
                             ))}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowColorPicker(!showColorPicker);
+                                setHexInput(newLabelColor);
+                              }}
+                              className={`h-4 w-4 rounded-full cursor-pointer transition-transform hover:scale-110 ${showColorPicker || !["#EF4444", "#F59E0B", "#10B981", "#3B82F6", "#8B5CF6", "#EC4899", "#6B7280"].includes(newLabelColor) ? "ring-2 ring-primary ring-offset-1 ring-offset-background scale-110" : ""}`}
+                              style={{
+                                background: ![
+                                  "#EF4444",
+                                  "#F59E0B",
+                                  "#10B981",
+                                  "#3B82F6",
+                                  "#8B5CF6",
+                                  "#EC4899",
+                                  "#6B7280",
+                                ].includes(newLabelColor)
+                                  ? newLabelColor
+                                  : "conic-gradient(red, yellow, lime, aqua, blue, magenta, red)",
+                              }}
+                            />
                           </div>
+                          {showColorPicker && (
+                            <div className="space-y-2 rounded-md border border-border/30 bg-accent/30 p-2">
+                              <div
+                                className="relative h-24 w-full cursor-crosshair rounded"
+                                style={{
+                                  background: `linear-gradient(to right, #fff, hsl(${pickerHue}, 100%, 50%))`,
+                                }}
+                                onClick={(e) => {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  const x = Math.max(
+                                    0,
+                                    Math.min(1, (e.clientX - rect.left) / rect.width),
+                                  );
+                                  const y = Math.max(
+                                    0,
+                                    Math.min(1, (e.clientY - rect.top) / rect.height),
+                                  );
+                                  const s = x * 100;
+                                  const l = 100 - y * (50 + x * 50);
+                                  const c = document.createElement("canvas");
+                                  c.width = 1;
+                                  c.height = 1;
+                                  const ctx = c.getContext("2d")!;
+                                  ctx.fillStyle = `hsl(${pickerHue}, ${s}%, ${l}%)`;
+                                  ctx.fillRect(0, 0, 1, 1);
+                                  const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+                                  const hex =
+                                    `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`.toUpperCase();
+                                  setNewLabelColor(hex);
+                                  setHexInput(hex);
+                                }}
+                              >
+                                <div
+                                  className="pointer-events-none absolute inset-0 rounded"
+                                  style={{
+                                    background: "linear-gradient(to bottom, transparent, #000)",
+                                  }}
+                                />
+                              </div>
+                              <input
+                                type="range"
+                                min={0}
+                                max={360}
+                                value={pickerHue}
+                                onChange={(e) => setPickerHue(Number(e.target.value))}
+                                className="h-2 w-full cursor-pointer appearance-none rounded-full [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-md"
+                                style={{
+                                  background:
+                                    "linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)",
+                                }}
+                              />
+                              <div className="flex items-center gap-1.5">
+                                <div
+                                  className="h-5 w-5 shrink-0 rounded border border-border/40"
+                                  style={{ backgroundColor: newLabelColor }}
+                                />
+                                <input
+                                  type="text"
+                                  value={hexInput}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    setHexInput(v);
+                                    if (/^#[0-9A-Fa-f]{6}$/.test(v))
+                                      setNewLabelColor(v.toUpperCase());
+                                  }}
+                                  placeholder="#000000"
+                                  className="w-full rounded border border-border/40 bg-transparent px-1.5 py-0.5 font-mono text-[10px] text-foreground focus:border-primary/50 focus:outline-none"
+                                />
+                              </div>
+                            </div>
+                          )}
                           <div className="flex gap-1">
                             <button
                               onClick={() => handleCreateAndAssignLabel()}
