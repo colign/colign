@@ -179,6 +179,30 @@ func TestListChangesToolIncludesProgress(t *testing.T) {
 	assert.Contains(t, tool.InputSchema.Properties, "project_id")
 }
 
+func TestCommentToolsHaveDocumentType(t *testing.T) {
+	tools := ListTools()
+	toolMap := make(map[string]*Tool)
+	for i, tool := range tools {
+		toolMap[tool.Name] = &tools[i]
+	}
+
+	t.Run("create_comment has document_type param", func(t *testing.T) {
+		tool := toolMap["create_comment"]
+		require.NotNil(t, tool)
+		assert.Contains(t, tool.InputSchema.Properties, "document_type")
+		assert.Equal(t, "string", tool.InputSchema.Properties["document_type"].Type)
+		assert.Contains(t, tool.InputSchema.Required, "document_type")
+	})
+
+	t.Run("list_comments has document_type param", func(t *testing.T) {
+		tool := toolMap["list_comments"]
+		require.NotNil(t, tool)
+		assert.Contains(t, tool.InputSchema.Properties, "document_type")
+		assert.Equal(t, "string", tool.InputSchema.Properties["document_type"].Type)
+		assert.Contains(t, tool.InputSchema.Required, "document_type")
+	})
+}
+
 func TestJSONRPCRequest(t *testing.T) {
 	raw := `{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}`
 	var req JSONRPCRequest

@@ -816,16 +816,18 @@ func (s *Server) handleAdvanceStage(ctx context.Context, args json.RawMessage) (
 
 func (s *Server) handleListComments(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
-		ChangeID  FlexInt64 `json:"change_id"`
-		ProjectID FlexInt64 `json:"project_id"`
+		ChangeID     FlexInt64 `json:"change_id"`
+		ProjectID    FlexInt64 `json:"project_id"`
+		DocumentType string    `json:"document_type"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
 	}
 
 	resp, err := s.clients.comment.ListComments(ctx, connect.NewRequest(&commentv1.ListCommentsRequest{
-		ChangeId:  params.ChangeID.Int64(),
-		ProjectId: params.ProjectID.Int64(),
+		ChangeId:     params.ChangeID.Int64(),
+		ProjectId:    params.ProjectID.Int64(),
+		DocumentType: params.DocumentType,
 	}))
 	if err != nil {
 		return nil, err
@@ -850,18 +852,20 @@ func (s *Server) handleListComments(ctx context.Context, args json.RawMessage) (
 
 func (s *Server) handleCreateComment(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
-		ChangeID  FlexInt64 `json:"change_id"`
-		ProjectID FlexInt64 `json:"project_id"`
-		Content   string    `json:"content"`
+		ChangeID     FlexInt64 `json:"change_id"`
+		ProjectID    FlexInt64 `json:"project_id"`
+		Content      string    `json:"content"`
+		DocumentType string    `json:"document_type"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
 	}
 
 	resp, err := s.clients.comment.CreateComment(ctx, connect.NewRequest(&commentv1.CreateCommentRequest{
-		ChangeId:  params.ChangeID.Int64(),
-		Body:      params.Content,
-		ProjectId: params.ProjectID.Int64(),
+		ChangeId:     params.ChangeID.Int64(),
+		Body:         params.Content,
+		ProjectId:    params.ProjectID.Int64(),
+		DocumentType: params.DocumentType,
 	}))
 	if err != nil {
 		return nil, err

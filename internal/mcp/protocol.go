@@ -259,10 +259,11 @@ func ListTools() []Tool {
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
-					"change_id":  {Type: "integer", Description: "Change ID"},
-					"project_id": {Type: "integer", Description: "Project ID"},
+					"change_id":     {Type: "integer", Description: "Change ID"},
+					"project_id":    {Type: "integer", Description: "Project ID"},
+					"document_type": {Type: "string", Description: "Document type to filter comments (proposal, spec, tasks)"},
 				},
-				Required: []string{"change_id", "project_id"},
+				Required: []string{"change_id", "project_id", "document_type"},
 			},
 		},
 		{
@@ -271,11 +272,12 @@ func ListTools() []Tool {
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
-					"change_id":  {Type: "integer", Description: "Change ID"},
-					"project_id": {Type: "integer", Description: "Project ID"},
-					"content":    {Type: "string", Description: "Comment text"},
+					"change_id":     {Type: "integer", Description: "Change ID"},
+					"project_id":    {Type: "integer", Description: "Project ID"},
+					"content":       {Type: "string", Description: "Comment text"},
+					"document_type": {Type: "string", Description: "Document type for the comment (proposal, spec, tasks)"},
 				},
-				Required: []string{"change_id", "project_id", "content"},
+				Required: []string{"change_id", "project_id", "content", "document_type"},
 			},
 		},
 		{
