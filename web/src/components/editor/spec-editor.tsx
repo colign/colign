@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from "react";
 import { Bold, Italic, Heading2, Heading3, List, Code, MessageSquarePlus } from "lucide-react";
 import { getAccessToken } from "@/lib/auth";
 import { marked } from "marked";
+import DOMPurify from "isomorphic-dompurify";
 import * as Y from "yjs";
 
 interface SpecEditorProps {
@@ -45,8 +46,8 @@ function normalizeInitialContent(content: string | undefined): string | JSONCont
       // fall through
     }
   }
-  if (trimmed.startsWith("<")) return content;
-  return marked.parse(content, { async: false }) as string;
+  if (trimmed.startsWith("<")) return DOMPurify.sanitize(content);
+  return DOMPurify.sanitize(marked.parse(content, { async: false }) as string);
 }
 
 function toggleSmartCodeBlock(editor: TiptapEditor) {

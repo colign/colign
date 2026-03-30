@@ -1,6 +1,6 @@
 import type { Interceptor } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
-import { getAccessToken, getRefreshToken, saveTokens, clearTokens } from "./auth";
+import { getAccessToken, saveTokens, clearTokens } from "./auth";
 import { AuthService } from "@/gen/proto/auth/v1/auth_pb";
 import { createClient } from "@connectrpc/connect";
 
@@ -24,22 +24,14 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 
   refreshPromise = (async () => {
-    const refreshToken = getRefreshToken();
-    if (!refreshToken) {
-      clearTokens();
-      return null;
-    }
-
     try {
       const refreshClient = createClient(AuthService, plainTransport);
-      const res = await refreshClient.refreshToken({ refreshToken });
-      saveTokens(res.accessToken, res.refreshToken);
+      // Refresh token is sent via HttpOnly cookie (credentials: "include").
+      const res = await refreshClient.refreshToken({});
+      saveTokens(res.accessToken);
       return res.accessToken;
     } catch {
-      // Only clear when the token in storage is still the one that just failed.
-      if (getRefreshToken() === refreshToken) {
-        clearTokens();
-      }
+      clearTokens();
       return null;
     } finally {
       refreshPromise = null;

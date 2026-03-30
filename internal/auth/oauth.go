@@ -222,9 +222,9 @@ func (s *OAuthService) findOrCreateUser(ctx context.Context, provider string, in
 			account.ExpiresAt = token.Expiry.Unix()
 		}
 		_, _ = s.db.NewUpdate().Model(account).WherePK().Exec(ctx)
-		// Accept pending invitations on every login
+		// Accept pending invitations on every login (without domain-based auto-join)
 		if s.orgJoiner != nil {
-			s.orgJoiner.AutoJoinOrgs(ctx, account.User.ID, account.User.Email)
+			s.orgJoiner.AcceptPendingInvitations(ctx, account.User.ID, account.User.Email)
 		}
 		orgID := s.getDefaultOrgID(ctx, account.User.ID)
 		return account.User, orgID, nil
@@ -269,9 +269,13 @@ func (s *OAuthService) findOrCreateUser(ctx context.Context, provider string, in
 		return nil, 0, err
 	}
 
-	// Accept pending invitations on every login
+	// For new users: domain auto-join + invitations; for existing users: invitations only
 	if s.orgJoiner != nil {
-		s.orgJoiner.AutoJoinOrgs(ctx, user.ID, info.Email)
+		if isNewUser {
+			s.orgJoiner.AutoJoinOrgs(ctx, user.ID, info.Email)
+		} else {
+			s.orgJoiner.AcceptPendingInvitations(ctx, user.ID, info.Email)
+		}
 	}
 
 	var orgID int64

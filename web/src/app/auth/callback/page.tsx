@@ -1,22 +1,17 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { saveTokens } from "@/lib/auth";
+import { useRouter } from "next/navigation";
+import { isLoggedIn } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
   const { t } = useI18n();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
-    const accessToken = searchParams.get("access_token");
-    const refreshToken = searchParams.get("refresh_token");
-
-    if (accessToken && refreshToken) {
-      saveTokens(accessToken, refreshToken);
-      // Check for pending invitation
+    // Cookies are set by the server before redirect — just check and navigate.
+    if (isLoggedIn()) {
       const pendingInvite = sessionStorage.getItem("pending_invite_token");
       if (pendingInvite) {
         sessionStorage.removeItem("pending_invite_token");
@@ -27,7 +22,7 @@ export default function AuthCallbackPage() {
     } else {
       router.push("/auth");
     }
-  }, [searchParams, router]);
+  }, [router]);
 
   return (
     <div className="flex min-h-screen items-center justify-center">

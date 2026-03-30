@@ -11,32 +11,37 @@ export const authClient = createClient(AuthService, transport);
 
 export const AUTH_CHANGED_EVENT = "colign:auth-changed";
 
-const TOKEN_KEY = "colign_access_token";
-const REFRESH_KEY = "colign_refresh_token";
 const COOKIE_ACCESS = "colign_access_token";
-const COOKIE_REFRESH = "colign_refresh_token";
 
-export function saveTokens(accessToken: string, refreshToken: string) {
-  localStorage.setItem(TOKEN_KEY, accessToken);
-  localStorage.setItem(REFRESH_KEY, refreshToken);
+/**
+ * Save the access token cookie. The refresh token is HttpOnly
+ * and set by the server via Set-Cookie headers.
+ */
+export function saveTokens(accessToken: string, _refreshToken?: string) {
   setCookie(COOKIE_ACCESS, accessToken);
-  setCookie(COOKIE_REFRESH, refreshToken);
   dispatchAuthChanged();
 }
 
 export function getAccessToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY) || getCookie(COOKIE_ACCESS);
+  return getCookie(COOKIE_ACCESS);
 }
 
-export function getRefreshToken(): string | null {
-  return localStorage.getItem(REFRESH_KEY) || getCookie(COOKIE_REFRESH);
-}
-
-export function clearTokens() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(REFRESH_KEY);
+/**
+ * Clear the access token cookie and call the server logout
+ * endpoint to clear the HttpOnly refresh token cookie.
+ * Callers that navigate after logout should await this function.
+ */
+export async function clearTokens() {
   clearCookie(COOKIE_ACCESS);
-  clearCookie(COOKIE_REFRESH);
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+  try {
+    await fetch(`${apiUrl}/api/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch {
+    // Network error — cookie cleared client-side is enough to block new requests
+  }
   dispatchAuthChanged();
 }
 
@@ -110,15 +115,4 @@ function deriveCookieDomain(hostname: string): string {
   const parts = hostname.split(".");
   if (parts.length < 2) return "";
   return `.${parts.slice(-2).join(".")}`;
-}
-
-if (typeof window !== "undefined") {
-  const accessToken = localStorage.getItem(TOKEN_KEY);
-  const refreshToken = localStorage.getItem(REFRESH_KEY);
-  if (accessToken) {
-    setCookie(COOKIE_ACCESS, accessToken);
-  }
-  if (refreshToken) {
-    setCookie(COOKIE_REFRESH, refreshToken);
-  }
 }

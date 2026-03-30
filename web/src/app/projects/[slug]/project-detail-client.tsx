@@ -32,6 +32,7 @@ import { useEvents } from "@/lib/events";
 import { useI18n } from "@/lib/i18n";
 import { showError, showSuccess } from "@/lib/toast";
 import { marked } from "marked";
+import DOMPurify from "isomorphic-dompurify";
 import {
   Users,
   FileText,
@@ -1761,7 +1762,7 @@ function MemoryTab({
         </div>
         <ReadmeEditor
           initialContent={
-            content.startsWith("<") ? content : (marked.parse(content, { async: false }) as string)
+            DOMPurify.sanitize(content.startsWith("<") ? content : (marked.parse(content, { async: false }) as string))
           }
           onSave={handleMemorySave}
           placeholder="Write project memory — domain rules, business context, constraints..."

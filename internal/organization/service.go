@@ -297,6 +297,40 @@ func (s *Service) FindPendingInvitationsByEmail(ctx context.Context, email strin
 	return invitations, nil
 }
 
+// AcceptPendingInvitations accepts pending invitations without domain-based auto-join.
+// Use on every login to accept invitations without re-adding removed members.
+func (s *Service) AcceptPendingInvitations(ctx context.Context, userID int64, email string) (int64, error) {
+	var firstOrgID int64
+
+	invitations, err := s.FindPendingInvitationsByEmail(ctx, email)
+	if err != nil {
+		return 0, nil
+	}
+	for _, inv := range invitations {
+		member := &models.OrganizationMember{
+			OrganizationID: inv.OrganizationID,
+			UserID:         userID,
+			Role:           inv.Role,
+		}
+		if _, err := s.db.NewInsert().Model(member).
+			On("CONFLICT (organization_id, user_id) DO UPDATE").
+			Set("role = EXCLUDED.role").
+			Exec(ctx); err != nil {
+			continue
+		}
+		_, _ = s.db.NewUpdate().Model(&inv).
+			Set("status = ?", models.InvitationStatusAccepted).
+			WherePK().
+			Exec(ctx)
+
+		if firstOrgID == 0 {
+			firstOrgID = inv.OrganizationID
+		}
+	}
+
+	return firstOrgID, nil
+}
+
 // AutoJoinOrgs handles domain-based auto-join and pending invitation acceptance for a newly registered user.
 // Returns the org ID the user should default to (first joined org, or 0 if none).
 func (s *Service) AutoJoinOrgs(ctx context.Context, userID int64, email string) (int64, error) {

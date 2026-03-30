@@ -23,12 +23,17 @@ type ConnectHandler struct {
 	jwtManager        *auth.JWTManager
 	apiTokenValidator auth.APITokenValidator
 	orgSwitcher       OrgSwitcher
+	cookieOpts        auth.BrowserSessionOptions
 }
 
 var _ organizationv1connect.OrganizationServiceHandler = (*ConnectHandler)(nil)
 
-func NewConnectHandler(service *Service, jwtManager *auth.JWTManager, apiTokenValidator auth.APITokenValidator, orgSwitcher OrgSwitcher) *ConnectHandler {
-	return &ConnectHandler{service: service, jwtManager: jwtManager, apiTokenValidator: apiTokenValidator, orgSwitcher: orgSwitcher}
+func NewConnectHandler(service *Service, jwtManager *auth.JWTManager, apiTokenValidator auth.APITokenValidator, orgSwitcher OrgSwitcher, opts ...auth.BrowserSessionOptions) *ConnectHandler {
+	h := &ConnectHandler{service: service, jwtManager: jwtManager, apiTokenValidator: apiTokenValidator, orgSwitcher: orgSwitcher}
+	if len(opts) > 0 {
+		h.cookieOpts = opts[0]
+	}
+	return h
 }
 
 func (h *ConnectHandler) extractClaims(ctx context.Context, header string) (*auth.Claims, error) {
@@ -87,12 +92,14 @@ func (h *ConnectHandler) SwitchOrganization(ctx context.Context, req *connect.Re
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	return connect.NewResponse(&organizationv1.SwitchOrganizationResponse{
+	res := connect.NewResponse(&organizationv1.SwitchOrganizationResponse{
 		AccessToken:  tokenPair.AccessToken,
 		RefreshToken: tokenPair.RefreshToken,
 		ExpiresAt:    tokenPair.ExpiresAt,
 		Organization: orgToProto(org),
-	}), nil
+	})
+	auth.AppendBrowserSessionCookies(res.Header(), tokenPair, h.cookieOpts)
+	return res, nil
 }
 
 func (h *ConnectHandler) CreateOrganization(ctx context.Context, req *connect.Request[organizationv1.CreateOrganizationRequest]) (*connect.Response[organizationv1.CreateOrganizationResponse], error) {

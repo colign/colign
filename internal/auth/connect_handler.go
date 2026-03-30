@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"net/http"
 
@@ -102,17 +104,42 @@ func (h *ConnectHandler) VerifyEmail(ctx context.Context, req *connect.Request[a
 }
 
 func (h *ConnectHandler) GetOAuthURL(ctx context.Context, req *connect.Request[authv1.GetOAuthURLRequest]) (*connect.Response[authv1.GetOAuthURLResponse], error) {
-	url, err := h.oauthService.GetAuthURL(req.Msg.Provider, "state") // TODO: proper state management
+	stateBytes := make([]byte, 16)
+	if _, err := rand.Read(stateBytes); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	state := hex.EncodeToString(stateBytes)
+
+	url, err := h.oauthService.GetAuthURL(req.Msg.Provider, state)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	return connect.NewResponse(&authv1.GetOAuthURLResponse{
+	res := connect.NewResponse(&authv1.GetOAuthURLResponse{
 		Url: url,
-	}), nil
+	})
+	cookie := &http.Cookie{
+		Name:     "oauth_state",
+		Value:    state,
+		Path:     "/",
+		Domain:   h.cookieOpts.Domain,
+		MaxAge:   600,
+		HttpOnly: true,
+		Secure:   h.cookieOpts.Secure,
+		SameSite: http.SameSiteLaxMode,
+	}
+	res.Header().Add("Set-Cookie", cookie.String())
+	return res, nil
 }
 
 func (h *ConnectHandler) OAuthCallback(ctx context.Context, req *connect.Request[authv1.OAuthCallbackRequest]) (*connect.Response[authv1.OAuthCallbackResponse], error) {
+	// Validate OAuth state against cookie
+	cookieReq := &http.Request{Header: http.Header{"Cookie": req.Header().Values("Cookie")}}
+	stateCookie, err := cookieReq.Cookie("oauth_state")
+	if err != nil || stateCookie.Value != req.Msg.State {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid oauth state"))
+	}
+
 	tokenPair, err := h.oauthService.HandleCallback(ctx, req.Msg.Provider, req.Msg.Code)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)

@@ -48,7 +48,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         err instanceof ConnectError &&
         (err.code === Code.Unauthenticated || err.code === Code.NotFound)
       ) {
-        clearTokens();
+        await clearTokens();
         setHasToken(false);
         router.replace("/auth");
       }

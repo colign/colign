@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -121,6 +120,13 @@ func (s *Server) setupRoutes(cfg *config.Config) error {
 	s.mux.HandleFunc("GET /api/auth/{provider}", oauthHandler.Redirect)
 	s.mux.HandleFunc("GET /api/auth/{provider}/callback", oauthHandler.Callback)
 
+	// Logout — clears HttpOnly session cookies
+	s.mux.HandleFunc("POST /api/auth/logout", func(w http.ResponseWriter, r *http.Request) {
+		auth.ClearBrowserSessionCookies(w, cookieOpts)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	})
+
 	// API Token service (Connect) — must be created first as it serves as APITokenValidator
 	apiTokenService := apitoken.NewService(s.db)
 	authService.SetAPITokenValidator(apiTokenService)
@@ -147,7 +153,7 @@ func (s *Server) setupRoutes(cfg *config.Config) error {
 	s.mux.Handle(projectPath, projectHandler)
 
 	// Organization service (Connect handler)
-	orgConnectHandler := organization.NewConnectHandler(orgService, s.jwtManager, apiTokenService, authService)
+	orgConnectHandler := organization.NewConnectHandler(orgService, s.jwtManager, apiTokenService, authService, cookieOpts)
 	orgPath, orgHandler := organizationv1connect.NewOrganizationServiceHandler(orgConnectHandler)
 	s.mux.Handle(orgPath, orgHandler)
 
@@ -265,7 +271,7 @@ func (s *Server) setupRoutes(cfg *config.Config) error {
 }
 
 func (s *Server) Handler() http.Handler {
-	return corsMiddleware(browserCookieAuthMiddleware(s.mux), s.cfg.FrontendURL)
+	return securityHeaders(corsMiddleware(browserCookieAuthMiddleware(s.mux), s.cfg.FrontendURL))
 }
 
 func (s *Server) Close() error {
@@ -278,7 +284,7 @@ func corsMiddleware(next http.Handler, allowOrigin string) http.Handler {
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		if origin == allowOrigin || strings.HasPrefix(origin, "http://localhost:") {
+		if origin == allowOrigin {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization, Connect-Protocol-Version, Mcp-Session-Id, Last-Event-ID")
@@ -292,6 +298,16 @@ func corsMiddleware(next http.Handler, allowOrigin string) http.Handler {
 			return
 		}
 
+		next.ServeHTTP(w, r)
+	})
+}
+
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 		next.ServeHTTP(w, r)
 	})
 }

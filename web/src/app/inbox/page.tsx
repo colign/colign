@@ -168,7 +168,7 @@ export default function InboxPage() {
       }
       if (n.organizationId > 0n && currentOrgId !== Number(n.organizationId)) {
         const res = await orgClient.switchOrganization({ organizationId: n.organizationId });
-        saveTokens(res.accessToken, res.refreshToken);
+        saveTokens(res.accessToken);
       }
       router.push(targetHref);
     } catch (err) {

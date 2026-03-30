@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { orgClient } from "./organization";
-import { AUTH_CHANGED_EVENT, getAccessToken, saveTokens } from "./auth";
+import { AUTH_CHANGED_EVENT, isLoggedIn, saveTokens } from "./auth";
 import { showError } from "@/lib/toast";
 
 interface Org {
@@ -33,8 +33,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const loadOrgs = useCallback(async () => {
-    const token = getAccessToken();
-    if (!token) {
+    if (!isLoggedIn()) {
       setOrgs([]);
       setCurrentOrgId(null);
       setLoading(false);

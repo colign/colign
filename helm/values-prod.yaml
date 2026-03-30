@@ -28,7 +28,7 @@ externalDatabase:
   host: "192.168.0.58"
   port: 55432
   username: "postgres"
-  password: "1q2w3e4r"
+  password: ""  # Set via --set externalDatabase.password=... or use externalDatabase.url with existingSecret
   database: "colign"
   schema: "colign"
-  sslmode: "disable"
+  sslmode: "require"

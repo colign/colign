@@ -6,6 +6,7 @@ import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { marked } from "marked";
+import DOMPurify from "isomorphic-dompurify";
 import { useI18n } from "@/lib/i18n";
 import { documentClient } from "@/lib/document";
 import { useEvents } from "@/lib/events";
@@ -81,8 +82,8 @@ const SECTIONS: SectionConfig[] = [
 function normalizeSectionContent(content: string): string {
   const trimmed = content.trim();
   if (!trimmed) return "";
-  if (trimmed.startsWith("<")) return content;
-  return marked.parse(content, { async: false }) as string;
+  if (trimmed.startsWith("<")) return DOMPurify.sanitize(content);
+  return DOMPurify.sanitize(marked.parse(content, { async: false }) as string);
 }
 
 function getPlainText(content: string): string {

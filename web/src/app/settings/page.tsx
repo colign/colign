@@ -253,8 +253,8 @@ export default function SettingsPage() {
           <Separator className="my-4" />
 
           <button
-            onClick={() => {
-              clearTokens();
+            onClick={async () => {
+              await clearTokens();
               router.push("/auth");
             }}
             className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-destructive transition-colors duration-200 hover:bg-destructive/10"

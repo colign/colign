@@ -67,5 +67,5 @@ func (h *OAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	SetBrowserSessionCookies(w, tokenPair, h.cookieOpts)
-	http.Redirect(w, r, h.frontendURL+"/auth/callback?access_token="+tokenPair.AccessToken+"&refresh_token="+tokenPair.RefreshToken, http.StatusTemporaryRedirect)
+	http.Redirect(w, r, h.frontendURL+"/auth/callback", http.StatusTemporaryRedirect)
 }

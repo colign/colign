@@ -27,8 +27,11 @@ var (
 // OrgJoiner handles auto-joining organizations on registration.
 type OrgJoiner interface {
 	// AutoJoinOrgs joins the user to orgs matching their email domain or pending invitations.
-	// Returns the first org ID joined, or 0 if none.
+	// Returns the first org ID joined, or 0 if none. Use only for new user registration.
 	AutoJoinOrgs(ctx context.Context, userID int64, email string) (int64, error)
+	// AcceptPendingInvitations accepts pending invitations without domain-based auto-join.
+	// Use on every login to accept invitations without re-adding removed members.
+	AcceptPendingInvitations(ctx context.Context, userID int64, email string) (int64, error)
 }
 
 type Service struct {
@@ -170,9 +173,9 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*TokenPair, erro
 		return nil, ErrInvalidCredentials
 	}
 
-	// Accept pending invitations on every login
+	// Accept pending invitations on every login (without domain-based auto-join)
 	if s.orgJoiner != nil {
-		s.orgJoiner.AutoJoinOrgs(ctx, user.ID, req.Email)
+		s.orgJoiner.AcceptPendingInvitations(ctx, user.ID, req.Email)
 	}
 
 	// Get user's first organization, or create one if none exists

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"net/url"
 	"os"
 
@@ -32,12 +33,25 @@ type Config struct {
 func Load() (*Config, error) {
 	frontendURL := getEnv("FRONTEND_URL", "http://localhost:3000")
 	redirectBaseURL := getEnv("REDIRECT_BASE_URL", "http://localhost:8080")
+
+	debug := getEnv("DEBUG", "") == "true" || getEnv("DEBUG", "") == "1"
+	jwtSecret := getEnv("JWT_SECRET", "")
+	if jwtSecret == "" {
+		if debug {
+			jwtSecret = "dev-secret-change-in-production"
+		} else {
+			return nil, fmt.Errorf("JWT_SECRET environment variable is required in production")
+		}
+	}
+
+	aiEncryptionKey := getEnv("AI_ENCRYPTION_KEY", "")
+
 	return &Config{
 		Port:                getEnv("PORT", "8080"),
-		Debug:               getEnv("DEBUG", "") != "",
+		Debug:               debug,
 		DatabaseURL:         getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/colign?sslmode=disable"),
 		RedisURL:            getEnv("REDIS_URL", "redis://localhost:6379"),
-		JWTSecret:           getEnv("JWT_SECRET", "dev-secret-change-in-production"),
+		JWTSecret:           jwtSecret,
 		ClaudeAPIKey:        getEnv("CLAUDE_API_KEY", ""),
 		GitHubClientID:      getEnv("GITHUB_CLIENT_ID", ""),
 		GitHubClientSecret:  getEnv("GITHUB_CLIENT_SECRET", ""),
@@ -51,7 +65,7 @@ func Load() (*Config, error) {
 		HocuspocusAPISecret: getEnv("HOCUSPOCUS_API_SECRET", ""),
 		CookieDomain:        getEnv("AUTH_COOKIE_DOMAIN", deriveCookieDomain(frontendURL, redirectBaseURL)),
 		CookieSecure:        deriveCookieSecure(frontendURL, redirectBaseURL),
-		AIEncryptionKey:     getEnv("AI_ENCRYPTION_KEY", ""),
+		AIEncryptionKey:     aiEncryptionKey,
 	}, nil
 }
 
