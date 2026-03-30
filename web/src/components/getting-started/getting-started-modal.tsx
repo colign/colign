@@ -46,7 +46,7 @@ export function GettingStartedModal({ open, onOpenChange }: GettingStartedModalP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl p-0 overflow-hidden">
+      <DialogContent className="flex max-h-[calc(100vh-2rem)] flex-col overflow-hidden p-0 sm:max-w-2xl">
         <div className="border-b border-border/60 bg-gradient-to-br from-primary/10 via-background to-emerald-500/8 px-6 py-6">
           <DialogHeader className="gap-3">
             <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary/80">
@@ -62,7 +62,7 @@ export function GettingStartedModal({ open, onOpenChange }: GettingStartedModalP
           </DialogHeader>
         </div>
 
-        <div className="grid gap-4 px-6 py-6">
+        <div className="grid flex-1 gap-4 overflow-y-auto px-6 py-6">
           <section className="rounded-xl border border-border/60 bg-card/70 p-4">
             <div className="mb-3 flex items-center gap-2">
               <TerminalSquare className="h-4 w-4 text-primary" />
