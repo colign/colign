@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { useI18n } from "@/lib/i18n";
 import { useOrg } from "@/lib/org-context";
+import { useEvents } from "@/lib/events";
 import { projectClient } from "@/lib/project";
 import { toChangePath, toProjectPath } from "@/lib/project-ref";
 import { FolderKanban, PenLine, FileText, CheckCircle2, ChevronRight } from "lucide-react";
@@ -53,58 +54,70 @@ function timeAgo(seconds: bigint | undefined): string {
 export default function DashboardPage() {
   const { t } = useI18n();
   const { currentOrg } = useOrg();
+  const { on } = useEvents();
   const [projects, setProjects] = useState<Project[]>([]);
   const [allChanges, setAllChanges] = useState<
     { change: Change; projectId: bigint; projectSlug: string; projectName: string }[]
   >([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await projectClient.listProjects({});
-        const projectList = res.projects.map((p) => ({
-          id: p.id,
-          name: p.name,
-          slug: p.slug,
-          description: p.description,
-          createdAt: p.createdAt ? { seconds: p.createdAt.seconds } : undefined,
-        }));
-        setProjects(projectList);
+  const load = useCallback(async () => {
+    try {
+      const res = await projectClient.listProjects({});
+      const projectList = res.projects.map((p) => ({
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        description: p.description,
+        createdAt: p.createdAt ? { seconds: p.createdAt.seconds } : undefined,
+      }));
+      setProjects(projectList);
 
-        // Load changes for all projects
-        const changeResults = await Promise.all(
-          projectList.map(async (project) => {
-            try {
-              const changesRes = await projectClient.listChanges({ projectId: project.id });
-              return changesRes.changes.map((c) => ({
-                change: {
-                  id: c.id,
-                  projectId: c.projectId,
-                  name: c.name,
-                  identifier: c.identifier,
-                  stage: c.stage,
-                  updatedAt: c.updatedAt ? { seconds: c.updatedAt.seconds } : undefined,
-                  labels: (c.labels ?? []).map((l) => ({ id: l.id, name: l.name, color: l.color })),
-                },
-                projectId: project.id,
-                projectSlug: project.slug,
-                projectName: project.name,
-              }));
-            } catch {
-              return [];
-            }
-          }),
-        );
-        setAllChanges(changeResults.flat());
-      } catch (err) {
-        showError(t("toast.projectLoadFailed"), err);
-      } finally {
-        setLoading(false);
-      }
+      // Load changes for all projects
+      const changeResults = await Promise.all(
+        projectList.map(async (project) => {
+          try {
+            const changesRes = await projectClient.listChanges({ projectId: project.id });
+            return changesRes.changes.map((c) => ({
+              change: {
+                id: c.id,
+                projectId: c.projectId,
+                name: c.name,
+                identifier: c.identifier,
+                stage: c.stage,
+                updatedAt: c.updatedAt ? { seconds: c.updatedAt.seconds } : undefined,
+                labels: (c.labels ?? []).map((l) => ({ id: l.id, name: l.name, color: l.color })),
+              },
+              projectId: project.id,
+              projectSlug: project.slug,
+              projectName: project.name,
+            }));
+          } catch {
+            return [];
+          }
+        }),
+      );
+      setAllChanges(changeResults.flat());
+    } catch (err) {
+      showError(t("toast.projectLoadFailed"), err);
+    } finally {
+      setLoading(false);
     }
+  }, [t]);
+
+  useEffect(() => {
     load();
-  }, [currentOrg]);
+  }, [currentOrg, load]);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    return on((event) => {
+      if (event.type === "change_updated" || event.type === "change_created") {
+        clearTimeout(timer);
+        timer = setTimeout(load, 500);
+      }
+    });
+  }, [on, load]);
 
   const draftChanges = allChanges.filter((c) => c.change.stage === "draft");
   const specChanges = allChanges.filter((c) => c.change.stage === "spec");

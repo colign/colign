@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { DayPicker } from "react-day-picker";
-import { Calendar } from "lucide-react";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
 interface DatePickerProps {
@@ -43,23 +43,16 @@ export function DatePicker({ value, placeholder = "Pick a date", onChange }: Dat
           selected ? "text-foreground/80" : "text-muted-foreground/60",
         )}
       >
-        <Calendar className="size-3.5 text-muted-foreground/60" />
+        <CalendarIcon className="size-3.5 text-muted-foreground/60" />
         <span>{selected ? selected.toLocaleDateString() : placeholder}</span>
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 z-50 mt-1 rounded-lg border border-border bg-popover p-2 shadow-lg">
-          <DayPicker
+        <div className="absolute top-full left-0 z-50 mt-1 rounded-lg border border-border bg-popover shadow-lg">
+          <Calendar
             mode="single"
             selected={selected}
             onSelect={handleSelect}
-            classNames={{
-              root: "text-sm",
-              day: "size-8 rounded-md text-center hover:bg-accent",
-              selected: "bg-primary text-primary-foreground",
-              today: "font-bold",
-              chevron: "text-muted-foreground",
-            }}
           />
         </div>
       )}
