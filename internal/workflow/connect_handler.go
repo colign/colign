@@ -46,7 +46,7 @@ func (h *ConnectHandler) GetStatus(ctx context.Context, req *connect.Request[wor
 		return nil, err
 	}
 
-	stage, conditions, err := h.service.GetStatus(ctx, req.Msg.ChangeId, claims.OrgID)
+	stage, _, conditions, err := h.service.GetStatus(ctx, req.Msg.ChangeId, claims.OrgID)
 	if err != nil {
 		if errors.Is(err, ErrChangeNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, err)

@@ -31,8 +31,8 @@ func TestAdvance_ArchivedChange(t *testing.T) {
 	ctx := context.Background()
 
 	archivedAt := time.Now()
-	rows := sqlmock.NewRows([]string{"id", "project_id", "name", "stage", "change_type", "created_at", "updated_at", "archived_at"}).
-		AddRow(int64(1), int64(1), "Test Change", "approved", "feature", time.Now(), time.Now(), archivedAt)
+	rows := sqlmock.NewRows([]string{"id", "project_id", "name", "stage", "sub_status", "change_type", "created_at", "updated_at", "archived_at"}).
+		AddRow(int64(1), int64(1), "Test Change", "approved", "in_progress", "feature", time.Now(), time.Now(), archivedAt)
 	mock.ExpectQuery("SELECT").WillReturnRows(rows)
 
 	stage, err := svc.Advance(ctx, 1, 1, 1)
@@ -60,8 +60,8 @@ func TestRevert_ArchivedChange(t *testing.T) {
 	ctx := context.Background()
 
 	archivedAt := time.Now()
-	rows := sqlmock.NewRows([]string{"id", "project_id", "name", "stage", "change_type", "created_at", "updated_at", "archived_at"}).
-		AddRow(int64(1), int64(1), "Test Change", "approved", "feature", time.Now(), time.Now(), archivedAt)
+	rows := sqlmock.NewRows([]string{"id", "project_id", "name", "stage", "sub_status", "change_type", "created_at", "updated_at", "archived_at"}).
+		AddRow(int64(1), int64(1), "Test Change", "approved", "in_progress", "feature", time.Now(), time.Now(), archivedAt)
 	mock.ExpectQuery("SELECT").WillReturnRows(rows)
 
 	err := svc.Revert(ctx, 1, 1, "rollback", 1)
@@ -75,8 +75,8 @@ func TestEvaluateAndAdvance_ArchivedChange(t *testing.T) {
 	ctx := context.Background()
 
 	archivedAt := time.Now()
-	rows := sqlmock.NewRows([]string{"id", "project_id", "name", "stage", "change_type", "created_at", "updated_at", "archived_at"}).
-		AddRow(int64(1), int64(1), "Test Change", "approved", "feature", time.Now(), time.Now(), archivedAt)
+	rows := sqlmock.NewRows([]string{"id", "project_id", "name", "stage", "sub_status", "change_type", "created_at", "updated_at", "archived_at"}).
+		AddRow(int64(1), int64(1), "Test Change", "approved", "in_progress", "feature", time.Now(), time.Now(), archivedAt)
 	mock.ExpectQuery("SELECT").WillReturnRows(rows)
 
 	advanced, err := svc.EvaluateAndAdvance(ctx, 1, 1)

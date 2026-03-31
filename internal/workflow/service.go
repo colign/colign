@@ -17,6 +17,7 @@ var (
 	ErrInvalidTransition = errors.New("invalid stage transition")
 	ErrGateNotMet        = errors.New("gate conditions not met")
 	ErrChangeArchived    = errors.New("cannot modify archived change")
+	ErrInvalidSubStatus  = errors.New("invalid sub-status")
 )
 
 type Service struct {
@@ -65,6 +66,7 @@ func (s *Service) EvaluateAndAdvance(ctx context.Context, changeID int64, orgID 
 	// Advance
 	_, err = s.db.NewUpdate().Model((*models.Change)(nil)).
 		Set("stage = ?", next).
+		Set("sub_status = ?", models.SubStatusInProgress).
 		Set("updated_at = ?", time.Now()).
 		Where("id = ?", changeID).
 		Exec(ctx)
@@ -113,6 +115,7 @@ func (s *Service) Advance(ctx context.Context, changeID int64, userID int64, org
 
 	_, err = s.db.NewUpdate().Model((*models.Change)(nil)).
 		Set("stage = ?", next).
+		Set("sub_status = ?", models.SubStatusInProgress).
 		Set("updated_at = ?", time.Now()).
 		Where("id = ?", changeID).
 		Exec(ctx)
@@ -159,6 +162,7 @@ func (s *Service) Revert(ctx context.Context, changeID int64, userID int64, reas
 
 	_, err = s.db.NewUpdate().Model((*models.Change)(nil)).
 		Set("stage = ?", prev).
+		Set("sub_status = ?", models.SubStatusInProgress).
 		Set("updated_at = ?", time.Now()).
 		Where("id = ?", changeID).
 		Exec(ctx)
@@ -179,8 +183,8 @@ func (s *Service) Revert(ctx context.Context, changeID int64, userID int64, reas
 	return nil
 }
 
-// GetStatus returns the current gate conditions for a change.
-func (s *Service) GetStatus(ctx context.Context, changeID int64, orgID int64) (models.ChangeStage, []GateCondition, error) {
+// GetStatus returns the current stage, sub-status, and gate conditions for a change.
+func (s *Service) GetStatus(ctx context.Context, changeID int64, orgID int64) (models.ChangeStage, models.SubStatus, []GateCondition, error) {
 	change := new(models.Change)
 	err := s.db.NewSelect().Model(change).
 		Join("JOIN projects AS p ON p.id = ch.project_id").
@@ -189,18 +193,49 @@ func (s *Service) GetStatus(ctx context.Context, changeID int64, orgID int64) (m
 		Scan(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "", nil, ErrChangeNotFound
+			return "", "", nil, ErrChangeNotFound
 		}
-		return "", nil, err
+		return "", "", nil, err
 	}
 
 	input, err := s.buildGateInput(ctx, change)
 	if err != nil {
-		return "", nil, err
+		return "", "", nil, err
 	}
 
 	conditions := s.gate.Check(change.Stage, *input)
-	return change.Stage, conditions, nil
+	return change.Stage, change.SubStatus, conditions, nil
+}
+
+// SetSubStatus sets the sub-status for a change.
+func (s *Service) SetSubStatus(ctx context.Context, changeID int64, subStatus models.SubStatus, orgID int64) error {
+	if !subStatus.IsValid() {
+		return ErrInvalidSubStatus
+	}
+
+	change := new(models.Change)
+	err := s.db.NewSelect().Model(change).
+		Join("JOIN projects AS p ON p.id = ch.project_id").
+		Where("ch.id = ?", changeID).
+		Where("p.organization_id = ?", orgID).
+		Scan(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrChangeNotFound
+		}
+		return err
+	}
+
+	if change.ArchivedAt != nil {
+		return ErrChangeArchived
+	}
+
+	_, err = s.db.NewUpdate().Model((*models.Change)(nil)).
+		Set("sub_status = ?", subStatus).
+		Set("updated_at = ?", time.Now()).
+		Where("id = ?", changeID).
+		Exec(ctx)
+	return err
 }
 
 func (s *Service) buildGateInput(_ context.Context, _ *models.Change) (*GateInput, error) {

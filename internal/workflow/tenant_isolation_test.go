@@ -61,9 +61,10 @@ func TestGetStatus_CrossTenantBlocked(t *testing.T) {
 
 	mock.ExpectQuery("SELECT").WillReturnError(sql.ErrNoRows)
 
-	stage, conditions, err := svc.GetStatus(ctx, 1, wrongOrgID)
+	stage, subStatus, conditions, err := svc.GetStatus(ctx, 1, wrongOrgID)
 	require.ErrorIs(t, err, ErrChangeNotFound)
 	require.Equal(t, "", string(stage))
+	require.Equal(t, "", string(subStatus))
 	require.Nil(t, conditions)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
