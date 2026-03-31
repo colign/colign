@@ -5,10 +5,10 @@ package ai
 
 import (
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/uptrace/bun"
 
@@ -28,19 +28,19 @@ func NewActivityHandler(db *bun.DB, jwtManager *auth.JWTManager, apiTokenValidat
 }
 
 type activityItem struct {
-	Type      string `json:"type" bun:"type"`
-	Title     string `json:"title" bun:"title"`
-	UserID    int64  `json:"userId" bun:"user_id"`
-	UserName  string `json:"userName" bun:"user_name"`
-	CreatedAt string `json:"createdAt" bun:"created_at"`
-	Detail    string `json:"detail,omitempty" bun:"detail"`
+	Type      string    `json:"type" bun:"type"`
+	Title     string    `json:"title" bun:"title"`
+	UserID    int64     `json:"userId" bun:"user_id"`
+	UserName  string    `json:"userName" bun:"user_name"`
+	CreatedAt time.Time `json:"createdAt" bun:"created_at"`
+	Detail    string    `json:"detail,omitempty" bun:"detail"`
 }
 
 // HandleGetActivities returns a unified activity timeline for a change.
 func (h *ActivityHandler) HandleGetActivities(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	claims, err := auth.ResolveFromHeader(h.jwtManager, nil, ctx, r.Header.Get("Authorization"))
+	claims, err := auth.ResolveFromHeader(h.jwtManager, h.apiTokenValidator, ctx, r.Header.Get("Authorization"))
 	if err != nil {
 		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 		return
@@ -74,7 +74,7 @@ func (h *ActivityHandler) HandleGetActivities(w http.ResponseWriter, r *http.Req
 				we.action AS title,
 				we.user_id,
 				COALESCE(u.name, '') AS user_name,
-				we.created_at::text AS created_at,
+				we.created_at AS created_at,
 				we.from_stage || ' → ' || we.to_stage AS detail
 			FROM colign.workflow_events we
 			LEFT JOIN colign.users u ON u.id = we.user_id
@@ -87,7 +87,7 @@ func (h *ActivityHandler) HandleGetActivities(w http.ResponseWriter, r *http.Req
 				t.title,
 				COALESCE(t.creator_id, 0),
 				COALESCE(u.name, '') AS user_name,
-				t.created_at::text AS created_at,
+				t.created_at AS created_at,
 				'' AS detail
 			FROM colign.tasks t
 			LEFT JOIN colign.users u ON u.id = t.creator_id
@@ -98,11 +98,12 @@ func (h *ActivityHandler) HandleGetActivities(w http.ResponseWriter, r *http.Req
 			SELECT
 				'doc_' || d.type AS type,
 				CASE d.type WHEN 'proposal' THEN 'Proposal updated' WHEN 'spec' THEN 'Spec updated' ELSE d.title END,
-				0,
-				'' AS user_name,
-				d.updated_at::text AS created_at,
+				COALESCE(d.updated_by, 0),
+				COALESCE(u.name, '') AS user_name,
+				d.updated_at AS created_at,
 				'' AS detail
 			FROM colign.documents d
+			LEFT JOIN colign.users u ON u.id = d.updated_by
 			WHERE d.change_id = ?
 
 			UNION ALL
@@ -110,11 +111,12 @@ func (h *ActivityHandler) HandleGetActivities(w http.ResponseWriter, r *http.Req
 			SELECT
 				'ac_created' AS type,
 				ac.scenario,
-				0,
-				'' AS user_name,
-				ac.created_at::text AS created_at,
+				COALESCE(ac.created_by, 0),
+				COALESCE(u.name, '') AS user_name,
+				ac.created_at AS created_at,
 				'' AS detail
 			FROM colign.acceptance_criteria ac
+			LEFT JOIN colign.users u ON u.id = ac.created_by
 			WHERE ac.change_id = ?
 
 			UNION ALL
@@ -124,7 +126,7 @@ func (h *ActivityHandler) HandleGetActivities(w http.ResponseWriter, r *http.Req
 				LEFT(c.body, 80) AS title,
 				c.user_id,
 				COALESCE(u.name, '') AS user_name,
-				c.created_at::text AS created_at,
+				c.created_at AS created_at,
 				'' AS detail
 			FROM colign.comments c
 			LEFT JOIN colign.users u ON u.id = c.user_id
@@ -136,7 +138,7 @@ func (h *ActivityHandler) HandleGetActivities(w http.ResponseWriter, r *http.Req
 
 	if err != nil {
 		slog.ErrorContext(ctx, "activity: query failed", slog.String("error", err.Error()))
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+		http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
 		return
 	}
 

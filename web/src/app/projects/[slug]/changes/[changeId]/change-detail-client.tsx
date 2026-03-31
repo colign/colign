@@ -1027,34 +1027,42 @@ export default function ChangeDetailClient() {
             </div>
           )}
           {activeTab === "history" && (
-            <div className="space-y-1">
+            <div className="py-2">
               {activities.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t("change.noEvents")}</p>
               ) : (
-                <ul className="space-y-3">
+                <ul className="space-y-0">
                   {activities.map((item, i) => {
                     const Icon = activityIcon(item.type);
                     const color = activityColor(item.type);
                     const label = activityLabel(item.type, t);
                     const time = item.createdAt ? new Date(item.createdAt).toLocaleString() : "";
                     return (
-                      <li key={`${item.type}-${i}`} className="relative pl-7">
-                        <div className={`absolute left-0 top-1 flex size-5 items-center justify-center rounded-full ${color}`}>
-                          <Icon className="size-3" />
+                      <li key={`${item.type}-${i}`} className="relative pl-10 pb-6 last:pb-0">
+                        {/* Timeline line */}
+                        {i < activities.length - 1 && (
+                          <div className="absolute left-[15px] top-8 bottom-0 w-px bg-border/50" />
+                        )}
+                        {/* Icon */}
+                        <div className={`absolute left-0 top-0.5 flex size-8 items-center justify-center rounded-full ${color}`}>
+                          <Icon className="size-4" />
                         </div>
-                        <div className="flex items-baseline gap-2 flex-wrap">
-                          <span className="text-xs font-medium text-muted-foreground">{label}</span>
-                          {item.userName && (
-                            <span className="text-xs text-muted-foreground/70">{item.userName}</span>
+                        {/* Content */}
+                        <div className="pt-0.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-medium text-foreground">{label}</span>
+                            {item.userName && (
+                              <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{item.userName}</span>
+                            )}
+                          </div>
+                          <p className="mt-1 text-sm text-foreground/80">{item.title}</p>
+                          {item.detail && (
+                            <p className="mt-0.5 text-sm text-muted-foreground">{item.detail}</p>
                           )}
                           {time && (
-                            <span className="text-xs text-muted-foreground/50">{time}</span>
+                            <p className="mt-1 text-xs text-muted-foreground/50">{time}</p>
                           )}
                         </div>
-                        <p className="text-sm text-foreground">{item.title}</p>
-                        {item.detail && (
-                          <p className="text-xs text-muted-foreground">{item.detail}</p>
-                        )}
                       </li>
                     );
                   })}
