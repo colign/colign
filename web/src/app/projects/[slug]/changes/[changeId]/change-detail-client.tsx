@@ -376,7 +376,7 @@ export default function ChangeDetailClient() {
 
   return (
     <AIPanelProvider>
-    <div className="flex min-h-screen flex-col">
+    <div className="flex h-dvh flex-col">
       <Header
         breadcrumbs={[
           { label: projectName, href: toProjectPath({ id: projectId, slug: projectSlug }) },
@@ -400,8 +400,8 @@ export default function ChangeDetailClient() {
       />
 
       {/* Main Content + AI Side Panel */}
-      <div className="relative flex flex-1">
-        <div className="min-w-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
+        <div className="min-w-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-5xl px-6 py-6">
           <div className="-mx-6 overflow-x-clip px-6 pb-2">
             {/* Stage Progress — Desktop */}

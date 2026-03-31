@@ -266,21 +266,6 @@ export function StructuredProposal({
     setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
-  const isReviewMode = currentStage === "approved";
-
-  const isProposalEmpty =
-    !getPlainText(sections.problem) &&
-    !getPlainText(sections.scope) &&
-    !getPlainText(sections.outOfScope);
-
   const handleAIApply = useCallback((applied: { problem: string; scope: string; outOfScope: string }) => {
     setSections((prev) => ({
       ...prev,
@@ -306,6 +291,21 @@ export function StructuredProposal({
     window.addEventListener(AI_APPLY_PROPOSAL_EVENT, handlePanelApply);
     return () => window.removeEventListener(AI_APPLY_PROPOSAL_EVENT, handlePanelApply);
   }, [handleAIApply]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  const isReviewMode = currentStage === "approved";
+
+  const isProposalEmpty =
+    !getPlainText(sections.problem) &&
+    !getPlainText(sections.scope) &&
+    !getPlainText(sections.outOfScope);
 
   return (
     <div className="flex items-stretch gap-4 py-4">
