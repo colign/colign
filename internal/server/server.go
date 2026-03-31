@@ -212,7 +212,7 @@ func (s *Server) setupRoutes(cfg *config.Config) error {
 	s.mux.HandleFunc("POST /api/ai/generate-ac", aiHandler.HandleGenerateAC)
 	s.mux.HandleFunc("POST /api/ai/chat", aiHandler.HandleChat)
 	s.mux.HandleFunc("POST /api/ai/execute-tool", aiHandler.HandleExecuteTool)
-	activityHandler := ai.NewActivityHandler(s.db, s.jwtManager)
+	activityHandler := ai.NewActivityHandler(s.db, s.jwtManager, apiTokenService)
 	s.mux.HandleFunc("GET /api/changes/activities", activityHandler.HandleGetActivities)
 
 	// Public OG metadata endpoint (no auth required)
