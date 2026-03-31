@@ -31,6 +31,7 @@ message GetStatusRequest {
 message GetStatusResponse {
   string stage = 1;
   repeated GateCondition conditions = 2;
+  string sub_status = 3;
 }
 
 message ApproveRequest {
@@ -90,6 +91,14 @@ message SetApprovalPolicyRequest {
 
 message SetApprovalPolicyResponse {}
 
+message SetSubStatusRequest {
+  int64 change_id = 1;
+  string sub_status = 2;
+  int64 project_id = 3;
+}
+
+message SetSubStatusResponse {}
+
 service WorkflowService {
   rpc GetStatus(GetStatusRequest) returns (GetStatusResponse) {}
   rpc Advance(AdvanceRequest) returns (AdvanceResponse) {}
@@ -98,4 +107,5 @@ service WorkflowService {
   rpc Revert(RevertRequest) returns (RevertResponse) {}
   rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse) {}
   rpc SetApprovalPolicy(SetApprovalPolicyRequest) returns (SetApprovalPolicyResponse) {}
+  rpc SetSubStatus(SetSubStatusRequest) returns (SetSubStatusResponse) {}
 }

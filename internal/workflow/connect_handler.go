@@ -46,7 +46,7 @@ func (h *ConnectHandler) GetStatus(ctx context.Context, req *connect.Request[wor
 		return nil, err
 	}
 
-	stage, _, conditions, err := h.service.GetStatus(ctx, req.Msg.ChangeId, claims.OrgID)
+	stage, subStatus, conditions, err := h.service.GetStatus(ctx, req.Msg.ChangeId, claims.OrgID)
 	if err != nil {
 		if errors.Is(err, ErrChangeNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, err)
@@ -65,6 +65,7 @@ func (h *ConnectHandler) GetStatus(ctx context.Context, req *connect.Request[wor
 
 	return connect.NewResponse(&workflowv1.GetStatusResponse{
 		Stage:      string(stage),
+		SubStatus:  string(subStatus),
 		Conditions: protoConditions,
 	}), nil
 }
@@ -293,4 +294,26 @@ func (h *ConnectHandler) SetApprovalPolicy(ctx context.Context, req *connect.Req
 	}
 
 	return connect.NewResponse(&workflowv1.SetApprovalPolicyResponse{}), nil
+}
+
+func (h *ConnectHandler) SetSubStatus(ctx context.Context, req *connect.Request[workflowv1.SetSubStatusRequest]) (*connect.Response[workflowv1.SetSubStatusResponse], error) {
+	claims, err := h.extractClaims(ctx, req.Header().Get("Authorization"))
+	if err != nil {
+		return nil, err
+	}
+
+	subStatus := models.SubStatus(req.Msg.SubStatus)
+	if err := h.service.SetSubStatus(ctx, req.Msg.ChangeId, subStatus, claims.OrgID); err != nil {
+		if errors.Is(err, ErrChangeNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		if errors.Is(err, ErrInvalidSubStatus) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	h.publishChangeEvent(req.Msg.ChangeId, "")
+
+	return connect.NewResponse(&workflowv1.SetSubStatusResponse{}), nil
 }

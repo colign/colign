@@ -18,6 +18,17 @@ func StageOrder() []ChangeStage {
 	return []ChangeStage{StageDraft, StageSpec, StageApproved}
 }
 
+type SubStatus string
+
+const (
+	SubStatusInProgress SubStatus = "in_progress"
+	SubStatusReady      SubStatus = "ready"
+)
+
+func (s SubStatus) IsValid() bool {
+	return s == SubStatusInProgress || s == SubStatusReady
+}
+
 type ChangeType string
 
 const (
@@ -34,6 +45,7 @@ type Change struct {
 	Number     int         `bun:"number,notnull"`
 	Name       string      `bun:"name,notnull"`
 	Stage      ChangeStage `bun:"stage,notnull,default:'draft'"`
+	SubStatus  SubStatus   `bun:"sub_status,notnull,default:'in_progress'"`
 	ChangeType ChangeType  `bun:"change_type,notnull,default:'feature'"`
 	CreatedAt  time.Time   `bun:"created_at,notnull,default:current_timestamp"`
 	UpdatedAt  time.Time   `bun:"updated_at,notnull,default:current_timestamp"`

@@ -619,6 +619,7 @@ func changeToProto(c *models.Change, projectIdentifier string) *projectv1.Change
 		ProjectId: c.ProjectID,
 		Name:      c.Name,
 		Stage:     string(c.Stage),
+		SubStatus: string(c.SubStatus),
 		CreatedAt: timestamppb.New(c.CreatedAt),
 		UpdatedAt: timestamppb.New(c.UpdatedAt),
 		Number:    int32(c.Number),
