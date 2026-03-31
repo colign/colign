@@ -6,8 +6,10 @@ import { useI18n } from "@/lib/i18n";
 import { useAIPanel } from "./ai-panel-context";
 import { ChatMessageList } from "./chat-message-list";
 import { ChatInput } from "./chat-input";
-import { streamChat, loadChatHistory, deleteChatSession } from "@/lib/ai";
-import { showError } from "@/lib/toast";
+import { streamChat, loadChatHistory, deleteChatSession, executeTool } from "@/lib/ai";
+import { aiConfigClient } from "@/lib/aiconfig";
+import { showError, showSuccess } from "@/lib/toast";
+import { parseChatResult } from "./parse-chat-result";
 import type { AIChatMode, ChatMessage } from "./types";
 
 interface AISidePanelProps {
@@ -27,9 +29,32 @@ export function AISidePanel({ changeId, projectId }: AISidePanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [aiConfigured, setAiConfigured] = useState<boolean | null>(null); // null = loading
+  const [toolExecuting, setToolExecuting] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  void projectId;
+  // Check if AI is configured (project-level or org-level)
+  useEffect(() => {
+    let cancelled = false;
+
+    async function check() {
+      try {
+        const [projectRes, orgRes] = await Promise.all([
+          aiConfigClient.getAIConfig({ projectId }).catch(() => null),
+          aiConfigClient.getOrgAIConfig({}).catch(() => null),
+        ]);
+        if (cancelled) return;
+        const hasProject = !!projectRes?.config?.provider;
+        const hasOrg = !!orgRes?.config?.provider;
+        setAiConfigured(hasProject || hasOrg);
+      } catch {
+        if (!cancelled) setAiConfigured(false);
+      }
+    }
+
+    check();
+    return () => { cancelled = true; };
+  }, [projectId]);
 
   // Load chat history on mount
   useEffect(() => {
@@ -118,6 +143,40 @@ export function AISidePanel({ changeId, projectId }: AISidePanelProps) {
               return updated;
             });
           }
+
+          if (chunk.tool_call) {
+            setMessages((prev) => {
+              const updated = [...prev];
+              const last = updated[updated.length - 1];
+              updated[updated.length - 1] = {
+                ...last,
+                pendingToolCall: {
+                  id: chunk.tool_call!.id,
+                  name: chunk.tool_call!.name,
+                  args: chunk.tool_call!.args,
+                },
+              };
+              return updated;
+            });
+          }
+        }
+        // After streaming completes, parse the final message for structured results
+        if (!abort.signal.aborted) {
+          setMessages((prev) => {
+            const updated = [...prev];
+            const last = updated[updated.length - 1];
+            if (last?.role === "assistant" && last.content && !last.result) {
+              const { result, cleanContent } = parseChatResult(last.content);
+              if (result) {
+                updated[updated.length - 1] = {
+                  ...last,
+                  content: cleanContent,
+                  result,
+                };
+              }
+            }
+            return updated;
+          });
         }
       } catch (err) {
         if (abort.signal.aborted) return;
@@ -144,6 +203,55 @@ export function AISidePanel({ changeId, projectId }: AISidePanelProps) {
       ),
     );
   }, []);
+
+  const handleToolConfirm = useCallback(async (messageId: string) => {
+    const msg = messages.find((m) => m.id === messageId);
+    if (!msg?.pendingToolCall) return;
+
+    setToolExecuting(true);
+    try {
+      await executeTool(
+        changeId,
+        msg.pendingToolCall.name,
+        JSON.stringify(msg.pendingToolCall.args),
+        msg.pendingToolCall.id,
+        true,
+      );
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId ? { ...m, toolExecuted: true } : m,
+        ),
+      );
+      showSuccess(t("ai.toolExecuted"));
+    } catch (err) {
+      showError(t("ai.connectionError"), err);
+    } finally {
+      setToolExecuting(false);
+    }
+  }, [messages, changeId, t]);
+
+  const handleToolReject = useCallback(async (messageId: string) => {
+    const msg = messages.find((m) => m.id === messageId);
+    if (!msg?.pendingToolCall) return;
+
+    try {
+      await executeTool(
+        changeId,
+        msg.pendingToolCall.name,
+        JSON.stringify(msg.pendingToolCall.args),
+        msg.pendingToolCall.id,
+        false,
+      );
+    } catch {
+      // Rejection is best-effort
+    }
+
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId ? { ...m, toolExecuted: true } : m,
+      ),
+    );
+  }, [messages, changeId]);
 
   function handleNewConversation() {
     abortRef.current?.abort();
@@ -208,7 +316,19 @@ export function AISidePanel({ changeId, projectId }: AISidePanelProps) {
         </div>
 
         {/* Chat Area */}
-        {messages.length === 0 ? (
+        {aiConfigured === false ? (
+          <div className="flex flex-1 flex-col items-center justify-center px-6">
+            <div className="flex size-12 items-center justify-center rounded-full bg-muted">
+              <Sparkles className="size-6 text-muted-foreground/50" />
+            </div>
+            <p className="mt-4 text-sm font-medium text-foreground">
+              {t("ai.notConfiguredTitle")}
+            </p>
+            <p className="mt-1.5 text-center text-xs leading-relaxed text-muted-foreground">
+              {t("ai.notConfiguredDescription")}
+            </p>
+          </div>
+        ) : messages.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center px-6">
             <div className="flex size-12 items-center justify-center rounded-full bg-primary/10">
               <Sparkles className="size-6 text-primary" />
@@ -221,11 +341,18 @@ export function AISidePanel({ changeId, projectId }: AISidePanelProps) {
             </p>
           </div>
         ) : (
-          <ChatMessageList messages={messages} isStreaming={isStreaming} onMarkApplied={handleMarkApplied} />
+          <ChatMessageList
+            messages={messages}
+            isStreaming={isStreaming}
+            onMarkApplied={handleMarkApplied}
+            onToolConfirm={handleToolConfirm}
+            onToolReject={handleToolReject}
+            toolExecuting={toolExecuting}
+          />
         )}
 
         {/* Input */}
-        <ChatInput onSend={handleSend} disabled={isStreaming} />
+        <ChatInput onSend={handleSend} disabled={isStreaming || aiConfigured !== true} />
       </div>
     </div>
   );

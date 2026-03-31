@@ -11,10 +11,18 @@ export interface ChatACResult {
   steps: { keyword: string; text: string }[];
 }
 
+export interface PendingToolCall {
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   result?: ChatProposalResult | ChatACResult[];
   appliedAt?: string;
+  pendingToolCall?: PendingToolCall;
+  toolExecuted?: boolean; // true after user confirmed/rejected
 }

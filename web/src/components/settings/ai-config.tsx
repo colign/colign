@@ -59,10 +59,13 @@ export function AIConfigSettings({ projectId }: AIConfigSettingsProps) {
   const [apiKey, setApiKey] = useState("");
   const [apiKeyMasked, setApiKeyMasked] = useState("");
   const [includeProjectContext, setIncludeProjectContext] = useState(false);
+  const [hasProjectConfig, setHasProjectConfig] = useState(false);
+  const [orgConfig, setOrgConfig] = useState<{ provider: string; model: string } | null>(null);
 
   useEffect(() => {
     setLoading(true);
-    aiConfigClient
+
+    const loadProject = aiConfigClient
       .getAIConfig({ projectId })
       .then((res) => {
         if (res.config) {
@@ -70,12 +73,25 @@ export function AIConfigSettings({ projectId }: AIConfigSettingsProps) {
           setModel(res.config.model);
           setApiKeyMasked(res.config.apiKeyMasked);
           setIncludeProjectContext(res.config.includeProjectContext);
+          setHasProjectConfig(true);
         }
       })
       .catch((err: unknown) => {
         showError(t("toast.loadFailed"), err);
+      });
+
+    const loadOrg = aiConfigClient
+      .getOrgAIConfig({})
+      .then((res) => {
+        if (res.config && res.config.provider) {
+          setOrgConfig({ provider: res.config.provider, model: res.config.model });
+        }
       })
-      .finally(() => {
+      .catch(() => {
+        // Org config may not exist
+      });
+
+    Promise.all([loadProject, loadOrg]).finally(() => {
         setLoading(false);
       });
   }, [projectId, t]);
@@ -155,6 +171,18 @@ export function AIConfigSettings({ projectId }: AIConfigSettingsProps) {
         <CardDescription>{t("aiConfig.notConfigured")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
+        {/* Org config notice */}
+        {orgConfig && !hasProjectConfig && (
+          <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-3">
+            <p className="text-sm text-blue-400">
+              {t("aiConfig.orgConfigActive", { provider: orgConfig.provider, model: orgConfig.model })}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t("aiConfig.orgConfigHint")}
+            </p>
+          </div>
+        )}
+
         {/* Provider */}
         <div className="space-y-2">
           <Label>{t("aiConfig.provider")}</Label>

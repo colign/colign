@@ -111,6 +111,7 @@
     "gateConditions": "Gate Conditions",
     "history": "History",
     "noEvents": "No events yet",
+    "historyBy": "by {{name}}",
     "approve": "Approve",
     "requestChanges": "Request Changes",
     "revert": "Revert",
@@ -311,7 +312,14 @@
     "openPanel": "Open AI Assistant",
     "closePanel": "Close AI Assistant",
     "newConversation": "New conversation",
-    "applyResult": "Apply to editor"
+    "applyResult": "Apply to editor",
+    "notConfiguredTitle": "AI not configured",
+    "notConfiguredDescription": "Register your API key in Settings > AI & API Keys to use the AI Assistant.",
+    "toolWriteProposal": "Update Proposal",
+    "toolCreateAC": "Create Acceptance Criteria",
+    "toolConfirm": "Confirm",
+    "toolReject": "Cancel",
+    "toolExecuted": "Executed"
   },
   "aiConfig": {
     "title": "AI Configuration",
@@ -325,7 +333,9 @@
     "includeContext": "Include project context",
     "includeContextHelp": "Include project README and recent changes in AI prompts",
     "save": "Save",
-    "notConfigured": "Configure AI settings to use AI features"
+    "notConfigured": "Configure AI settings to use AI features",
+    "orgConfigActive": "Organization default is active: {{provider}} / {{model}}",
+    "orgConfigHint": "This project will use the organization setting. You can override it below with a project-specific configuration."
   },
   "settings": {
     "title": "Settings",

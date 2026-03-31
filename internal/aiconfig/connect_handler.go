@@ -148,6 +148,103 @@ func (h *ConnectHandler) DeleteAIConfig(ctx context.Context, req *connect.Reques
 	return connect.NewResponse(&aiconfigv1.DeleteAIConfigResponse{}), nil
 }
 
+// GetOrgAIConfig returns the AI configuration for the caller's organization.
+func (h *ConnectHandler) GetOrgAIConfig(ctx context.Context, req *connect.Request[aiconfigv1.GetOrgAIConfigRequest]) (*connect.Response[aiconfigv1.GetOrgAIConfigResponse], error) {
+	claims, err := auth.ResolveFromHeader(h.jwtManager, h.apiTokenValidator, ctx, req.Header().Get("Authorization"))
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	cfg, err := h.service.GetByOrgID(ctx, claims.OrgID)
+	if err != nil {
+		slog.ErrorContext(ctx, "aiconfig: GetByOrgID failed",
+			slog.Int64("org_id", claims.OrgID),
+			slog.String("error", err.Error()),
+		)
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	resp := &aiconfigv1.GetOrgAIConfigResponse{}
+	if cfg != nil {
+		decrypted, decErr := h.service.DecryptOrgAPIKey(cfg)
+		if decErr != nil {
+			slog.ErrorContext(ctx, "aiconfig: decrypt org api key failed",
+				slog.Int64("org_id", claims.OrgID),
+				slog.String("error", decErr.Error()),
+			)
+			return nil, connect.NewError(connect.CodeInternal, decErr)
+		}
+		resp.Config = orgConfigToProto(cfg, decrypted)
+	}
+
+	return connect.NewResponse(resp), nil
+}
+
+// SaveOrgAIConfig creates or updates the AI configuration for the caller's organization.
+func (h *ConnectHandler) SaveOrgAIConfig(ctx context.Context, req *connect.Request[aiconfigv1.SaveOrgAIConfigRequest]) (*connect.Response[aiconfigv1.SaveOrgAIConfigResponse], error) {
+	claims, err := auth.ResolveFromHeader(h.jwtManager, h.apiTokenValidator, ctx, req.Header().Get("Authorization"))
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	cfg, err := h.service.UpsertOrg(ctx, claims.OrgID, OrgUpsertInput{
+		Provider: req.Msg.Provider,
+		Model:    req.Msg.Model,
+		APIKey:   req.Msg.ApiKey,
+	})
+	if err != nil {
+		slog.ErrorContext(ctx, "aiconfig: UpsertOrg failed",
+			slog.Int64("org_id", claims.OrgID),
+			slog.String("error", err.Error()),
+		)
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	decrypted, decErr := h.service.DecryptOrgAPIKey(cfg)
+	if decErr != nil {
+		slog.ErrorContext(ctx, "aiconfig: decrypt org api key after upsert failed",
+			slog.Int64("org_id", claims.OrgID),
+			slog.String("error", decErr.Error()),
+		)
+		return nil, connect.NewError(connect.CodeInternal, decErr)
+	}
+
+	return connect.NewResponse(&aiconfigv1.SaveOrgAIConfigResponse{
+		Config: orgConfigToProto(cfg, decrypted),
+	}), nil
+}
+
+// DeleteOrgAIConfig removes the AI configuration for the caller's organization.
+func (h *ConnectHandler) DeleteOrgAIConfig(ctx context.Context, req *connect.Request[aiconfigv1.DeleteOrgAIConfigRequest]) (*connect.Response[aiconfigv1.DeleteOrgAIConfigResponse], error) {
+	claims, err := auth.ResolveFromHeader(h.jwtManager, h.apiTokenValidator, ctx, req.Header().Get("Authorization"))
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	if err := h.service.DeleteOrg(ctx, claims.OrgID); err != nil {
+		slog.ErrorContext(ctx, "aiconfig: DeleteOrg failed",
+			slog.Int64("org_id", claims.OrgID),
+			slog.String("error", err.Error()),
+		)
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&aiconfigv1.DeleteOrgAIConfigResponse{}), nil
+}
+
+// orgConfigToProto converts an OrgAIConfig model to a proto message.
+func orgConfigToProto(cfg *OrgAIConfig, decryptedKey string) *aiconfigv1.OrgAIConfigProto {
+	return &aiconfigv1.OrgAIConfigProto{
+		Id:         cfg.ID,
+		OrgId:      cfg.OrgID,
+		Provider:   cfg.Provider,
+		Model:      cfg.Model,
+		ApiKeyMasked: MaskAPIKey(decryptedKey),
+		CreatedAt:  timestamppb.New(cfg.CreatedAt),
+		UpdatedAt:  timestamppb.New(cfg.UpdatedAt),
+	}
+}
+
 // verifyProjectOwnership checks that the given project belongs to the given org.
 // Returns a connect.CodeNotFound error if the project does not exist in the org.
 func (h *ConnectHandler) verifyProjectOwnership(ctx context.Context, projectID, orgID int64) error {

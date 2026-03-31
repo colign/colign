@@ -30,6 +30,7 @@ interface WorkflowEvent {
   action: string;
   reason: string;
   userName: string;
+  createdAt?: { seconds: bigint };
 }
 
 const stageConfig: Record<
@@ -173,6 +174,7 @@ export default function ChangeDetailClient() {
           action: e.action,
           reason: e.reason,
           userName: e.userName,
+          createdAt: e.createdAt ? { seconds: e.createdAt.seconds } : undefined,
         })),
       );
       setChangeName(changeRes.change?.name ?? "");
@@ -995,7 +997,14 @@ export default function ChangeDetailClient() {
                       <div className="flex items-baseline gap-2">
                         <p className="text-sm font-medium">{event.action.replace("_", " ")}</p>
                         {event.userName && (
-                          <span className="text-xs text-muted-foreground">by {event.userName}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {t("change.historyBy", { name: event.userName })}
+                          </span>
+                        )}
+                        {event.createdAt && (
+                          <span className="text-xs text-muted-foreground/60">
+                            {new Date(Number(event.createdAt.seconds) * 1000).toLocaleString()}
+                          </span>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground">

@@ -26,6 +26,7 @@ import { clearTokens } from "@/lib/auth";
 import { transport } from "@/lib/connect";
 import { OrgMembers } from "@/components/settings/org-members";
 import { showError, showSuccess } from "@/lib/toast";
+import { aiConfigClient } from "@/lib/aiconfig";
 
 type SettingsTab = "profile" | "account" | "organization" | "ai" | "appearance" | "notifications";
 
@@ -73,8 +74,12 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState("");
 
   // AI state
-  const [claudeApiKey, setClaudeApiKey] = useState("");
+  const [aiProvider, setAiProvider] = useState("");
+  const [aiModel, setAiModel] = useState("");
+  const [aiApiKey, setAiApiKey] = useState("");
+  const [aiApiKeyMasked, setAiApiKeyMasked] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
+  const [aiTesting, setAiTesting] = useState(false);
 
   // API Token state
   const [tokens, setTokens] = useState<ApiToken[]>([]);
@@ -127,6 +132,19 @@ export default function SettingsPage() {
   useEffect(() => {
     if (activeTab === "ai") {
       loadTokens();
+      // Load org AI config
+      aiConfigClient
+        .getOrgAIConfig({})
+        .then((res) => {
+          if (res.config) {
+            setAiProvider(res.config.provider);
+            setAiModel(res.config.model);
+            setAiApiKeyMasked(res.config.apiKeyMasked);
+          }
+        })
+        .catch(() => {
+          // Config may not exist yet
+        });
     }
   }, [activeTab, loadTokens]);
 
@@ -184,6 +202,27 @@ export default function SettingsPage() {
             },
           }),
         );
+        showSuccess(t("toast.saveSuccess"));
+      } catch (err) {
+        showError(t("toast.saveFailed"), err);
+      } finally {
+        setSaving(false);
+      }
+      showSaved(section);
+      return;
+    }
+
+    if (section === "ai") {
+      try {
+        const res = await aiConfigClient.saveOrgAIConfig({
+          provider: aiProvider,
+          model: aiModel,
+          apiKey: aiApiKey,
+        });
+        if (res.config) {
+          setAiApiKeyMasked(res.config.apiKeyMasked);
+          setAiApiKey("");
+        }
         showSuccess(t("toast.saveSuccess"));
       } catch (err) {
         showError(t("toast.saveFailed"), err);
@@ -476,16 +515,87 @@ export default function SettingsPage() {
                     {t("settings.aiApiKeysDesc")}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-5">
+                  {/* Provider */}
                   <div className="space-y-2">
-                    <Label htmlFor="claude-key">{t("settings.claudeApiKey")}</Label>
+                    <Label>{t("aiConfig.provider")}</Label>
+                    <Select
+                      value={aiProvider}
+                      onValueChange={(v) => {
+                        if (!v) return;
+                        setAiProvider(v);
+                        setAiModel("");
+                      }}
+                    >
+                      <SelectTrigger className="cursor-pointer">
+                        <SelectValue placeholder={t("aiConfig.provider")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="openai" className="cursor-pointer">
+                          OpenAI
+                        </SelectItem>
+                        <SelectItem value="anthropic" className="cursor-pointer">
+                          Anthropic
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Model */}
+                  <div className="space-y-2">
+                    <Label>{t("aiConfig.model")}</Label>
+                    <Select
+                      value={aiModel}
+                      onValueChange={(v) => v && setAiModel(v)}
+                      disabled={!aiProvider}
+                    >
+                      <SelectTrigger className="cursor-pointer">
+                        <SelectValue placeholder={t("aiConfig.model")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(() => {
+                          const knownModels = aiProvider === "openai"
+                            ? [
+                                { value: "gpt-5.4", label: "GPT-5.4" },
+                                { value: "gpt-5.4-mini", label: "GPT-5.4 mini" },
+                                { value: "gpt-5.4-nano", label: "GPT-5.4 nano" },
+                                { value: "gpt-4o", label: "GPT-4o" },
+                                { value: "gpt-4o-mini", label: "GPT-4o mini" },
+                              ]
+                            : aiProvider === "anthropic"
+                              ? [
+                                  { value: "claude-opus-4-6", label: "Claude Opus 4.6" },
+                                  { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
+                                  { value: "claude-opus-4-1-20250805", label: "Claude Opus 4.1" },
+                                  { value: "claude-opus-4-20250514", label: "Claude Opus 4" },
+                                  { value: "claude-sonnet-4-20250514", label: "Claude Sonnet 4" },
+                                  { value: "claude-3-7-sonnet-20250219", label: "Claude Sonnet 3.7" },
+                                  { value: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5" },
+                                  { value: "claude-3-5-haiku-20241022", label: "Claude Haiku 3.5" },
+                                ]
+                              : [];
+                          const models = aiModel && knownModels.every((m) => m.value !== aiModel)
+                            ? [...knownModels, { value: aiModel, label: `${aiModel} (custom)` }]
+                            : knownModels;
+                          return models.map((option) => (
+                            <SelectItem key={option.value} value={option.value} className="cursor-pointer">
+                              {option.label}
+                            </SelectItem>
+                          ));
+                        })()}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* API Key */}
+                  <div className="space-y-2">
+                    <Label>{t("aiConfig.apiKey")}</Label>
                     <div className="flex gap-2">
                       <Input
-                        id="claude-key"
                         type={showApiKey ? "text" : "password"}
-                        value={claudeApiKey}
-                        onChange={(e) => setClaudeApiKey(e.target.value)}
-                        placeholder="sk-ant-..."
+                        value={aiApiKey}
+                        onChange={(e) => setAiApiKey(e.target.value)}
+                        placeholder={aiApiKeyMasked || t("aiConfig.apiKeyPlaceholder")}
                         className="flex-1"
                       />
                       <Button
@@ -501,10 +611,39 @@ export default function SettingsPage() {
                       {t("settings.apiKeySecurityNote")}
                     </p>
                   </div>
+
+                  {/* Actions */}
                   <div className="flex items-center gap-3 pt-2">
                     <Button
+                      variant="outline"
+                      onClick={async () => {
+                        if (!aiProvider || !aiModel) return;
+                        setAiTesting(true);
+                        try {
+                          const res = await aiConfigClient.testConnection({
+                            provider: aiProvider,
+                            model: aiModel,
+                            apiKey: aiApiKey,
+                          });
+                          if (res.success) {
+                            showSuccess(t("aiConfig.testSuccess"));
+                          } else {
+                            showError(t("aiConfig.testFailed"), res.error ? new Error(res.error) : undefined);
+                          }
+                        } catch (err) {
+                          showError(t("aiConfig.testFailed"), err);
+                        } finally {
+                          setAiTesting(false);
+                        }
+                      }}
+                      disabled={aiTesting || !aiProvider || !aiModel || !aiApiKey}
+                      className="cursor-pointer"
+                    >
+                      {aiTesting ? t("common.loading") : t("aiConfig.testConnection")}
+                    </Button>
+                    <Button
                       onClick={() => handleSave("ai")}
-                      disabled={saving}
+                      disabled={saving || !aiProvider || !aiModel || (!aiApiKey && !aiApiKeyMasked)}
                       className="cursor-pointer"
                     >
                       {saving ? t("common.saving") : t("settings.saveApiKey")}

@@ -37,9 +37,37 @@ message TestConnectionResponse { bool success = 1; string error = 2; }
 message DeleteAIConfigRequest { int64 project_id = 1; }
 message DeleteAIConfigResponse {}
 
+// Org-level AI configuration messages
+message OrgAIConfigProto {
+  int64 id = 1;
+  int64 org_id = 2;
+  string provider = 3;
+  string model = 4;
+  string api_key_masked = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message GetOrgAIConfigRequest {}
+message GetOrgAIConfigResponse { optional OrgAIConfigProto config = 1; }
+
+message SaveOrgAIConfigRequest {
+  string provider = 1;
+  string model = 2;
+  string api_key = 3;
+}
+message SaveOrgAIConfigResponse { OrgAIConfigProto config = 1; }
+
+message DeleteOrgAIConfigRequest {}
+message DeleteOrgAIConfigResponse {}
+
 service AIConfigService {
   rpc GetAIConfig(GetAIConfigRequest) returns (GetAIConfigResponse) {}
   rpc SaveAIConfig(SaveAIConfigRequest) returns (SaveAIConfigResponse) {}
   rpc TestConnection(TestConnectionRequest) returns (TestConnectionResponse) {}
   rpc DeleteAIConfig(DeleteAIConfigRequest) returns (DeleteAIConfigResponse) {}
+  // Org-level AI configuration
+  rpc GetOrgAIConfig(GetOrgAIConfigRequest) returns (GetOrgAIConfigResponse) {}
+  rpc SaveOrgAIConfig(SaveOrgAIConfigRequest) returns (SaveOrgAIConfigResponse) {}
+  rpc DeleteOrgAIConfig(DeleteOrgAIConfigRequest) returns (DeleteOrgAIConfigResponse) {}
 }

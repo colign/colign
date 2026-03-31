@@ -210,6 +210,8 @@ func (s *Server) setupRoutes(cfg *config.Config) error {
 	aiHandler := ai.NewHandler(aiService, aiService, s.jwtManager, aiConfigService, s.db)
 	s.mux.HandleFunc("POST /api/ai/generate-proposal", aiHandler.HandleGenerateProposal)
 	s.mux.HandleFunc("POST /api/ai/generate-ac", aiHandler.HandleGenerateAC)
+	s.mux.HandleFunc("POST /api/ai/chat", aiHandler.HandleChat)
+	s.mux.HandleFunc("POST /api/ai/execute-tool", aiHandler.HandleExecuteTool)
 
 	// Public OG metadata endpoint (no auth required)
 	s.mux.HandleFunc("GET /api/og/projects/{slug}/changes/{changeId}", func(w http.ResponseWriter, r *http.Request) {

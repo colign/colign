@@ -17,7 +17,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <Toaster
             position="bottom-right"
             toastOptions={{
-              className: "!bg-card !text-foreground !border-border",
+              className: "!bg-card !text-foreground !border-border [&>[data-close-button]]:!left-auto [&>[data-close-button]]:!right-0",
             }}
             closeButton
           />

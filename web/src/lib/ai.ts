@@ -133,9 +133,16 @@ export async function* streamProposal(
 }
 
 // Chat message for conversational AI
+export interface ToolCallInfo {
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
+}
+
 export interface ChatStreamChunk {
   content?: string;
   result?: unknown; // ChatProposalResult | ChatACResult[] — parsed by caller
+  tool_call?: ToolCallInfo;
   done?: boolean;
 }
 
@@ -190,6 +197,35 @@ export async function* streamChat(
       }
     }
   }
+}
+
+// Execute a confirmed tool call
+export async function executeTool(
+  changeId: number | bigint,
+  toolName: string,
+  toolArgs: string,
+  toolId: string,
+  approved: boolean
+): Promise<string> {
+  const res = await fetchWithAuth(`${API_BASE}/api/ai/execute-tool`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      changeId: Number(changeId),
+      toolName,
+      toolArgs,
+      toolId,
+      approved,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || "Failed to execute tool");
+  }
+
+  const data = await res.json();
+  return data.result;
 }
 
 // Load chat history for a change

@@ -4,12 +4,16 @@ import { useCallback, useEffect, useRef } from "react";
 import { Bot, User } from "lucide-react";
 import { ChatProposalResultCard, dispatchApplyProposal } from "./chat-proposal-result";
 import { ChatACResultCard, dispatchApplyAC } from "./chat-ac-result";
+import { ChatToolConfirm } from "./chat-tool-confirm";
 import type { ChatMessage, ChatProposalResult, ChatACResult } from "./types";
 
 interface ChatMessageListProps {
   messages: ChatMessage[];
   isStreaming: boolean;
   onMarkApplied: (messageId: string) => void;
+  onToolConfirm?: (messageId: string) => void;
+  onToolReject?: (messageId: string) => void;
+  toolExecuting?: boolean;
 }
 
 function isProposalResult(result: unknown): result is ChatProposalResult {
@@ -20,7 +24,7 @@ function isACResult(result: unknown): result is ChatACResult[] {
   return Array.isArray(result) && result.length > 0 && "scenario" in result[0];
 }
 
-export function ChatMessageList({ messages, isStreaming, onMarkApplied }: ChatMessageListProps) {
+export function ChatMessageList({ messages, isStreaming, onMarkApplied, onToolConfirm, onToolReject, toolExecuting }: ChatMessageListProps) {
   const endRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -100,6 +104,17 @@ export function ChatMessageList({ messages, isStreaming, onMarkApplied }: ChatMe
                 results={msg.result}
                 appliedAt={msg.appliedAt}
                 onApply={(selected) => handleApplyAC(msg.id, selected)}
+              />
+            )}
+
+            {/* Tool confirmation card */}
+            {msg.pendingToolCall && (
+              <ChatToolConfirm
+                toolCall={msg.pendingToolCall}
+                onConfirm={() => onToolConfirm?.(msg.id)}
+                onReject={() => onToolReject?.(msg.id)}
+                executed={msg.toolExecuted}
+                disabled={toolExecuting}
               />
             )}
           </div>

@@ -111,6 +111,7 @@
     "gateConditions": "게이트 조건",
     "history": "히스토리",
     "noEvents": "이벤트 없음",
+    "historyBy": "{{name}}",
     "approve": "승인",
     "requestChanges": "변경 요청",
     "revert": "되돌리기",
@@ -311,7 +312,14 @@
     "openPanel": "AI 어시스턴트 열기",
     "closePanel": "AI 어시스턴트 닫기",
     "newConversation": "새 대화",
-    "applyResult": "에디터에 적용"
+    "applyResult": "에디터에 적용",
+    "notConfiguredTitle": "AI가 설정되지 않았습니다",
+    "notConfiguredDescription": "설정 > AI & API Keys에서 API 키를 등록하면 AI 어시스턴트를 사용할 수 있습니다.",
+    "toolWriteProposal": "Proposal 수정",
+    "toolCreateAC": "수락 기준 생성",
+    "toolConfirm": "확인",
+    "toolReject": "취소",
+    "toolExecuted": "실행 완료"
   },
   "aiConfig": {
     "title": "AI 설정",
@@ -325,7 +333,9 @@
     "includeContext": "프로젝트 컨텍스트 포함",
     "includeContextHelp": "AI 프롬프트에 프로젝트 README와 최근 변경사항을 포함합니다",
     "save": "저장",
-    "notConfigured": "AI 기능을 사용하려면 AI 설정을 완료해주세요"
+    "notConfigured": "AI 기능을 사용하려면 AI 설정을 완료해주세요",
+    "orgConfigActive": "조직 기본 설정 사용 중: {{provider}} / {{model}}",
+    "orgConfigHint": "이 프로젝트는 조직 설정을 사용합니다. 아래에서 프로젝트별 설정으로 재정의할 수 있습니다."
   },
   "settings": {
     "title": "설정",

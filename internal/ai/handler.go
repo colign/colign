@@ -95,13 +95,30 @@ func (h *Handler) resolveAIConfig(r *http.Request) (*aiconfig.AIConfig, *auth.Cl
 		return nil, nil, nil, errNotFound
 	}
 
-	// 5. Load AI config
+	// 5. Load AI config (project-level first, then org-level fallback)
 	cfg, err := h.configSvc.GetByProjectID(ctx, projectID)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("internal: %w", err)
 	}
 	if cfg == nil {
-		return nil, nil, nil, errAINotConfigured
+		// Fallback to org-level config
+		orgCfg, orgErr := h.configSvc.GetByOrgID(ctx, claims.OrgID)
+		if orgErr != nil {
+			return nil, nil, nil, fmt.Errorf("internal: %w", orgErr)
+		}
+		if orgCfg == nil {
+			return nil, nil, nil, errAINotConfigured
+		}
+		// Convert org config to project config shape for downstream consumers
+		cfg = &aiconfig.AIConfig{
+			ID:              orgCfg.ID,
+			Provider:        orgCfg.Provider,
+			Model:           orgCfg.Model,
+			APIKeyEncrypted: orgCfg.APIKeyEncrypted,
+			KeyVersion:      orgCfg.KeyVersion,
+			CreatedAt:       orgCfg.CreatedAt,
+			UpdatedAt:       orgCfg.UpdatedAt,
+		}
 	}
 
 	return cfg, claims, &req, nil
