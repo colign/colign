@@ -228,6 +228,31 @@ export async function executeTool(
   return data.result;
 }
 
+// Load unified activity timeline for a change
+export interface ActivityItem {
+  type: string;
+  title: string;
+  userId: number;
+  userName: string;
+  createdAt: string;
+  detail?: string;
+}
+
+export async function loadActivities(
+  changeId: number | bigint
+): Promise<ActivityItem[]> {
+  const res = await fetchWithAuth(
+    `${API_BASE}/api/changes/activities?changeId=${Number(changeId)}`,
+    { method: "GET" },
+  );
+
+  if (!res.ok) {
+    return [];
+  }
+
+  return res.json();
+}
+
 // Load chat history for a change
 export interface ChatHistoryMessage {
   id: string;

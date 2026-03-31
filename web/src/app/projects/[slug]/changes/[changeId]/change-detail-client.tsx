@@ -8,7 +8,8 @@ import { workflowClient } from "@/lib/workflow";
 import { projectClient } from "@/lib/project";
 import { isCanonicalProjectRef, toProjectPath } from "@/lib/project-ref";
 import { showError } from "@/lib/toast";
-import { Archive, ArchiveRestore, Plus, Trash2 } from "lucide-react";
+import { loadActivities, type ActivityItem } from "@/lib/ai";
+import { Archive, ArchiveRestore, ArrowRight, FileText, ListChecks, MessageSquare, Plus, Trash2, Zap } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { DocumentTab } from "@/components/change/document-tab";
 import { StructuredProposal } from "@/components/change/structured-proposal";
@@ -70,6 +71,39 @@ const tabI18nKeys: Record<TabId, string> = {
 
 const validTabs: TabId[] = ["proposal", "spec", "tasks", "history"];
 
+function activityIcon(type: string) {
+  if (type === "stage") return Zap;
+  if (type.startsWith("task")) return ListChecks;
+  if (type.startsWith("doc")) return FileText;
+  if (type === "ac_created") return ListChecks;
+  if (type === "comment") return MessageSquare;
+  return ArrowRight;
+}
+
+function activityColor(type: string): string {
+  if (type === "stage") return "bg-primary/10 text-primary";
+  if (type.startsWith("task")) return "bg-blue-500/10 text-blue-400";
+  if (type.startsWith("doc")) return "bg-amber-500/10 text-amber-400";
+  if (type === "ac_created") return "bg-emerald-500/10 text-emerald-400";
+  if (type === "comment") return "bg-purple-500/10 text-purple-400";
+  return "bg-muted text-muted-foreground";
+}
+
+function activityLabel(type: string, t: (key: string) => string): string {
+  switch (type) {
+    case "stage": return t("change.activityStage");
+    case "task_created": return t("change.activityTaskCreated");
+    case "task_done": return t("change.activityTaskDone");
+    case "task_todo": return t("change.activityTaskCreated");
+    case "task_in_progress": return t("change.activityTaskInProgress");
+    case "doc_proposal": return t("change.activityProposalUpdated");
+    case "doc_spec": return t("change.activitySpecUpdated");
+    case "ac_created": return t("change.activityACCreated");
+    case "comment": return t("change.activityComment");
+    default: return type;
+  }
+}
+
 export default function ChangeDetailClient() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -101,6 +135,7 @@ export default function ChangeDetailClient() {
   const [stage, setStage] = useState("");
   const [conditions, setConditions] = useState<GateCondition[]>([]);
   const [history, setHistory] = useState<WorkflowEvent[]>([]);
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [animatingFrom, setAnimatingFrom] = useState<number | null>(null);
   const [showConfirmAdvance, setShowConfirmAdvance] = useState(false);
@@ -313,6 +348,12 @@ export default function ChangeDetailClient() {
   useEffect(() => {
     loadAll();
   }, [loadAll]);
+
+  // Load activities when history tab is active
+  useEffect(() => {
+    if (activeTab !== "history") return;
+    loadActivities(changeId).then(setActivities).catch(() => {});
+  }, [activeTab, changeId]);
 
   useEffect(() => {
     return on((event) => {
@@ -986,35 +1027,37 @@ export default function ChangeDetailClient() {
             </div>
           )}
           {activeTab === "history" && (
-            <div className="space-y-4">
-              {history.length === 0 ? (
+            <div className="space-y-1">
+              {activities.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t("change.noEvents")}</p>
               ) : (
-                <ul className="space-y-4">
-                  {history.map((event) => (
-                    <li key={String(event.id)} className="relative pl-5">
-                      <div className="absolute left-0 top-1.5 h-2 w-2 rounded-full bg-primary/50" />
-                      <div className="flex items-baseline gap-2">
-                        <p className="text-sm font-medium">{event.action.replace("_", " ")}</p>
-                        {event.userName && (
-                          <span className="text-xs text-muted-foreground">
-                            {t("change.historyBy", { name: event.userName })}
-                          </span>
+                <ul className="space-y-3">
+                  {activities.map((item, i) => {
+                    const Icon = activityIcon(item.type);
+                    const color = activityColor(item.type);
+                    const label = activityLabel(item.type, t);
+                    const time = item.createdAt ? new Date(item.createdAt).toLocaleString() : "";
+                    return (
+                      <li key={`${item.type}-${i}`} className="relative pl-7">
+                        <div className={`absolute left-0 top-1 flex size-5 items-center justify-center rounded-full ${color}`}>
+                          <Icon className="size-3" />
+                        </div>
+                        <div className="flex items-baseline gap-2 flex-wrap">
+                          <span className="text-xs font-medium text-muted-foreground">{label}</span>
+                          {item.userName && (
+                            <span className="text-xs text-muted-foreground/70">{item.userName}</span>
+                          )}
+                          {time && (
+                            <span className="text-xs text-muted-foreground/50">{time}</span>
+                          )}
+                        </div>
+                        <p className="text-sm text-foreground">{item.title}</p>
+                        {item.detail && (
+                          <p className="text-xs text-muted-foreground">{item.detail}</p>
                         )}
-                        {event.createdAt && (
-                          <span className="text-xs text-muted-foreground/60">
-                            {new Date(Number(event.createdAt.seconds) * 1000).toLocaleString()}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {event.fromStage} → {event.toStage}
-                      </p>
-                      {event.reason && (
-                        <p className="mt-0.5 text-xs text-muted-foreground">{event.reason}</p>
-                      )}
-                    </li>
-                  ))}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
