@@ -24,7 +24,6 @@ export function Header({ breadcrumbs = [], actions }: HeaderProps) {
   const { currentOrg, orgs, switchOrg } = useOrg();
   const [orgMenuOpen, setOrgMenuOpen] = useState(false);
   const orgMenuRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (orgMenuRef.current && !orgMenuRef.current.contains(e.target as Node)) {

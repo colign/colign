@@ -40,7 +40,9 @@ import (
 	"github.com/gobenpark/colign/internal/events"
 	mcpserver "github.com/gobenpark/colign/internal/mcp"
 	"github.com/gobenpark/colign/internal/memory"
+	"github.com/gobenpark/colign/internal/middleware"
 	"github.com/gobenpark/colign/internal/notification"
+	"github.com/gobenpark/colign/internal/push"
 	"github.com/gobenpark/colign/internal/organization"
 	"github.com/gobenpark/colign/internal/project"
 	"github.com/gobenpark/colign/internal/task"
@@ -134,13 +136,21 @@ func (s *Server) setupRoutes(cfg *config.Config) error {
 	apiTokenPath, apiTokenHandler := apitokenv1connect.NewApiTokenServiceHandler(apiTokenConnectHandler)
 	s.mux.Handle(apiTokenPath, apiTokenHandler)
 
+	// Push service
+	pushService := push.NewService(s.db, cfg.VAPIDPublicKey, cfg.VAPIDPrivateKey, cfg.VAPIDSubject)
+	pushHandler := push.NewHandler(pushService, s.jwtManager, apiTokenService)
+	s.mux.HandleFunc("GET /api/push/vapid-key", pushHandler.HandleVAPIDKey)
+	s.mux.HandleFunc("POST /api/push/subscribe", pushHandler.HandleSubscribe)
+	s.mux.HandleFunc("POST /api/push/unsubscribe", pushHandler.HandleUnsubscribe)
+
 	// RBAC interceptor
 	enforcer, err := authz.NewEnforcer()
 	if err != nil {
 		return fmt.Errorf("creating RBAC enforcer: %w", err)
 	}
 	rbacInterceptor := authz.NewRBACInterceptor(s.db, enforcer, s.jwtManager, apiTokenService)
-	rbacOpts := connect.WithInterceptors(rbacInterceptor)
+	notifInterceptor := middleware.NewNotificationInterceptor(s.EventHub, s.jwtManager, apiTokenService)
+	rbacOpts := connect.WithInterceptors(rbacInterceptor, notifInterceptor)
 
 	// Project service (Connect)
 	projectService := project.NewService(s.db)
@@ -168,6 +178,10 @@ func (s *Server) setupRoutes(cfg *config.Config) error {
 	notifConnectHandler := notification.NewConnectHandler(notifService, s.jwtManager, apiTokenService, s.EventHub)
 	notifPath, notifHandler := notificationv1connect.NewNotificationServiceHandler(notifConnectHandler, rbacOpts)
 	s.mux.Handle(notifPath, notifHandler)
+
+	// Notification consumer (fan-in from EventHub)
+	notifConsumer := notification.NewConsumer(s.db, notifService, pushService, s.EventHub)
+	notifConsumer.Start(context.Background())
 
 	// Comment service (Connect)
 	commentService := comment.NewService(s.db, notifService)

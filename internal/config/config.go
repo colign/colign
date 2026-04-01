@@ -28,6 +28,9 @@ type Config struct {
 	CookieDomain        string
 	CookieSecure        bool
 	AIEncryptionKey     string
+	VAPIDPublicKey      string
+	VAPIDPrivateKey     string
+	VAPIDSubject        string
 }
 
 func Load() (*Config, error) {
@@ -66,6 +69,9 @@ func Load() (*Config, error) {
 		CookieDomain:        getEnv("AUTH_COOKIE_DOMAIN", deriveCookieDomain(frontendURL, redirectBaseURL)),
 		CookieSecure:        deriveCookieSecure(frontendURL, redirectBaseURL),
 		AIEncryptionKey:     aiEncryptionKey,
+		VAPIDPublicKey:      getEnv("VAPID_PUBLIC_KEY", ""),
+		VAPIDPrivateKey:     getEnv("VAPID_PRIVATE_KEY", ""),
+		VAPIDSubject:        getEnv("VAPID_SUBJECT", ""),
 	}, nil
 }
 

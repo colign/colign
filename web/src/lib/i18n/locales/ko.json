@@ -381,6 +381,8 @@
     "language": "언어",
     "customizeAppearance": "Colign의 외관을 커스터마이즈하세요",
     "chooseNotifications": "알림 받을 항목을 선택하세요",
+    "pushNotifications": "푸시 알림",
+    "pushNotificationsDesc": "멘션, 코멘트, 스테이지 변경 시 브라우저 푸시 알림 수신",
     "emailNotifications": "이메일 알림",
     "emailNotificationsDesc": "중요한 업데이트를 이메일로 받기",
     "comments": "코멘트",

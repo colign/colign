@@ -381,6 +381,8 @@
     "language": "Language",
     "customizeAppearance": "Customize how Colign looks",
     "chooseNotifications": "Choose what you get notified about",
+    "pushNotifications": "Push notifications",
+    "pushNotificationsDesc": "Receive browser push notifications for mentions, comments, and stage changes",
     "emailNotifications": "Email notifications",
     "emailNotificationsDesc": "Receive email for important updates",
     "comments": "Comments",

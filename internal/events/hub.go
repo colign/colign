@@ -11,8 +11,10 @@ type Event struct {
 
 // Hub manages event subscribers and broadcasting.
 type Hub struct {
-	mu   sync.RWMutex
-	subs map[*Subscriber]struct{}
+	mu       sync.RWMutex
+	subs     map[*Subscriber]struct{}
+	notifMu  sync.RWMutex
+	notifSub []chan NotificationEvent
 }
 
 // Subscriber receives events on its channel.
@@ -63,4 +65,23 @@ func (h *Hub) Publish(e Event) {
 // Events returns the subscriber's event channel.
 func (s *Subscriber) Events() <-chan Event {
 	return s.ch
+}
+
+// SubscribeNotifications registers a channel to receive notification events.
+func (h *Hub) SubscribeNotifications(ch chan NotificationEvent) {
+	h.notifMu.Lock()
+	h.notifSub = append(h.notifSub, ch)
+	h.notifMu.Unlock()
+}
+
+// PublishNotification sends a notification event to all notification subscribers.
+func (h *Hub) PublishNotification(e NotificationEvent) {
+	h.notifMu.RLock()
+	defer h.notifMu.RUnlock()
+	for _, ch := range h.notifSub {
+		select {
+		case ch <- e:
+		default:
+		}
+	}
 }

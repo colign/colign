@@ -27,6 +27,7 @@ import { transport } from "@/lib/connect";
 import { OrgMembers } from "@/components/settings/org-members";
 import { showError, showSuccess } from "@/lib/toast";
 import { aiConfigClient } from "@/lib/aiconfig";
+import { subscribeToPush, unsubscribeFromPush, isPushSubscribed } from "@/lib/push";
 
 type SettingsTab = "profile" | "account" | "organization" | "ai" | "appearance" | "notifications";
 
@@ -97,6 +98,27 @@ export default function SettingsPage() {
   const [commentNotifications, setCommentNotifications] = useState(true);
   const [reviewNotifications, setReviewNotifications] = useState(true);
   const [stageNotifications, setStageNotifications] = useState(true);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushToggling, setPushToggling] = useState(false);
+
+  useEffect(() => {
+    isPushSubscribed().then(setPushEnabled);
+  }, []);
+
+  const handlePushToggle = useCallback(async (enabled: boolean) => {
+    setPushToggling(true);
+    try {
+      if (enabled) {
+        const ok = await subscribeToPush();
+        if (ok) setPushEnabled(true);
+      } else {
+        const ok = await unsubscribeFromPush();
+        if (ok) setPushEnabled(false);
+      }
+    } finally {
+      setPushToggling(false);
+    }
+  }, []);
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState("");
@@ -845,6 +867,25 @@ export default function SettingsPage() {
                 <CardDescription>{t("settings.chooseNotifications")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
+                {"Notification" in globalThis && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">{t("settings.pushNotifications")}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {t("settings.pushNotificationsDesc")}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={pushEnabled}
+                        onCheckedChange={handlePushToggle}
+                        disabled={pushToggling}
+                        className="cursor-pointer"
+                      />
+                    </div>
+                    <Separator />
+                  </>
+                )}
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium">{t("settings.emailNotifications")}</p>
