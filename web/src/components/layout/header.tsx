@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { Github } from "lucide-react";
 import { useOrg } from "@/lib/org-context";
 
 interface Breadcrumb {
@@ -198,7 +199,17 @@ export function Header({ breadcrumbs = [], actions }: HeaderProps) {
           ))}
         </div>
 
-        {actions && <div className="flex items-center gap-2">{actions}</div>}
+        <div className="flex items-center gap-2">
+          <a
+            href="https://github.com/colign/colign"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Github className="h-4 w-4" />
+          </a>
+          {actions}
+        </div>
       </div>
     </header>
   );
