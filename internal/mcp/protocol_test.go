@@ -247,6 +247,28 @@ func TestToolsListJSONIncludesMetadata(t *testing.T) {
 	assert.Contains(t, updateChange, "annotations")
 }
 
+func TestUpdateChangeToolDefinition(t *testing.T) {
+	tools := ListTools()
+
+	var tool *Tool
+	for i, tt := range tools {
+		if tt.Name == "update_change" {
+			tool = &tools[i]
+			break
+		}
+	}
+	require.NotNil(t, tool, "update_change tool not found")
+
+	assert.Contains(t, tool.InputSchema.Properties, "change_id")
+	assert.Contains(t, tool.InputSchema.Properties, "project_id")
+	assert.Contains(t, tool.InputSchema.Properties, "name")
+	assert.Contains(t, tool.InputSchema.Properties, "sub_status")
+	assert.Contains(t, tool.InputSchema.Properties, "status")
+	assert.Contains(t, tool.InputSchema.Properties, "status_reason")
+	assert.Equal(t, []string{"change_id", "project_id"}, tool.InputSchema.Required,
+		"only change_id and project_id should be required; name, sub_status, status are optional")
+}
+
 func TestJSONRPCRequest(t *testing.T) {
 	raw := `{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}`
 	var req JSONRPCRequest
