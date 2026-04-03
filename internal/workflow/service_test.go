@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 	"time"
 
@@ -81,6 +82,11 @@ func TestGetStatus_IncludesSubStatus(t *testing.T) {
 	rows := sqlmock.NewRows([]string{"id", "project_id", "name", "stage", "sub_status", "change_type", "created_at", "updated_at", "archived_at"}).
 		AddRow(int64(1), int64(1), "Test Change", "draft", "ready", "feature", time.Now(), time.Now(), nil)
 	mock.ExpectQuery("SELECT").WillReturnRows(rows)
+
+	// buildGateInput queries: proposal EXISTS, spec EXISTS, approval policy
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+	mock.ExpectQuery("SELECT").WillReturnError(sql.ErrNoRows)
 
 	stage, subStatus, conditions, err := svc.GetStatus(ctx, 1, 1)
 	require.NoError(t, err)

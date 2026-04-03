@@ -17,7 +17,7 @@ func TestAdvance_CrossTenantBlocked(t *testing.T) {
 
 	mock.ExpectQuery("SELECT").WillReturnError(sql.ErrNoRows)
 
-	stage, err := svc.Advance(ctx, 1, 1, wrongOrgID)
+	stage, err := svc.Advance(ctx, 1, 1, wrongOrgID, false)
 	require.ErrorIs(t, err, ErrChangeNotFound)
 	require.Equal(t, "", string(stage))
 	require.NoError(t, mock.ExpectationsWereMet())

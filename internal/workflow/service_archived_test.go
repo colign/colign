@@ -35,7 +35,7 @@ func TestAdvance_ArchivedChange(t *testing.T) {
 		AddRow(int64(1), int64(1), "Test Change", "approved", "in_progress", "feature", time.Now(), time.Now(), archivedAt)
 	mock.ExpectQuery("SELECT").WillReturnRows(rows)
 
-	stage, err := svc.Advance(ctx, 1, 1, 1)
+	stage, err := svc.Advance(ctx, 1, 1, 1, false)
 	require.ErrorIs(t, err, ErrChangeArchived)
 	require.Equal(t, "", string(stage))
 	require.NoError(t, mock.ExpectationsWereMet())
@@ -48,7 +48,7 @@ func TestAdvance_NotFound(t *testing.T) {
 
 	mock.ExpectQuery("SELECT").WillReturnError(sql.ErrNoRows)
 
-	stage, err := svc.Advance(ctx, 999, 1, 1)
+	stage, err := svc.Advance(ctx, 999, 1, 1, false)
 	require.ErrorIs(t, err, ErrChangeNotFound)
 	require.Equal(t, "", string(stage))
 	require.NoError(t, mock.ExpectationsWereMet())

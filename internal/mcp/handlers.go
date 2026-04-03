@@ -192,6 +192,7 @@ func init() {
 				"sub_status":    {Type: "string", Description: "Sub-status only: in_progress or ready (optional). Cannot be combined with status."},
 				"status":        {Type: "string", Description: "Composite workflow status: draft(in_progress), draft(ready), spec(in_progress), or spec(ready) (optional). Cannot be used to transition to approved."},
 				"status_reason": {Type: "string", Description: "Reason recorded when moving the change backward to an earlier stage (optional)."},
+				"force":         {Type: "boolean", Description: "Force advance even if gate conditions are not met (optional, default false)."},
 			},
 			Required: []string{"change_id", "project_id"},
 		},
@@ -1754,6 +1755,7 @@ type updateChangeParams struct {
 	SubStatus    string    `json:"sub_status"`
 	Status       string    `json:"status"`
 	StatusReason string    `json:"status_reason"`
+	Force        bool      `json:"force"`
 }
 
 func (s *Server) applyChangeStatusUpdate(ctx context.Context, params updateChangeParams, currentChange *projectv1.Change) (models.ChangeStage, models.SubStatus, error) {
@@ -1804,6 +1806,7 @@ func (s *Server) applyChangeStatusUpdate(ctx context.Context, params updateChang
 			resp, err := s.clients.workflow.Advance(ctx, connect.NewRequest(&workflowv1.AdvanceRequest{
 				ChangeId:  params.ChangeID.Int64(),
 				ProjectId: params.ProjectID.Int64(),
+				Force:     params.Force,
 			}))
 			if err != nil {
 				return "", "", err

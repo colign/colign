@@ -94,7 +94,9 @@ func (s *Service) EvaluateAndAdvance(ctx context.Context, changeID int64, orgID 
 }
 
 // Advance manually moves the change to the next stage.
-func (s *Service) Advance(ctx context.Context, changeID int64, userID int64, orgID int64) (models.ChangeStage, error) {
+// If force is false and gate conditions are not met, it returns ErrGateNotMet.
+// If force is true, gate validation is bypassed.
+func (s *Service) Advance(ctx context.Context, changeID int64, userID int64, orgID int64, force bool) (models.ChangeStage, error) {
 	change := new(models.Change)
 	err := s.db.NewSelect().Model(change).
 		Join("JOIN projects AS p ON p.id = ch.project_id").
@@ -115,6 +117,16 @@ func (s *Service) Advance(ctx context.Context, changeID int64, userID int64, org
 	next, ok := NextStage(change.Stage)
 	if !ok {
 		return change.Stage, fmt.Errorf("already at final stage")
+	}
+
+	if !force {
+		input, err := s.buildGateInput(ctx, change)
+		if err != nil {
+			return "", err
+		}
+		if !s.gate.AllMet(change.Stage, *input) {
+			return "", ErrGateNotMet
+		}
 	}
 
 	subStatus := models.SubStatusInProgress
@@ -246,12 +258,51 @@ func (s *Service) SetSubStatus(ctx context.Context, changeID int64, subStatus mo
 	return err
 }
 
-func (s *Service) buildGateInput(_ context.Context, _ *models.Change) (*GateInput, error) {
+func (s *Service) buildGateInput(ctx context.Context, change *models.Change) (*GateInput, error) {
 	input := &GateInput{}
 
-	// TODO: integrate with document storage
-	input.HasProposal = true
-	input.HasDesign = false
+	// Check if proposal document exists
+	proposalExists, err := s.db.NewSelect().Model((*models.Document)(nil)).
+		Where("change_id = ?", change.ID).
+		Where("type = ?", models.DocProposal).
+		Exists(ctx)
+	if err != nil {
+		return nil, err
+	}
+	input.HasProposal = proposalExists
+
+	// Check if spec document exists
+	specExists, err := s.db.NewSelect().Model((*models.Document)(nil)).
+		Where("change_id = ?", change.ID).
+		Where("type = ?", models.DocSpec).
+		Exists(ctx)
+	if err != nil {
+		return nil, err
+	}
+	input.HasDesign = specExists
+
+	// Count approvals
+	policy := new(models.ApprovalPolicy)
+	err = s.db.NewSelect().Model(policy).
+		Where("project_id = ?", change.ProjectID).
+		Scan(ctx)
+	if err != nil {
+		// No policy means no approvals needed
+		input.ApprovalsNeeded = 0
+		input.ApprovalsDone = 0
+		return input, nil
+	}
+
+	input.ApprovalsNeeded = policy.MinCount
+
+	approvalCount, err := s.db.NewSelect().Model((*models.Approval)(nil)).
+		Where("change_id = ?", change.ID).
+		Where("status = ?", "approved").
+		Count(ctx)
+	if err != nil {
+		return nil, err
+	}
+	input.ApprovalsDone = approvalCount
 
 	return input, nil
 }

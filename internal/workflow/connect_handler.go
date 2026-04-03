@@ -76,10 +76,13 @@ func (h *ConnectHandler) Advance(ctx context.Context, req *connect.Request[workf
 		return nil, err
 	}
 
-	newStage, err := h.service.Advance(ctx, req.Msg.ChangeId, claims.UserID, claims.OrgID)
+	newStage, err := h.service.Advance(ctx, req.Msg.ChangeId, claims.UserID, claims.OrgID, req.Msg.Force)
 	if err != nil {
 		if errors.Is(err, ErrChangeNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		if errors.Is(err, ErrGateNotMet) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

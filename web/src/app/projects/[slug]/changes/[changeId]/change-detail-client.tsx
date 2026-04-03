@@ -7,6 +7,7 @@ import { useI18n } from "@/lib/i18n";
 import { workflowClient } from "@/lib/workflow";
 import { projectClient } from "@/lib/project";
 import { isCanonicalProjectRef, toProjectPath } from "@/lib/project-ref";
+import { ConnectError, Code } from "@connectrpc/connect";
 import { showError } from "@/lib/toast";
 import { loadActivities, type ActivityItem } from "@/lib/ai";
 import { Archive, ArchiveRestore, ArrowRight, FileText, ListChecks, MessageSquare, Plus, Trash2, Zap } from "lucide-react";
@@ -399,13 +400,21 @@ export default function ChangeDetailClient() {
       setShowConfirmAdvance(true);
       return;
     }
-    await doAdvance();
+    await doAdvance(false);
   }
 
-  async function doAdvance() {
+  async function doAdvance(force: boolean) {
     setShowConfirmAdvance(false);
-    await workflowClient.advance({ changeId, projectId });
-    loadAll();
+    try {
+      await workflowClient.advance({ changeId, projectId, force });
+      loadAll();
+    } catch (err) {
+      if (err instanceof ConnectError && err.code === Code.FailedPrecondition && !force) {
+        setShowConfirmAdvance(true);
+        return;
+      }
+      showError(err instanceof Error ? err.message : t("common.error"));
+    }
   }
 
   // Mobile: show prev/current/next only
@@ -750,7 +759,7 @@ export default function ChangeDetailClient() {
                   <p className="text-sm text-yellow-400">{t("change.advanceGateWarning")}</p>
                   <div className="mt-2 flex gap-2">
                     <Button
-                      onClick={doAdvance}
+                      onClick={() => doAdvance(true)}
                       size="sm"
                       variant="outline"
                       className="cursor-pointer"
