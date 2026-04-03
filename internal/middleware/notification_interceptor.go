@@ -85,6 +85,26 @@ func (n *NotificationInterceptor) extractEvent(_ context.Context, procedure stri
 			},
 		}, true
 
+	case "/workflow.v1.WorkflowService/Revert":
+		revertResp, ok := resp.Any().(*workflowv1.RevertResponse)
+		if !ok {
+			return events.NotificationEvent{}, false
+		}
+		revertReq, ok := req.Any().(*workflowv1.RevertRequest)
+		if !ok {
+			return events.NotificationEvent{}, false
+		}
+		return events.NotificationEvent{
+			Type:      "stage_change",
+			ChangeID:  revertReq.GetChangeId(),
+			ProjectID: revertReq.GetProjectId(),
+			Metadata: map[string]any{
+				"new_stage": revertResp.GetNewStage(),
+				"reason":    revertReq.GetReason(),
+				"action":    "revert",
+			},
+		}, true
+
 	case "/workflow.v1.WorkflowService/RequestChanges":
 		rcReq, _ := req.Any().(*workflowv1.RequestChangesRequest)
 		return events.NotificationEvent{

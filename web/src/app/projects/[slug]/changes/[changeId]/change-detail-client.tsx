@@ -10,7 +10,17 @@ import { isCanonicalProjectRef, toProjectPath } from "@/lib/project-ref";
 import { ConnectError, Code } from "@connectrpc/connect";
 import { showError } from "@/lib/toast";
 import { loadActivities, type ActivityItem } from "@/lib/ai";
-import { Archive, ArchiveRestore, ArrowRight, FileText, ListChecks, MessageSquare, Plus, Trash2, Zap } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowRight, FileText, ListChecks, MessageSquare, Plus, Trash2, Undo2, Zap } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Header } from "@/components/layout/header";
 import { DocumentTab } from "@/components/change/document-tab";
 import { StructuredProposal } from "@/components/change/structured-proposal";
@@ -155,6 +165,9 @@ export default function ChangeDetailClient() {
   const [archiving, setArchiving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showRevertDialog, setShowRevertDialog] = useState(false);
+  const [revertReason, setRevertReason] = useState("");
+  const [reverting, setReverting] = useState(false);
   const [changeLabels, setChangeLabels] = useState<
     Array<{ id: bigint; name: string; color: string }>
   >([]);
@@ -414,6 +427,20 @@ export default function ChangeDetailClient() {
         return;
       }
       showError(err instanceof Error ? err.message : t("common.error"));
+    }
+  }
+
+  async function handleRevert() {
+    setReverting(true);
+    try {
+      await workflowClient.revert({ changeId, reason: revertReason, projectId });
+      setShowRevertDialog(false);
+      setRevertReason("");
+      loadAll();
+    } catch (err) {
+      showError(err instanceof Error ? err.message : t("common.error"));
+    } finally {
+      setReverting(false);
     }
   }
 
@@ -749,6 +776,62 @@ export default function ChangeDetailClient() {
                       <ArchiveRestore className="mr-1.5 h-3.5 w-3.5" />
                       {t("change.restore")}
                     </Button>
+                  )}
+                  {stage !== "draft" && !archivedAt && currentIdx >= 1 && (
+                    <Dialog
+                      open={showRevertDialog}
+                      onOpenChange={(open) => {
+                        setShowRevertDialog(open);
+                        if (!open) setRevertReason("");
+                      }}
+                    >
+                      <DialogTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="cursor-pointer text-muted-foreground"
+                          />
+                        }
+                      >
+                        <Undo2 className="mr-1.5 h-3.5 w-3.5" />
+                        {t("change.revert")}
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>{t("change.revertWarningTitle")}</DialogTitle>
+                          <DialogDescription>
+                            {t("change.revertWarningDescription")}
+                            <span className="mt-2 block text-xs font-medium text-foreground">
+                              {t(`stages.${stage}`)} → {t(`stages.${stages[currentIdx - 1]}`)}
+                            </span>
+                          </DialogDescription>
+                        </DialogHeader>
+                        <Input
+                          placeholder={t("change.revertReason")}
+                          value={revertReason}
+                          onChange={(e) => setRevertReason(e.target.value)}
+                          autoFocus
+                        />
+                        <DialogFooter>
+                          <Button
+                            variant="outline"
+                            className="cursor-pointer"
+                            onClick={() => setShowRevertDialog(false)}
+                          >
+                            {t("common.cancel")}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            className="cursor-pointer"
+                            disabled={!revertReason.trim() || reverting}
+                            onClick={handleRevert}
+                          >
+                            {reverting ? t("change.reverting") : t("change.revertConfirm")}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   )}
                 </div>
               </div>
