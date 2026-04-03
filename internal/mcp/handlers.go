@@ -220,7 +220,7 @@ func init() {
 	// ── spec ─────────────────────────────────────────────────────────
 	RegisterTool(Tool{
 		Name:        "read_spec",
-		Description: "Read a spec document for a change. For proposals, the content field is a JSON string with keys: problem, scope, outOfScope.",
+		Description: "Read a spec document for a change. For proposals, the content field is a JSON string with keys: problem, scope, outOfScope, designLinks (optional), documentLinks (optional).",
 		InputSchema: InputSchema{
 			Type: "object",
 			Properties: map[string]Property{
@@ -254,7 +254,7 @@ func init() {
 	})
 	RegisterTool(Tool{
 		Name:        "write_spec",
-		Description: "Write or update a spec document for a change. For proposals, content must be a JSON string with keys: problem (required), scope (required), outOfScope (optional). Example: {\"problem\":\"...\",\"scope\":\"...\",\"outOfScope\":\"...\"}. For other doc types, content is plain markdown.",
+		Description: "Write or update a spec document for a change. For proposals, content must be a JSON string with keys: problem (required), scope (required), outOfScope (optional), designLinks (optional string array), documentLinks (optional string array). Example: {\"problem\":\"...\",\"scope\":\"...\",\"outOfScope\":\"...\",\"documentLinks\":[\"https://...\"]}. For other doc types, content is plain markdown.",
 		InputSchema: InputSchema{
 			Type: "object",
 			Properties: map[string]Property{

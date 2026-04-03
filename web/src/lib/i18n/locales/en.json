@@ -169,7 +169,10 @@
     "designLinkPlaceholder": "Paste Figma or design URL...",
     "showPreview": "Preview",
     "hidePreview": "Hide",
-    "noDesignLinks": "No design links added"
+    "noDesignLinks": "No design links added",
+    "documentLinks": "Documents",
+    "documentLinkPlaceholder": "Paste document URL (Notion, Google Docs, etc.)...",
+    "noDocumentLinks": "No documents added"
   },
   "tasks": {
     "addTask": "Add task...",

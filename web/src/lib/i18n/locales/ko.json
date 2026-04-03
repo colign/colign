@@ -169,7 +169,10 @@
     "designLinkPlaceholder": "Figma 또는 디자인 URL을 붙여넣으세요...",
     "showPreview": "미리보기",
     "hidePreview": "숨기기",
-    "noDesignLinks": "디자인 링크가 없습니다"
+    "noDesignLinks": "디자인 링크가 없습니다",
+    "documentLinks": "문서",
+    "documentLinkPlaceholder": "문서 URL 붙여넣기 (Notion, Google Docs 등)...",
+    "noDocumentLinks": "추가된 문서 없음"
   },
   "tasks": {
     "addTask": "태스크 추가...",

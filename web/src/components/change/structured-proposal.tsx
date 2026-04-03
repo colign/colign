@@ -18,12 +18,14 @@ import {
   ChevronRight,
   Code,
   ExternalLink,
+  FileText,
   Figma,
   Heading2,
   Heading3,
   Italic,
   Link2,
   List,
+  NotebookText,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -41,6 +43,7 @@ interface ProposalSections {
   scope: string;
   outOfScope: string;
   designLinks?: string[];
+  documentLinks?: string[];
 }
 
 const EMPTY_SECTIONS: ProposalSections = {
@@ -48,6 +51,7 @@ const EMPTY_SECTIONS: ProposalSections = {
   scope: "",
   outOfScope: "",
   designLinks: [],
+  documentLinks: [],
 };
 
 type TextSectionKey = "problem" | "scope" | "outOfScope";
@@ -94,6 +98,15 @@ function getPlainText(content: string): string {
     .replace(/<[^>]*>/g, " ")
     .replace(/\u00a0/g, " ");
   return normalized.replace(/\s+\n/g, "\n").replace(/\n\s+/g, "\n").replace(/\s+/g, " ").trim();
+}
+
+function isSafeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return ["http:", "https:"].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
 }
 
 function parseContent(content: string): ProposalSections {
@@ -239,7 +252,8 @@ export function StructuredProposal({
 
   function addDesignLink(url: string) {
     const trimmed = url.trim();
-    if (!trimmed) return;
+    if (!trimmed || !isSafeUrl(trimmed)) return;
+    if ((sectionsRef.current.designLinks || []).includes(trimmed)) return;
     localRevisionRef.current += 1;
     setSections((prev) => {
       const updated = { ...prev, designLinks: [...(prev.designLinks || []), trimmed] };
@@ -255,6 +269,32 @@ export function StructuredProposal({
       const updated = {
         ...prev,
         designLinks: (prev.designLinks || []).filter((_, i) => i !== index),
+      };
+      sectionsRef.current = updated;
+      return updated;
+    });
+    saveNow();
+  }
+
+  function addDocumentLink(url: string) {
+    const trimmed = url.trim();
+    if (!trimmed || !isSafeUrl(trimmed)) return;
+    if ((sectionsRef.current.documentLinks || []).includes(trimmed)) return;
+    localRevisionRef.current += 1;
+    setSections((prev) => {
+      const updated = { ...prev, documentLinks: [...(prev.documentLinks || []), trimmed] };
+      sectionsRef.current = updated;
+      return updated;
+    });
+    saveNow();
+  }
+
+  function removeDocumentLink(index: number) {
+    localRevisionRef.current += 1;
+    setSections((prev) => {
+      const updated = {
+        ...prev,
+        documentLinks: (prev.documentLinks || []).filter((_, i) => i !== index),
       };
       sectionsRef.current = updated;
       return updated;
@@ -376,6 +416,15 @@ export function StructuredProposal({
           links={sections.designLinks || []}
           onAdd={addDesignLink}
           onRemove={removeDesignLink}
+          readOnly={isReviewMode}
+          t={t}
+        />
+
+        {/* Document Links */}
+        <DocumentLinksSection
+          links={sections.documentLinks || []}
+          onAdd={addDocumentLink}
+          onRemove={removeDocumentLink}
           readOnly={isReviewMode}
           t={t}
         />
@@ -668,6 +717,8 @@ function DesignLinksSection({ links, onAdd, onRemove, readOnly, t }: DesignLinks
           const embedUrl = getFigmaEmbedUrl(link);
           const isExpanded = expanded[index] ?? type === "figma";
 
+          const safeHref = isSafeUrl(link) ? link : "#";
+
           return (
             <div key={index} className="space-y-2">
               <div className="group flex items-center gap-2 rounded-lg border border-border/30 bg-background/50 px-3 py-2">
@@ -677,7 +728,7 @@ function DesignLinksSection({ links, onAdd, onRemove, readOnly, t }: DesignLinks
                   <Link2 className="size-4 shrink-0 text-muted-foreground" />
                 )}
                 <a
-                  href={link}
+                  href={safeHref}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 truncate text-sm text-primary hover:underline"
@@ -694,7 +745,7 @@ function DesignLinksSection({ links, onAdd, onRemove, readOnly, t }: DesignLinks
                   </button>
                 )}
                 <a
-                  href={link}
+                  href={safeHref}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-muted-foreground hover:text-foreground"
@@ -744,6 +795,151 @@ function DesignLinksSection({ links, onAdd, onRemove, readOnly, t }: DesignLinks
 
         {links.length === 0 && readOnly && (
           <p className="text-sm text-muted-foreground/40">{t("proposal.noDesignLinks")}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// --- Document Links Section ---
+
+type DocumentLinkType = "google" | "notion" | "confluence" | "generic";
+
+function getDocumentLinkType(url: string): DocumentLinkType {
+  if (/docs\.google\.com|drive\.google\.com|sheets\.google\.com|slides\.google\.com/.test(url))
+    return "google";
+  if (/notion\.so|notion\.site/.test(url)) return "notion";
+  if (/atlassian\.net\/wiki|\.confluence\./.test(url)) return "confluence";
+  return "generic";
+}
+
+function getDocumentLinkIcon(type: DocumentLinkType) {
+  switch (type) {
+    case "notion":
+      return <NotebookText className="size-4 shrink-0 text-muted-foreground" />;
+    case "google":
+    case "confluence":
+    default:
+      return <FileText className="size-4 shrink-0 text-muted-foreground" />;
+  }
+}
+
+function getDocumentLinkLabel(type: DocumentLinkType): string {
+  switch (type) {
+    case "google":
+      return "Google Docs";
+    case "notion":
+      return "Notion";
+    case "confluence":
+      return "Confluence";
+    default:
+      return "";
+  }
+}
+
+interface DocumentLinksSectionProps {
+  links: string[];
+  onAdd: (url: string) => void;
+  onRemove: (index: number) => void;
+  readOnly: boolean;
+  t: (key: string) => string;
+}
+
+function DocumentLinksSection({ links, onAdd, onRemove, readOnly, t }: DocumentLinksSectionProps) {
+  const [inputValue, setInputValue] = useState("");
+
+  function handleAdd() {
+    if (!inputValue.trim()) return;
+    onAdd(inputValue);
+    setInputValue("");
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAdd();
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-border/40 bg-card/50">
+      <div className="flex items-center gap-2.5 px-5 py-3">
+        <FileText className="size-3.5 text-muted-foreground/50" />
+        <span className="text-sm font-medium">{t("proposal.documentLinks")}</span>
+        <span className="rounded bg-muted/80 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+          {t("proposal.optional")}
+        </span>
+        {links.length > 0 && <div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />}
+      </div>
+
+      <div className="border-t border-border/30 px-5 py-4 space-y-3">
+        {links.map((link, index) => {
+          const type = getDocumentLinkType(link);
+          const label = getDocumentLinkLabel(type);
+          const safeHref = isSafeUrl(link) ? link : "#";
+
+          return (
+            <div
+              key={link}
+              className="group flex items-center gap-2 rounded-lg border border-border/30 bg-background/50 px-3 py-2"
+            >
+              {getDocumentLinkIcon(type)}
+              <a
+                href={safeHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 truncate text-sm text-primary hover:underline"
+                title={link}
+              >
+                {extractLinkTitle(link)}
+              </a>
+              {label && (
+                <span className="shrink-0 rounded bg-muted/80 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  {label}
+                </span>
+              )}
+              <a
+                href={safeHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <ExternalLink className="size-3.5" />
+              </a>
+              {!readOnly && (
+                <button
+                  onClick={() => onRemove(index)}
+                  className="cursor-pointer text-muted-foreground/50 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+              )}
+            </div>
+          );
+        })}
+
+        {!readOnly && (
+          <div className="flex items-center gap-2">
+            <input
+              type="url"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={t("proposal.documentLinkPlaceholder")}
+              className="flex-1 rounded-lg border border-border/30 bg-background/50 px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/40 focus:border-primary/50"
+            />
+            <button
+              onClick={handleAdd}
+              disabled={!inputValue.trim()}
+              className="cursor-pointer rounded-lg border border-border/30 px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Plus className="size-4" />
+            </button>
+          </div>
+        )}
+
+        {links.length === 0 && readOnly && (
+          <p className="text-sm text-muted-foreground/40">{t("proposal.noDocumentLinks")}</p>
         )}
       </div>
     </div>
