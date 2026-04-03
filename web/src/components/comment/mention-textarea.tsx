@@ -23,6 +23,8 @@ interface MentionTextareaProps {
   placeholder?: string;
   className?: string;
   rows?: number;
+  /** Maximum height in pixels before scrolling kicks in (default: 200) */
+  maxHeight?: number;
   autoFocus?: boolean;
   disabled?: boolean;
   onSubmit?: () => void;
@@ -205,6 +207,7 @@ export function MentionTextarea({
   placeholder,
   className,
   rows = 2,
+  maxHeight = 200,
   autoFocus,
   disabled,
   onSubmit,
@@ -471,6 +474,35 @@ export function MentionTextarea({
 
   const backdropRef = useRef<HTMLDivElement>(null);
 
+  const autoResize = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const next = Math.min(el.scrollHeight, maxHeight);
+    el.style.height = `${next}px`;
+    el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
+    const bd = backdropRef.current;
+    if (bd) {
+      bd.style.height = `${next}px`;
+      bd.style.overflowY = el.style.overflowY;
+      // Re-sync backdrop scroll when overflow is removed (browser clamps scrollTop to 0)
+      bd.scrollTop = el.scrollTop;
+    }
+  }, [maxHeight]);
+
+  useEffect(() => {
+    autoResize();
+  }, [value, autoResize]);
+
+  // Recompute height when textarea width changes (flex/resize reflow)
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => autoResize());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [autoResize]);
+
   function syncScroll() {
     const el = textareaRef.current;
     const bd = backdropRef.current;
@@ -487,7 +519,7 @@ export function MentionTextarea({
         aria-hidden
         className={cn(
           className,
-          "pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words text-transparent [&_.mention-highlight]:rounded [&_.mention-highlight]:bg-sky-500/20 [&_.mention-highlight]:text-sky-300",
+          "scrollbar-subtle pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words text-transparent [&_.mention-highlight]:rounded [&_.mention-highlight]:bg-sky-500/20 [&_.mention-highlight]:text-sky-300",
         )}
         dangerouslySetInnerHTML={{ __html: highlightedHtml }}
       />
@@ -511,7 +543,7 @@ export function MentionTextarea({
         onKeyUp={syncCaret}
         onSelect={syncCaret}
         onKeyDown={handleKeyDown}
-        className={cn(className, "relative bg-transparent")}
+        className={cn(className, "scrollbar-subtle relative resize-none bg-transparent")}
       />
       {mentionMatch && activeSuggestions.length > 0 && (
         <div
