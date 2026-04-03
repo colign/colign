@@ -79,7 +79,7 @@ func TestEditorPermissions(t *testing.T) {
 	require.NoError(t, err)
 
 	editorAllowed := []struct{ resource, action string }{
-		{"change", "create"}, {"change", "update"}, {"change", "archive"}, {"change", "unarchive"},
+		{"change", "create"}, {"change", "update"}, {"change", "archive"}, {"change", "unarchive"}, {"change", "delete"},
 		{"task", "create"}, {"task", "update"}, {"task", "delete"}, {"task", "reorder"},
 		{"comment", "create"}, {"comment", "resolve"}, {"comment", "delete"}, {"comment", "reply"},
 		{"document", "save"},
@@ -98,7 +98,6 @@ func TestEditorPermissions(t *testing.T) {
 
 	editorDenied := []struct{ resource, action string }{
 		{"project", "delete"}, {"project", "update"}, {"project", "invite"},
-		{"change", "delete"},
 		{"workflow", "set_policy"},
 	}
 
@@ -118,7 +117,6 @@ func TestOwnerPermissions(t *testing.T) {
 	ownerOnly := []struct{ resource, action string }{
 		{"project", "update"}, {"project", "delete"}, {"project", "invite"},
 		{"project", "assign_label"}, {"project", "remove_label"},
-		{"change", "delete"},
 		{"workflow", "set_policy"},
 		{"archive_policy", "update"},
 	}

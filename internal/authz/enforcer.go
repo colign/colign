@@ -38,6 +38,7 @@ p, editor, change, create
 p, editor, change, update
 p, editor, change, archive
 p, editor, change, unarchive
+p, editor, change, delete
 p, editor, task, create
 p, editor, task, update
 p, editor, task, delete
@@ -61,7 +62,6 @@ p, owner, project, delete
 p, owner, project, invite
 p, owner, project, assign_label
 p, owner, project, remove_label
-p, owner, change, delete
 p, owner, workflow, set_policy
 p, owner, archive_policy, update
 
