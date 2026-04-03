@@ -1760,7 +1760,8 @@ func (s *Server) applyChangeStatusUpdate(ctx context.Context, params updateChang
 	if params.Status == "" {
 		if currentChange == nil {
 			changeResp, err := s.clients.project.GetChange(ctx, connect.NewRequest(&projectv1.GetChangeRequest{
-				Id: params.ChangeID.Int64(),
+				Id:        params.ChangeID.Int64(),
+				ProjectId: params.ProjectID.Int64(),
 			}))
 			if err != nil {
 				return "", "", err
