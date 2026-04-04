@@ -235,13 +235,13 @@ func (h *ConnectHandler) DeleteOrgAIConfig(ctx context.Context, req *connect.Req
 // orgConfigToProto converts an OrgAIConfig model to a proto message.
 func orgConfigToProto(cfg *OrgAIConfig, decryptedKey string) *aiconfigv1.OrgAIConfigProto {
 	return &aiconfigv1.OrgAIConfigProto{
-		Id:         cfg.ID,
-		OrgId:      cfg.OrgID,
-		Provider:   cfg.Provider,
-		Model:      cfg.Model,
+		Id:           cfg.ID,
+		OrgId:        cfg.OrgID,
+		Provider:     cfg.Provider,
+		Model:        cfg.Model,
 		ApiKeyMasked: MaskAPIKey(decryptedKey),
-		CreatedAt:  timestamppb.New(cfg.CreatedAt),
-		UpdatedAt:  timestamppb.New(cfg.UpdatedAt),
+		CreatedAt:    timestamppb.New(cfg.CreatedAt),
+		UpdatedAt:    timestamppb.New(cfg.UpdatedAt),
 	}
 }
 

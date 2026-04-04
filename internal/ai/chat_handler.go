@@ -305,7 +305,7 @@ func writeSSEChatWithToolCalls(w http.ResponseWriter, response *schema.Message, 
 	if response.Content != "" {
 		chunk := map[string]string{"content": response.Content}
 		data, _ := json.Marshal(chunk)
-		fmt.Fprintf(w, "data: %s\n\n", data)
+		_, _ = fmt.Fprintf(w, "data: %s\n\n", data) // SSE write; network errors handled by client disconnect
 		flusher.Flush()
 	}
 
@@ -320,12 +320,12 @@ func writeSSEChatWithToolCalls(w http.ResponseWriter, response *schema.Message, 
 				},
 			}
 			data, _ := json.Marshal(event)
-			fmt.Fprintf(w, "data: %s\n\n", data)
+			_, _ = fmt.Fprintf(w, "data: %s\n\n", data) // SSE write; network errors handled by client disconnect
 			flusher.Flush()
 		}
 	}
 
-	fmt.Fprintf(w, "data: [DONE]\n\n")
+	_, _ = fmt.Fprintf(w, "data: [DONE]\n\n") // SSE write; network errors handled by client disconnect
 	flusher.Flush()
 }
 

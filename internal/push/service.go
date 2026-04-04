@@ -59,11 +59,11 @@ func (s *Service) Unsubscribe(ctx context.Context, userID int64, endpoint string
 
 // Payload is the JSON structure sent to the browser.
 type Payload struct {
-	Title   string `json:"title"`
-	Body    string `json:"body"`
-	URL     string `json:"url,omitempty"`
-	Icon    string `json:"icon,omitempty"`
-	Tag     string `json:"tag,omitempty"`
+	Title string `json:"title"`
+	Body  string `json:"body"`
+	URL   string `json:"url,omitempty"`
+	Icon  string `json:"icon,omitempty"`
+	Tag   string `json:"tag,omitempty"`
 }
 
 // SendToUser sends a push notification to all subscriptions of a user.

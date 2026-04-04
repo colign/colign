@@ -42,9 +42,9 @@ import (
 	"github.com/gobenpark/colign/internal/memory"
 	"github.com/gobenpark/colign/internal/middleware"
 	"github.com/gobenpark/colign/internal/notification"
-	"github.com/gobenpark/colign/internal/push"
 	"github.com/gobenpark/colign/internal/organization"
 	"github.com/gobenpark/colign/internal/project"
+	"github.com/gobenpark/colign/internal/push"
 	"github.com/gobenpark/colign/internal/task"
 	"github.com/gobenpark/colign/internal/workflow"
 )

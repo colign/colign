@@ -2,8 +2,6 @@ package middleware
 
 import (
 	"context"
-	"encoding/json"
-	"log/slog"
 
 	"connectrpc.com/connect"
 
@@ -157,14 +155,4 @@ func truncate(s string, maxLen int) string {
 		return s
 	}
 	return string(runes[:maxLen])
-}
-
-// marshalMetadata is a helper for logging.
-func marshalMetadata(m map[string]any) string {
-	b, err := json.Marshal(m)
-	if err != nil {
-		slog.Warn("notification_interceptor: marshal metadata failed", slog.String("error", err.Error()))
-		return "{}"
-	}
-	return string(b)
 }

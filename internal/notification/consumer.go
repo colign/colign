@@ -68,9 +68,34 @@ func (c *Consumer) handle(ctx context.Context, evt events.NotificationEvent) {
 		return
 	}
 
+	// Build a set of mentioned user IDs so we can skip DB insertion for them
+	// (comment.Service.notifyMentions already created NotifMention rows).
+	mentionedSet := make(map[int64]struct{})
+	if evt.Type == "comment" {
+		for _, id := range getMetaInt64Slice(evt.Metadata, "mentioned_user_ids") {
+			mentionedSet[id] = struct{}{}
+		}
+	}
+
 	for _, userID := range targetIDs {
 		if userID == evt.ActorID {
 			continue // don't notify the actor
+		}
+
+		// Mentioned users already have a DB row from notifyMentions;
+		// only send them a push notification.
+		if _, isMentioned := mentionedSet[userID]; isMentioned {
+			if c.push != nil {
+				changeName := c.lookupChangeName(ctx, evt.ChangeID)
+				actorName := c.lookupUserName(ctx, evt.ActorID)
+				c.push.SendToUser(ctx, userID, push.Payload{
+					Title: formatPushTitle("mention", actorName),
+					Body:  formatPushBody(evt, changeName),
+					URL:   fmt.Sprintf("/projects/_/changes/%d", evt.ChangeID),
+					Tag:   fmt.Sprintf("change-%d", evt.ChangeID),
+				})
+			}
+			continue
 		}
 
 		notifType := mapEventType(evt.Type)
@@ -110,13 +135,7 @@ func (c *Consumer) resolveTargets(ctx context.Context, evt events.NotificationEv
 		return getMetaInt64Slice(evt.Metadata, "mentioned_user_ids"), nil
 
 	case "comment":
-		// Mentions + project members related to the change
-		targets := getMetaInt64Slice(evt.Metadata, "mentioned_user_ids")
-		members, err := c.projectMembersByChange(ctx, evt.ChangeID)
-		if err != nil {
-			return targets, err
-		}
-		return dedup(append(targets, members...)), nil
+		return c.projectMembersByChange(ctx, evt.ChangeID)
 
 	case "approve", "reject":
 		// Notify change creator
@@ -279,16 +298,4 @@ func getMetaInt64Slice(m map[string]any, key string) []int64 {
 		return result
 	}
 	return nil
-}
-
-func dedup(ids []int64) []int64 {
-	seen := make(map[int64]struct{}, len(ids))
-	result := make([]int64, 0, len(ids))
-	for _, id := range ids {
-		if _, ok := seen[id]; !ok {
-			seen[id] = struct{}{}
-			result = append(result, id)
-		}
-	}
-	return result
 }
