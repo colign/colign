@@ -360,7 +360,7 @@ export default function ProjectSettingsPage() {
           {/* Members */}
           {activeTab === "members" && (
             <>
-              <Card className="border-border/50">
+              <Card className="border-border/50 overflow-visible">
                 <CardHeader>
                   <CardTitle>{t("projectSettings.inviteMember")}</CardTitle>
                   <CardDescription>{t("projectSettings.inviteMemberDesc")}</CardDescription>
