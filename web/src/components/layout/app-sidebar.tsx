@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CreateOrganizationDialog } from "@/components/organization/create-organization-dialog";
+import { CreateProjectDialog } from "@/components/project/create-project-dialog";
 import { useOrg } from "@/lib/org-context";
 import { projectClient } from "@/lib/project";
 import { notificationClient } from "@/lib/notification";
@@ -230,13 +231,12 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               ))}
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  tooltip={t("sidebar.newProject")}
-                  render={<Link href="/projects/new" />}
-                >
-                  <Plus className="size-4" />
-                  <span className="text-muted-foreground">{t("sidebar.newProject")}</span>
-                </SidebarMenuButton>
+                <CreateProjectDialog onCreated={() => {}}>
+                  <SidebarMenuButton tooltip={t("sidebar.newProject")}>
+                    <Plus className="size-4" />
+                    <span className="text-muted-foreground">{t("sidebar.newProject")}</span>
+                  </SidebarMenuButton>
+                </CreateProjectDialog>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>

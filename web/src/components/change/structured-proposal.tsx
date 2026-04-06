@@ -153,7 +153,7 @@ export function StructuredProposal({
   const { on } = useEvents();
   const payload = typeof window !== "undefined" ? getTokenPayload() : null;
   const [mobileCommentsOpen, setMobileCommentsOpen] = useState(false);
-  const [commentsOpen, setCommentsOpen] = useState(true);
+  const [commentsOpen, setCommentsOpen] = useState(false);
   const [sections, setSections] = useState<ProposalSections>(EMPTY_SECTIONS);
   const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
