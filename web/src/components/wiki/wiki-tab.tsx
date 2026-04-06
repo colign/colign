@@ -249,7 +249,7 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
           defaultSize="25%"
           minSize="15%"
           maxSize="45%"
-          className="min-w-0 overflow-y-auto overflow-x-hidden pr-2 scrollbar-subtle"
+          className="min-w-0 !overflow-y-auto !overflow-x-hidden pr-2 scrollbar-subtle"
         >
           <div>
             <div className="mb-3 flex items-center justify-between">
@@ -306,7 +306,7 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
         {/* Content Area */}
         <ResizablePanel
           defaultSize="75%"
-          className="min-w-0 overflow-y-auto overflow-x-hidden pl-8 scrollbar-subtle"
+          className="min-w-0 !overflow-y-auto !overflow-x-hidden pl-8 scrollbar-subtle"
         >
           <div className="min-h-full rounded-xl border border-border/40 bg-card/50">
             {selectedPageId ? (
