@@ -579,6 +579,7 @@ func memberToProto(m *models.ProjectMember) *projectv1.ProjectMember {
 	if m.User != nil {
 		pm.UserName = m.User.Name
 		pm.UserEmail = m.User.Email
+		pm.UserAvatarUrl = m.User.AvatarURL
 	}
 	return pm
 }

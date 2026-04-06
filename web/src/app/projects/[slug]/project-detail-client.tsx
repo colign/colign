@@ -28,6 +28,7 @@ import { projectClient } from "@/lib/project";
 import { isCanonicalProjectRef, toChangePath, toProjectPath } from "@/lib/project-ref";
 import { orgClient } from "@/lib/organization";
 import { memoryClient } from "@/lib/memory";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import dynamic from "next/dynamic";
 const WikiTab = dynamic(() => import("@/components/wiki/wiki-tab").then((m) => m.WikiTab), { ssr: false });
 import { useEvents } from "@/lib/events";
@@ -209,7 +210,7 @@ export default function ProjectDetailClient() {
   );
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [members, setMembers] = useState<{ name: string; email: string; role: string }[]>([]);
+  const [members, setMembers] = useState<{ name: string; email: string; role: string; avatarUrl: string }[]>([]);
   const [memoryContent, setMemoryContent] = useState("");
   const [activeProperty, setActiveProperty] = useState<string | null>(null);
   const propertyRef = useRef<HTMLDivElement>(null);
@@ -250,6 +251,7 @@ export default function ProjectDetailClient() {
               name: m.userName,
               email: m.userEmail,
               role: m.role,
+              avatarUrl: m.userAvatarUrl,
             })),
           );
           const [changesRes, memoryRes] = await Promise.all([
@@ -1701,7 +1703,7 @@ function MembersTab({
   onInvite,
   t,
 }: {
-  members: { name: string; email: string; role: string }[];
+  members: { name: string; email: string; role: string; avatarUrl: string }[];
   onInvite: () => void;
   t: (key: string) => string;
 }) {
@@ -1732,9 +1734,12 @@ function MembersTab({
             className="flex items-center justify-between rounded-xl border border-border/40 bg-card/50 px-5 py-3.5"
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-bold uppercase text-primary">
-                {member.name.charAt(0)}
-              </div>
+              <Avatar className="h-9 w-9">
+                <AvatarImage src={member.avatarUrl} alt={member.name} />
+                <AvatarFallback className="bg-primary/10 text-sm font-bold uppercase text-primary">
+                  {member.name.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
               <div>
                 <p className="text-sm font-medium">{member.name}</p>
                 <p className="text-xs text-muted-foreground">{member.email}</p>

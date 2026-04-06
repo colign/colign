@@ -37,6 +37,7 @@ message ProjectMember {
   string role = 4;
   string user_name = 5;
   string user_email = 6;
+  string user_avatar_url = 7;
 }
 
 message ProjectLabel {

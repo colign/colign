@@ -16,6 +16,11 @@ import {
   GripVertical,
 } from "lucide-react";
 import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -213,9 +218,9 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
   }
 
   return (
-    <div className="flex gap-6">
+    <ResizablePanelGroup direction="horizontal" className="min-h-[400px] rounded-xl">
       {/* Sidebar */}
-      <div className="w-64 shrink-0">
+      <ResizablePanel defaultSize={20} minSize={15} maxSize={40} className="pr-2">
         <div className="mb-3 flex items-center justify-between">
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             {t("project.wiki")}
@@ -262,31 +267,35 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
             />
           </DndContext>
         )}
-      </div>
+      </ResizablePanel>
+
+      <ResizableHandle withHandle />
 
       {/* Content Area */}
-      <div className="min-h-[400px] flex-1 rounded-xl border border-border/40 bg-card/50">
-        {selectedPageId ? (
-          <WikiPageContent
-            projectId={projectId}
-            pageId={selectedPageId}
-            onTitleChange={(pageId, title) => {
-              setPages((prev) =>
-                prev.map((p) => (p.id === pageId ? { ...p, title } as WikiPage : p)),
-              );
-            }}
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center py-20">
-            <div className="text-center">
-              <FileText className="mx-auto mb-3 size-10 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">
-                {t("project.wikiEmptyDesc")}
-              </p>
+      <ResizablePanel defaultSize={80} className="pl-2">
+        <div className="h-full rounded-xl border border-border/40 bg-card/50">
+          {selectedPageId ? (
+            <WikiPageContent
+              projectId={projectId}
+              pageId={selectedPageId}
+              onTitleChange={(pageId, title) => {
+                setPages((prev) =>
+                  prev.map((p) => (p.id === pageId ? { ...p, title } as WikiPage : p)),
+                );
+              }}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center py-20">
+              <div className="text-center">
+                <FileText className="mx-auto mb-3 size-10 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">
+                  {t("project.wikiEmptyDesc")}
+                </p>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </ResizablePanel>
 
       {/* Delete Confirmation */}
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
@@ -308,7 +317,7 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </ResizablePanelGroup>
   );
 }
 
