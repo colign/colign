@@ -172,10 +172,6 @@ func (h *ConnectHandler) UpdateProject(ctx context.Context, req *connect.Request
 	if req.Msg.Color != nil {
 		input.Color = req.Msg.Color
 	}
-	if req.Msg.Readme != nil {
-		input.Readme = req.Msg.Readme
-	}
-
 	project, err := h.service.Update(ctx, input, claims.OrgID)
 	if err != nil {
 		if errors.Is(err, ErrProjectNotFound) {
@@ -539,7 +535,6 @@ func projectToProto(p *models.Project) *projectv1.Project {
 		Name:        p.Name,
 		Slug:        p.Slug,
 		Description: p.Description,
-		Readme:      p.Readme,
 		Status:      string(p.Status),
 		Priority:    string(p.Priority),
 		Health:      string(p.Health),

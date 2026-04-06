@@ -4,17 +4,24 @@ import * as ResizablePrimitive from "react-resizable-panels"
 
 import { cn } from "@/lib/utils"
 
+type ResizablePanelGroupProps = ResizablePrimitive.GroupProps & {
+  direction?: ResizablePrimitive.GroupProps["orientation"]
+}
+
 function ResizablePanelGroup({
   className,
+  direction,
+  orientation,
   ...props
-}: ResizablePrimitive.GroupProps) {
+}: ResizablePanelGroupProps) {
+  const resolvedOrientation = orientation ?? direction ?? "horizontal"
+
   return (
     <ResizablePrimitive.Group
       data-slot="resizable-panel-group"
-      className={cn(
-        "flex h-full w-full aria-[orientation=vertical]:flex-col",
-        className
-      )}
+      data-orientation={resolvedOrientation}
+      orientation={resolvedOrientation}
+      className={cn("flex h-full w-full min-w-0 data-[orientation=vertical]:flex-col", className)}
       {...props}
     />
   )
@@ -41,7 +48,7 @@ function ResizableHandle({
       {...props}
     >
       {withHandle && (
-        <div className="z-10 flex h-6 w-1 shrink-0 rounded-lg bg-border" />
+        <div className="z-10 flex h-8 w-1.5 shrink-0 rounded-full bg-border" />
       )}
     </ResizablePrimitive.Separator>
   )

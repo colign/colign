@@ -34,4 +34,9 @@ spec:
               value: {{ include "colign.databaseURL" . | quote }}
             - name: MIGRATIONS_PATH
               value: "/migrations"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: jwt-secret
 {{- end }}

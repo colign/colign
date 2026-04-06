@@ -61,7 +61,6 @@
     "setupSDD": "Set up a project to start your SDD workflow"
   },
   "project": {
-    "overview": "Overview",
     "changes": "Changes",
     "members": "Members",
     "details": "Details",

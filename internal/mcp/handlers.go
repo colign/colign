@@ -54,14 +54,13 @@ func init() {
 	})
 	RegisterTool(Tool{
 		Name:        "update_project",
-		Description: "Update a project's name, description, or README",
+		Description: "Update a project's name or description",
 		InputSchema: InputSchema{
 			Type: "object",
 			Properties: map[string]Property{
 				"project_id":  {Type: "integer", Description: "Project ID"},
 				"name":        {Type: "string", Description: "New project name (optional)"},
 				"description": {Type: "string", Description: "Short project description (one-liner)"},
-				"readme":      {Type: "string", Description: "Project README content in markdown (auto-converted to HTML)"},
 			},
 			Required: []string{"project_id"},
 		},
@@ -1140,9 +1139,8 @@ func (s *Server) handleLinkACToTest(ctx context.Context, args json.RawMessage) (
 func (s *Server) handleUpdateProject(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
 		ProjectID   FlexInt64 `json:"project_id"`
-		Name        string    `json:"name"`
-		Description string    `json:"description"`
-		Readme      *string   `json:"readme"`
+		Name        string `json:"name"`
+		Description string `json:"description"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
@@ -1154,15 +1152,6 @@ func (s *Server) handleUpdateProject(ctx context.Context, args json.RawMessage) 
 		Description: params.Description,
 		ProjectId:   params.ProjectID.Int64(),
 	}
-	if params.Readme != nil {
-		// Convert markdown to HTML for Tiptap editor
-		html, err := markdownToHTML(*params.Readme)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert markdown: %w", err)
-		}
-		req.Readme = &html
-	}
-
 	resp, err := s.clients.project.UpdateProject(ctx, connect.NewRequest(req))
 	if err != nil {
 		return nil, err
@@ -1173,7 +1162,6 @@ func (s *Server) handleUpdateProject(ctx context.Context, args json.RawMessage) 
 		"id":          p.Id,
 		"name":        p.Name,
 		"description": p.Description,
-		"readme":      p.Readme,
 		"updated":     true,
 	}, nil
 }

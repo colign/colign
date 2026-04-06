@@ -4,7 +4,6 @@ CREATE TABLE projects (
     name TEXT NOT NULL,
     slug TEXT NOT NULL,
     description TEXT,
-    readme TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL DEFAULT 'backlog' CHECK (status IN ('backlog', 'active', 'paused', 'completed', 'cancelled')),
     priority TEXT NOT NULL DEFAULT 'none' CHECK (priority IN ('urgent', 'high', 'medium', 'low', 'none')),
     health TEXT NOT NULL DEFAULT 'on_track' CHECK (health IN ('on_track', 'at_risk', 'off_track')),

@@ -2,8 +2,8 @@ apiVersion: v2
 name: colign
 description: AI-powered spec management platform for team alignment
 type: application
-version: 0.3.1
-appVersion: "5a365cb"
+version: 0.4.1
+appVersion: "latest"
 
 dependencies:
   - name: postgresql

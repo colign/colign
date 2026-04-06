@@ -65,7 +65,7 @@ func (s *Service) GenerateProposal(ctx context.Context, cfg *aiconfig.AIConfig, 
 		return nil, fmt.Errorf("ai: create chat model: %w", err)
 	}
 
-	systemPrompt := ProposalSystemPrompt(cfg.IncludeProjectContext, "", nil)
+	systemPrompt := ProposalSystemPrompt(cfg.IncludeProjectContext, nil)
 	messages := []*schema.Message{
 		{Role: schema.System, Content: systemPrompt},
 		{Role: schema.User, Content: input.Description},
@@ -99,7 +99,7 @@ func (s *Service) GenerateAC(ctx context.Context, cfg *aiconfig.AIConfig, input 
 // generateProposalWithModel is the testable inner function that streams
 // proposal chunks from the given chat model.
 func generateProposalWithModel(ctx context.Context, chatModel model.BaseChatModel, description string) (<-chan SectionChunk, error) {
-	systemPrompt := ProposalSystemPrompt(false, "", nil)
+	systemPrompt := ProposalSystemPrompt(false, nil)
 	messages := []*schema.Message{
 		{Role: schema.System, Content: systemPrompt},
 		{Role: schema.User, Content: description},

@@ -120,7 +120,6 @@ interface ProjectDetail {
   name: string;
   slug: string;
   description: string;
-  readme: string;
   status: string;
   priority: string;
   health: string;
@@ -140,7 +139,6 @@ function mapProjectDetail(
     name: project.name,
     slug: project.slug,
     description: project.description,
-    readme: project.readme,
     status: project.status,
     priority: project.priority,
     health: project.health,
@@ -153,8 +151,8 @@ function mapProjectDetail(
   };
 }
 
-type TabId = "overview" | "wiki" | "changes" | "members" | "memory";
-const validProjectTabs: TabId[] = ["overview", "wiki", "changes", "members", "memory"];
+type TabId = "wiki" | "changes" | "members" | "memory";
+const validProjectTabs: TabId[] = ["wiki", "changes", "members", "memory"];
 
 export default function ProjectDetailClient() {
   const params = useParams();
@@ -169,11 +167,11 @@ export default function ProjectDetailClient() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const tabParam = searchParams.get("tab") as TabId | null;
-  const initialProjectTab = tabParam && validProjectTabs.includes(tabParam) ? tabParam : "overview";
+  const initialProjectTab = tabParam && validProjectTabs.includes(tabParam) ? tabParam : "wiki";
   const [activeTab, setActiveTabState] = useState<TabId>(initialProjectTab);
 
   useEffect(() => {
-    const nextTab = tabParam && validProjectTabs.includes(tabParam) ? tabParam : "overview";
+    const nextTab = tabParam && validProjectTabs.includes(tabParam) ? tabParam : "wiki";
     setActiveTabState(nextTab);
   }, [tabParam]);
 
@@ -476,7 +474,6 @@ export default function ProjectDetailClient() {
   }
 
   const tabs: { id: TabId; label: string }[] = [
-    { id: "overview", label: t("project.overview") },
     { id: "wiki", label: t("project.wiki") },
     { id: "changes", label: t("project.changes") },
     { id: "members", label: t("project.members") },
@@ -719,17 +716,6 @@ export default function ProjectDetailClient() {
         </div>
 
         {/* Tab Content */}
-        {activeTab === "overview" && (
-          <OverviewTab
-            readme={project.readme}
-            project={project}
-            changes={changes}
-            onViewChanges={() => setActiveTab("changes")}
-            onReadmeUpdate={(readme) => setProject({ ...project, readme })}
-            t={t}
-          />
-        )}
-
         {activeTab === "wiki" && (
           <WikiTab projectId={project.id} />
         )}
@@ -801,116 +787,6 @@ export default function ProjectDetailClient() {
 }
 
 // ─── Overview Tab ───────────────────────────────────────
-
-function OverviewTab({
-  readme,
-  project,
-  changes,
-  onViewChanges,
-  onReadmeUpdate,
-  t,
-}: {
-  readme: string;
-  project: Pick<ProjectDetail, "id" | "slug">;
-  changes: Change[];
-  onViewChanges: () => void;
-  onReadmeUpdate: (desc: string) => void;
-  t: (key: string) => string;
-}) {
-  const handleReadmeSave = async (html: string) => {
-    try {
-      await projectClient.updateProject({ id: project.id, readme: html, projectId: project.id });
-      onReadmeUpdate(html);
-    } catch (err) {
-      showError(t("toast.saveFailed"), err);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* README */}
-      <div className="rounded-xl border border-border/40 bg-card/50">
-        <div className="flex items-center gap-2 border-b border-border/40 px-5 py-3">
-          <FileText className="size-4 text-muted-foreground" />
-          <span className="text-sm font-medium">README</span>
-        </div>
-        <ReadmeEditor
-          initialContent={readme}
-          onSave={handleReadmeSave}
-          placeholder="Write your project README..."
-        />
-      </div>
-
-      {/* Recent Changes */}
-      <div className="rounded-xl border border-border/40 bg-card/50">
-        <div className="flex items-center justify-between border-b border-border/40 px-5 py-3">
-          <span className="text-sm font-medium">{t("project.recentChanges")}</span>
-          {changes.length > 3 && (
-            <button
-              onClick={onViewChanges}
-              className="flex cursor-pointer items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
-            >
-              {t("project.viewAll")}
-              <ChevronRight className="size-3" />
-            </button>
-          )}
-        </div>
-        {changes.length === 0 ? (
-          <div className="py-8 text-center">
-            <p className="text-sm text-muted-foreground">{t("project.noChanges")}</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-border/30">
-            {changes.slice(0, 3).map((change) => {
-              const config = stageConfig[change.stage] ?? stageConfig.draft;
-              return (
-                <Link key={String(change.id)} href={toChangePath(project, change.id)}>
-                  <div className="flex cursor-pointer items-center justify-between px-5 py-3 transition-colors hover:bg-accent/50">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`flex h-7 w-7 items-center justify-center rounded-md border ${config.color}`}
-                      >
-                        <svg
-                          className="h-3 w-3"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.5}
-                            d={config.icon}
-                          />
-                        </svg>
-                      </div>
-                      <span className="text-sm">
-                        {change.identifier && (
-                          <span className="mr-1.5 text-muted-foreground">{change.identifier}</span>
-                        )}
-                        {change.name}
-                      </span>
-                    </div>
-                    <div className="flex items-center">
-                      <span className={`text-xs font-medium ${config.color.split(" ")[1]}`}>
-                        {t(`stages.${change.stage}`)}
-                      </span>
-                      {change.subStatus === "ready" && change.stage !== "approved" && (
-                        <span className="ml-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
-                          {t("stages.subStatus.ready")}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ─── Changes Tab ────────────────────────────────────────
 

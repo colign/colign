@@ -5,11 +5,10 @@ import (
 	"strings"
 )
 
-const maxReadmeLen = 2000
 const maxChanges = 10
 
 // ProposalSystemPrompt returns the system prompt for proposal generation.
-func ProposalSystemPrompt(includeContext bool, readme string, recentChanges []string) string {
+func ProposalSystemPrompt(includeContext bool, recentChanges []string) string {
 	var sb strings.Builder
 	sb.WriteString(`You are a product specification writer for software projects.
 Given a one-line description, generate a structured proposal.
@@ -24,24 +23,15 @@ What's explicitly excluded?
 
 Write in the same language as the user's input.`)
 
-	if includeContext && (readme != "" || len(recentChanges) > 0) {
+	if includeContext && len(recentChanges) > 0 {
 		sb.WriteString("\n\nProject context:")
-		if readme != "" {
-			truncated := readme
-			if len(truncated) > maxReadmeLen {
-				truncated = truncated[:maxReadmeLen] + "..."
-			}
-			fmt.Fprintf(&sb, "\n- README:\n%s", truncated)
+		changes := recentChanges
+		if len(changes) > maxChanges {
+			changes = changes[:maxChanges]
 		}
-		if len(recentChanges) > 0 {
-			changes := recentChanges
-			if len(changes) > maxChanges {
-				changes = changes[:maxChanges]
-			}
-			sb.WriteString("\n- Recent changes:")
-			for _, c := range changes {
-				fmt.Fprintf(&sb, "\n  - %s", c)
-			}
+		sb.WriteString("\n- Recent changes:")
+		for _, c := range changes {
+			fmt.Fprintf(&sb, "\n  - %s", c)
 		}
 	}
 

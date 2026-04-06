@@ -218,9 +218,9 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
   }
 
   return (
-    <ResizablePanelGroup direction="horizontal" className="min-h-[400px] rounded-xl">
+    <ResizablePanelGroup orientation="horizontal" className="min-h-[600px] w-full min-w-0" style={{ height: "calc(100vh - 22rem)" }}>
       {/* Sidebar */}
-      <ResizablePanel defaultSize={20} minSize={15} maxSize={40} className="pr-2">
+      <ResizablePanel defaultSize="25%" minSize="15%" maxSize="45%" className="min-w-0 overflow-y-auto overflow-x-hidden">
         <div className="mb-3 flex items-center justify-between">
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             {t("project.wiki")}
@@ -269,10 +269,10 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
         )}
       </ResizablePanel>
 
-      <ResizableHandle withHandle />
+      <ResizableHandle withHandle className="mx-1 hover:bg-primary/20 transition-colors" />
 
       {/* Content Area */}
-      <ResizablePanel defaultSize={80} className="pl-2">
+      <ResizablePanel defaultSize="75%" className="min-w-0 pl-3">
         <div className="h-full rounded-xl border border-border/40 bg-card/50">
           {selectedPageId ? (
             <WikiPageContent
