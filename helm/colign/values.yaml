@@ -6,7 +6,7 @@ imagePullSecrets: []
 api:
   replicaCount: 1
   image:
-    repository: ghcr.io/gobenpark/colign
+    repository: ghcr.io/colign/colign
     tag: ""  # defaults to Chart.appVersion
     pullPolicy: IfNotPresent
   service:
@@ -37,7 +37,7 @@ web:
   enabled: true
   replicaCount: 1
   image:
-    repository: ghcr.io/gobenpark/colign-web
+    repository: ghcr.io/colign/colign-web
     tag: ""
     pullPolicy: IfNotPresent
   service:
@@ -56,7 +56,7 @@ hocuspocus:
   enabled: true
   replicaCount: 1
   image:
-    repository: ghcr.io/gobenpark/colign-hocuspocus
+    repository: ghcr.io/colign/colign-hocuspocus
     tag: ""
     pullPolicy: IfNotPresent
   service:

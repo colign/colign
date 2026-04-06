@@ -6,7 +6,7 @@ imagePullSecrets:
 api:
   replicaCount: 1
   image:
-    repository: ghcr.io/gobenpark/colign
+    repository: ghcr.io/colign/colign
     tag: latest
     pullPolicy: IfNotPresent
   migrate:

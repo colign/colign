@@ -28,7 +28,8 @@ import { projectClient } from "@/lib/project";
 import { isCanonicalProjectRef, toChangePath, toProjectPath } from "@/lib/project-ref";
 import { orgClient } from "@/lib/organization";
 import { memoryClient } from "@/lib/memory";
-import { WikiTab } from "@/components/wiki/wiki-tab";
+import dynamic from "next/dynamic";
+const WikiTab = dynamic(() => import("@/components/wiki/wiki-tab").then((m) => m.WikiTab), { ssr: false });
 import { useEvents } from "@/lib/events";
 import { useI18n } from "@/lib/i18n";
 import { showError, showSuccess } from "@/lib/toast";
@@ -474,7 +475,7 @@ export default function ProjectDetailClient() {
 
   const tabs: { id: TabId; label: string }[] = [
     { id: "overview", label: t("project.overview") },
-    { id: "wiki", label: t("wiki") },
+    { id: "wiki", label: t("project.wiki") },
     { id: "changes", label: t("project.changes") },
     { id: "members", label: t("project.members") },
     { id: "memory", label: t("project.memory") },

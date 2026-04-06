@@ -65,6 +65,17 @@ var rpcRules = map[string]AuthRule{
 	// MemoryService
 	"/memory.v1.MemoryService/GetMemory":  {Resource: "memory", Action: "read"},
 	"/memory.v1.MemoryService/SaveMemory": {Resource: "memory", Action: "save"},
+
+	// WikiService
+	"/wiki.v1.WikiService/ListWikiPages":   {Resource: "wiki", Action: "read"},
+	"/wiki.v1.WikiService/GetWikiPage":     {Resource: "wiki", Action: "read"},
+	"/wiki.v1.WikiService/CreateWikiPage":  {Resource: "wiki", Action: "create"},
+	"/wiki.v1.WikiService/UpdateWikiPage":  {Resource: "wiki", Action: "update"},
+	"/wiki.v1.WikiService/DeleteWikiPage":  {Resource: "wiki", Action: "delete"},
+	"/wiki.v1.WikiService/RestoreWikiPage": {Resource: "wiki", Action: "update"},
+	"/wiki.v1.WikiService/ReorderWikiPages": {Resource: "wiki", Action: "update"},
+	"/wiki.v1.WikiService/UploadWikiImage": {Resource: "wiki", Action: "create"},
+	"/wiki.v1.WikiService/GetWikiImage":    {Resource: "wiki", Action: "read"},
 }
 
 // skipRPCs lists RPC procedures that bypass RBAC enforcement entirely.

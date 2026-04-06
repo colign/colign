@@ -33,6 +33,7 @@ p, viewer, memory, read
 p, viewer, workflow, read
 p, viewer, ac, read
 p, viewer, archive_policy, read
+p, viewer, wiki, read
 
 p, editor, change, create
 p, editor, change, update
@@ -53,6 +54,9 @@ p, editor, ac, update
 p, editor, ac, toggle
 p, editor, ac, delete
 p, editor, memory, save
+p, editor, wiki, create
+p, editor, wiki, update
+p, editor, wiki, delete
 p, editor, workflow, advance
 p, editor, workflow, revert
 p, editor, workflow, approve

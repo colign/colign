@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
-import type { Block } from "@blocknote/core";
+import type { PartialBlock } from "@blocknote/core";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
 import { wikiClient } from "@/lib/wiki";
@@ -13,7 +13,7 @@ import "@blocknote/shadcn/style.css";
 interface WikiEditorProps {
   projectId: bigint;
   pageId: string;
-  initialContent?: Block<any, any, any>[];
+  initialContent?: PartialBlock[];
   onContentChange?: (json: string) => void;
 }
 
@@ -21,6 +21,16 @@ const CURSOR_COLORS = [
   "#3b82f6", "#ef4444", "#10b981", "#f59e0b",
   "#8b5cf6", "#ec4899", "#06b6d4", "#f97316",
 ];
+
+function normalizeCollaboratorName(value: unknown): string {
+  return typeof value === "string" && value.trim() ? value : "Anonymous";
+}
+
+function getCollaborationProvider(provider: HocuspocusProvider) {
+  return provider as HocuspocusProvider & {
+    awareness?: NonNullable<HocuspocusProvider["awareness"]>;
+  };
+}
 
 function getUserColor(name: string): string {
   let hash = 0;
@@ -86,17 +96,17 @@ function CollaborativeEditor({
   pageId: string;
   doc: Y.Doc;
   provider: HocuspocusProvider;
-  initialContent?: Block<any, any, any>[];
+  initialContent?: PartialBlock[];
   onContentChange?: (json: string) => void;
 }) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seededRef = useRef(false);
   const payload = getTokenPayload();
-  const userName = payload?.name ?? "Anonymous";
+  const userName = normalizeCollaboratorName(payload?.name);
 
   const editor = useCreateBlockNote({
     collaboration: {
-      provider,
+      provider: getCollaborationProvider(provider),
       fragment: doc.getXmlFragment("document-store"),
       user: {
         name: userName,

@@ -47,6 +47,10 @@ interface TreeNode {
   children: TreeNode[];
 }
 
+function normalizeWikiText(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
 function buildTree(pages: WikiPage[]): TreeNode[] {
   const map = new Map<string, TreeNode>();
   const roots: TreeNode[] = [];
@@ -124,7 +128,7 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
     if (!deleteTarget) return;
     try {
       await wikiClient.deleteWikiPage({ projectId, pageId: deleteTarget.id });
-      showSuccess(t("wikiDeleted"));
+      showSuccess(t("project.wikiDeleted"));
       if (selectedPageId === deleteTarget.id) {
         setSelectedPageId(null);
       }
@@ -214,7 +218,7 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
       <div className="w-64 shrink-0">
         <div className="mb-3 flex items-center justify-between">
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            {t("wiki")}
+            {t("project.wiki")}
           </span>
           <Button
             variant="ghost"
@@ -230,14 +234,14 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
           <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/60 px-4 py-12 text-center">
             <FileText className="mb-3 size-8 text-muted-foreground/40" />
             <p className="mb-1 text-sm font-medium text-foreground/80">
-              {t("wikiEmptyTitle")}
+              {t("project.wikiEmptyTitle")}
             </p>
             <p className="mb-4 text-xs text-muted-foreground">
-              {t("wikiEmptyDesc")}
+              {t("project.wikiEmptyDesc")}
             </p>
             <Button size="sm" onClick={() => handleCreatePage()}>
               <Plus className="mr-1.5 size-3.5" />
-              {t("wikiCreateFirst")}
+              {t("project.wikiCreateFirst")}
             </Button>
           </div>
         ) : (
@@ -277,7 +281,7 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
             <div className="text-center">
               <FileText className="mx-auto mb-3 size-10 text-muted-foreground/30" />
               <p className="text-sm text-muted-foreground">
-                {t("wikiEmptyDesc")}
+                {t("project.wikiEmptyDesc")}
               </p>
             </div>
           </div>
@@ -288,18 +292,18 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-destructive">{t("wikiDeleteTitle")}</DialogTitle>
-            <DialogDescription>{t("wikiDeleteDesc")}</DialogDescription>
+            <DialogTitle className="text-destructive">{t("project.wikiDeleteTitle")}</DialogTitle>
+            <DialogDescription>{t("project.wikiDeleteDesc")}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteTarget(null)}>
-              {t("cancel")}
+              {t("common.cancel")}
             </Button>
             <Button
               variant="destructive"
               onClick={handleDeletePage}
             >
-              {t("wikiDeleteConfirm")}
+              {t("project.wikiDeleteConfirm")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -375,6 +379,8 @@ function SortableTreeItem({
   const isExpanded = expandedIds.has(node.page.id);
   const isSelected = selectedId === node.page.id;
   const maxDepth = 2;
+  const pageIcon = normalizeWikiText(node.page.icon);
+  const pageTitle = normalizeWikiText(node.page.title);
 
   const {
     attributes,
@@ -429,14 +435,14 @@ function SortableTreeItem({
           <span className="size-4 shrink-0" />
         )}
 
-        {node.page.icon ? (
-          <span className="shrink-0 text-sm">{node.page.icon}</span>
+        {pageIcon ? (
+          <span className="shrink-0 text-sm">{pageIcon}</span>
         ) : (
           <FileText className="size-3.5 shrink-0 text-muted-foreground/60" />
         )}
 
         <span className="truncate">
-          {node.page.title || t("wikiUntitled")}
+          {pageTitle || t("project.wikiUntitled")}
         </span>
 
         <TreeItemMenu
@@ -512,7 +518,7 @@ function TreeItemMenu({
               }}
             >
               <FilePlus className="size-3.5" />
-              {t("wikiAddSubpage")}
+              {t("project.wikiAddSubpage")}
             </button>
           )}
           <button
@@ -524,7 +530,7 @@ function TreeItemMenu({
             }}
           >
             <Trash2 className="size-3.5" />
-            {t("wikiDeleteConfirm")}
+            {t("project.wikiDeleteConfirm")}
           </button>
         </div>
       )}
@@ -554,7 +560,7 @@ function WikiPageContent({
       .then((res) => {
         if (!cancelled) {
           setPage(res.page!);
-          setTitle(res.page!.title);
+          setTitle(normalizeWikiText(res.page?.title));
           setLoading(false);
         }
       })
@@ -584,14 +590,6 @@ function WikiPageContent({
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="size-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
   const handleContentChange = useCallback(
     async (json: string) => {
       if (!page) return;
@@ -611,12 +609,21 @@ function WikiPageContent({
     [page, projectId, t],
   );
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="size-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
   if (!page) return null;
 
   const initialBlocks = page.contentJson
     ? (() => {
         try {
-          return JSON.parse(page.contentJson);
+          const parsed = JSON.parse(page.contentJson);
+          return Array.isArray(parsed) ? parsed : undefined;
         } catch {
           return undefined;
         }
@@ -632,7 +639,7 @@ function WikiPageContent({
         onKeyDown={(e) => {
           if (e.key === "Enter") e.currentTarget.blur();
         }}
-        placeholder={t("wikiUntitled")}
+        placeholder={t("project.wikiUntitled")}
         className="mb-4 w-full bg-transparent text-2xl font-bold outline-none placeholder:text-muted-foreground/40"
       />
       <WikiEditor
