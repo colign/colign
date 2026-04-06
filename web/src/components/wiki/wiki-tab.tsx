@@ -16,11 +16,6 @@ import {
   GripVertical,
 } from "lucide-react";
 import {
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-} from "@/components/ui/resizable";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -86,13 +81,11 @@ function buildTree(pages: WikiPage[]): TreeNode[] {
 
 export function WikiTab({ projectId }: { projectId: bigint }) {
   const { t } = useI18n();
-  const layoutRef = useRef<HTMLDivElement>(null);
   const [pages, setPages] = useState<WikiPage[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<WikiPage | null>(null);
-  const [layoutHeight, setLayoutHeight] = useState<number | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -114,20 +107,6 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
     loadPages();
   }, [loadPages]);
 
-  useEffect(() => {
-    const updateLayoutHeight = () => {
-      if (!layoutRef.current) return;
-
-      const top = layoutRef.current.getBoundingClientRect().top;
-      const nextHeight = Math.round(Math.max(window.innerHeight - top - 24, 420));
-      setLayoutHeight((prev) => (prev === nextHeight ? prev : nextHeight));
-    };
-
-    updateLayoutHeight();
-    window.addEventListener("resize", updateLayoutHeight);
-
-    return () => window.removeEventListener("resize", updateLayoutHeight);
-  }, []);
 
   const handleCreatePage = async (parentId?: string) => {
     try {
@@ -235,23 +214,11 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
   }
 
   return (
-    <div
-      ref={layoutRef}
-      className="min-h-0"
-      style={layoutHeight ? { height: `${layoutHeight}px` } : undefined}
-    >
-      <ResizablePanelGroup
-        orientation="horizontal"
-        className="h-full w-full min-w-0 items-stretch"
-      >
+    <>
+      <div className="flex gap-4">
         {/* Sidebar */}
-        <ResizablePanel
-          defaultSize="25%"
-          minSize="15%"
-          maxSize="45%"
-          className="min-w-0 !overflow-y-auto !overflow-x-hidden pr-2 scrollbar-subtle"
-        >
-          <div>
+        <div className="w-56 shrink-0">
+          <div className="sticky top-14 max-h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden scrollbar-subtle">
             <div className="mb-3 flex items-center justify-between">
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 {t("project.wiki")}
@@ -299,16 +266,11 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
               </DndContext>
             )}
           </div>
-        </ResizablePanel>
-
-        <ResizableHandle withHandle className="mx-1 hover:bg-primary/20 transition-colors" />
+        </div>
 
         {/* Content Area */}
-        <ResizablePanel
-          defaultSize="75%"
-          className="min-w-0 !overflow-y-auto !overflow-x-hidden pl-8 scrollbar-subtle"
-        >
-          <div className="min-h-full rounded-xl border border-border/40 bg-card/50">
+        <div className="min-w-0 flex-1">
+          <div className="min-h-[400px] rounded-xl border border-border/40 bg-card/50">
             {selectedPageId ? (
               <WikiPageContent
                 key={selectedPageId}
@@ -331,30 +293,30 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
               </div>
             )}
           </div>
-        </ResizablePanel>
+        </div>
+      </div>
 
-        {/* Delete Confirmation */}
-        <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-destructive">{t("project.wikiDeleteTitle")}</DialogTitle>
-              <DialogDescription>{t("project.wikiDeleteDesc")}</DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setDeleteTarget(null)}>
-                {t("common.cancel")}
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDeletePage}
-              >
-                {t("project.wikiDeleteConfirm")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </ResizablePanelGroup>
-    </div>
+      {/* Delete Confirmation */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">{t("project.wikiDeleteTitle")}</DialogTitle>
+            <DialogDescription>{t("project.wikiDeleteDesc")}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+              {t("common.cancel")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeletePage}
+            >
+              {t("project.wikiDeleteConfirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
