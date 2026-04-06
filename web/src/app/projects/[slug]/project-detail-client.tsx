@@ -740,7 +740,7 @@ export default function ProjectDetailClient() {
         {activeTab === "members" && (
           <MembersTab
             members={members}
-            onInvite={() => router.push(`${toProjectPath(project)}/settings`)}
+            onInvite={() => router.push(`${toProjectPath(project)}/settings?tab=members`)}
             t={t}
           />
         )}

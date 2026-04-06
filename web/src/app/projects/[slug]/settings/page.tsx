@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -16,6 +17,7 @@ import {
 import { Header } from "@/components/layout/header";
 import { workflowClient } from "@/lib/workflow";
 import { projectClient } from "@/lib/project";
+import { orgClient } from "@/lib/organization";
 import { isCanonicalProjectRef, toProjectPath } from "@/lib/project-ref";
 import { useI18n } from "@/lib/i18n";
 import { showError, showSuccess } from "@/lib/toast";
@@ -43,9 +45,13 @@ export default function ProjectSettingsPage() {
   const params = useParams();
   const projectRef = params.slug as string;
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t } = useI18n();
 
-  const [activeTab, setActiveTab] = useState<SettingsTab>("general");
+  const initialTab = tabs.some((tab) => tab.id === searchParams.get("tab"))
+    ? (searchParams.get("tab") as SettingsTab)
+    : "general";
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [projectId, setProjectId] = useState<bigint | null>(null);
   const [projectSlug, setProjectSlug] = useState("");
 
@@ -55,8 +61,13 @@ export default function ProjectSettingsPage() {
   const [projectIdentifier, setProjectIdentifier] = useState("");
 
   // Members
-  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteQuery, setInviteQuery] = useState("");
   const [inviteRole, setInviteRole] = useState("editor");
+  const [inviting, setInviting] = useState(false);
+  const [orgMembers, setOrgMembers] = useState<{ userId: bigint; name: string; email: string }[]>([]);
+  const [projectMembers, setProjectMembers] = useState<{ name: string; email: string; role: string }[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Approval
   const [policy, setPolicy] = useState("owner_one");
@@ -83,7 +94,8 @@ export default function ProjectSettingsPage() {
           return;
         }
         if (!isCanonicalProjectRef(projectRef, res.project)) {
-          router.replace(`${toProjectPath(res.project)}/settings`);
+          const qs = searchParams.toString();
+          router.replace(`${toProjectPath(res.project)}/settings${qs ? `?${qs}` : ""}`);
           return;
         }
         setProjectId(res.project.id);
@@ -91,11 +103,76 @@ export default function ProjectSettingsPage() {
         setProjectName(res.project.name);
         setProjectDescription(res.project.description);
         setProjectIdentifier(res.project.identifier);
+        setProjectMembers(
+          (res.members || []).map((m) => ({
+            name: m.userName,
+            email: m.userEmail,
+            role: m.role,
+          })),
+        );
       })
       .catch((err: unknown) => {
         showError(t("toast.projectLoadFailed"), err);
       });
   }, [projectRef, router, t]);
+
+  // Load org members when members tab is active
+  useEffect(() => {
+    if (activeTab !== "members") return;
+    if (orgMembers.length > 0) return;
+    orgClient
+      .listMembers({})
+      .then((res) => {
+        setOrgMembers(
+          res.members.map((m) => ({ userId: m.userId, name: m.userName, email: m.userEmail })),
+        );
+      })
+      .catch((err: unknown) => {
+        showError(t("toast.loadFailed"), err);
+      });
+  }, [activeTab, orgMembers.length, t]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredOrgMembers = orgMembers
+    .filter((m) => {
+      if (!inviteQuery.trim()) return true;
+      const q = inviteQuery.toLowerCase();
+      return m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q);
+    })
+    .filter((m) => !projectMembers.some((pm) => pm.email === m.email));
+
+  async function handleInviteMember(email: string) {
+    if (!projectId) return;
+    setInviting(true);
+    try {
+      await projectClient.inviteMember({
+        projectId,
+        email,
+        role: inviteRole,
+      });
+      setProjectMembers((prev) => [
+        ...prev,
+        { name: orgMembers.find((m) => m.email === email)?.name ?? "", email, role: inviteRole },
+      ]);
+      setInviteQuery("");
+      setShowDropdown(false);
+      showSuccess(t("projectSettings.invitationSent"));
+    } catch (err) {
+      showError(t("toast.inviteFailed"), err);
+    } finally {
+      setInviting(false);
+    }
+  }
 
   // Load archive policy when archive tab becomes active
   useEffect(() => {
@@ -290,13 +367,47 @@ export default function ProjectSettingsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex gap-2">
-                    <Input
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                      placeholder="email@example.com"
-                      type="email"
-                      className="flex-1"
-                    />
+                    <div className="relative flex-1" ref={dropdownRef}>
+                      <Input
+                        value={inviteQuery}
+                        onChange={(e) => {
+                          setInviteQuery(e.target.value);
+                          setShowDropdown(true);
+                        }}
+                        onFocus={() => setShowDropdown(true)}
+                        placeholder={t("projectSettings.searchMemberPlaceholder")}
+                        autoComplete="off"
+                      />
+                      {showDropdown && (
+                        <div className="absolute top-full left-0 z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border bg-popover shadow-lg">
+                          {filteredOrgMembers.length === 0 ? (
+                            <div className="px-4 py-3 text-center text-sm text-muted-foreground">
+                              {orgMembers.length > 0 && orgMembers.length === projectMembers.length
+                                ? t("projectSettings.allMembersAdded")
+                                : t("projectSettings.noMembersFound")}
+                            </div>
+                          ) : (
+                            filteredOrgMembers.map((m) => (
+                              <button
+                                key={String(m.userId)}
+                                onClick={() => handleInviteMember(m.email)}
+                                disabled={inviting}
+                                className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-accent disabled:opacity-50"
+                              >
+                                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-medium">
+                                  {(m.name?.[0] ?? m.email[0]).toUpperCase()}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-medium">{m.name || "\u2014"}</p>
+                                  <p className="truncate text-xs text-muted-foreground">{m.email}</p>
+                                </div>
+                                <UserPlus className="size-4 shrink-0 text-muted-foreground" />
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
                     <Select value={inviteRole} onValueChange={(v) => v && setInviteRole(v)}>
                       <SelectTrigger className="w-32 cursor-pointer">
                         <SelectValue />
@@ -310,19 +421,7 @@ export default function ProjectSettingsPage() {
                         </SelectItem>
                       </SelectContent>
                     </Select>
-                    <Button
-                      onClick={() => handleSave("invite")}
-                      disabled={saving || !inviteEmail}
-                      className="cursor-pointer"
-                    >
-                      {t("common.invite")}
-                    </Button>
                   </div>
-                  {saved === "invite" && (
-                    <p className="mt-2 text-sm text-emerald-400">
-                      {t("projectSettings.invitationSent")}
-                    </p>
-                  )}
                 </CardContent>
               </Card>
 
@@ -333,21 +432,30 @@ export default function ProjectSettingsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {/* Placeholder member list */}
-                    <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
-                          BP
+                    {projectMembers.map((member) => (
+                      <div
+                        key={member.email}
+                        className="flex items-center justify-between rounded-lg border border-border/50 p-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex size-8 items-center justify-center rounded-full bg-accent text-xs font-medium">
+                            {(member.name?.[0] ?? member.email[0]).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">{member.name || "\u2014"}</p>
+                            <p className="text-xs text-muted-foreground">{member.email}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium">Ben Park</p>
-                          <p className="text-xs text-muted-foreground">ben@example.com</p>
-                        </div>
+                        <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary capitalize">
+                          {member.role}
+                        </span>
                       </div>
-                      <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                        Owner
-                      </span>
-                    </div>
+                    ))}
+                    {projectMembers.length === 0 && (
+                      <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                        {t("projectSettings.membersDesc")}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
