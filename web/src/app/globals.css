@@ -157,9 +157,10 @@
   pointer-events: none;
 }
 
-/* BlockNote: contain z-index so side-menu doesn't overlap sticky header */
-.bn-container {
+/* BlockNote wiki editor: lower hover UI below the sticky project header. */
+.wiki-blocknote-editor {
   isolation: isolate;
+  --bn-ui-base-z-index: -20;
 }
 
 /* Tiptap editor focus */

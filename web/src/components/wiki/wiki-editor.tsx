@@ -162,6 +162,7 @@ function CollaborativeEditor({
       editor={editor}
       theme="dark"
       onChange={handleChange}
+      className="wiki-blocknote-editor"
     />
   );
 }
