@@ -218,9 +218,10 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
   }
 
   return (
-    <ResizablePanelGroup orientation="horizontal" className="min-h-[600px] w-full min-w-0" style={{ height: "calc(100vh - 22rem)" }}>
+    <ResizablePanelGroup orientation="horizontal" className="w-full min-w-0 items-start">
       {/* Sidebar */}
-      <ResizablePanel defaultSize="25%" minSize="15%" maxSize="45%" className="min-w-0 overflow-y-auto overflow-x-hidden">
+      <ResizablePanel defaultSize="25%" minSize="15%" maxSize="45%" className="min-w-0">
+        <div className="sticky top-14 max-h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden scrollbar-subtle">
         <div className="mb-3 flex items-center justify-between">
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             {t("project.wiki")}
@@ -267,13 +268,14 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
             />
           </DndContext>
         )}
+        </div>
       </ResizablePanel>
 
       <ResizableHandle withHandle className="mx-1 hover:bg-primary/20 transition-colors" />
 
       {/* Content Area */}
       <ResizablePanel defaultSize="75%" className="min-w-0 pl-3">
-        <div className="h-full overflow-y-auto overflow-x-hidden rounded-xl border border-border/40 bg-card/50 scrollbar-subtle">
+        <div className="min-h-[400px] rounded-xl border border-border/40 bg-card/50">
           {selectedPageId ? (
             <WikiPageContent
               projectId={projectId}
@@ -285,7 +287,7 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
               }}
             />
           ) : (
-            <div className="flex h-full items-center justify-center py-20">
+            <div className="flex items-center justify-center py-20">
               <div className="text-center">
                 <FileText className="mx-auto mb-3 size-10 text-muted-foreground/30" />
                 <p className="text-sm text-muted-foreground">
