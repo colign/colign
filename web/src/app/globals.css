@@ -163,6 +163,11 @@
   --bn-ui-base-z-index: -20;
 }
 
+.wiki-blocknote-editor .bn-editor {
+  padding-left: 4.5rem;
+  padding-right: 1.5rem;
+}
+
 /* Tiptap editor focus */
 .tiptap:focus {
   outline: none;

@@ -86,11 +86,13 @@ function buildTree(pages: WikiPage[]): TreeNode[] {
 
 export function WikiTab({ projectId }: { projectId: bigint }) {
   const { t } = useI18n();
+  const layoutRef = useRef<HTMLDivElement>(null);
   const [pages, setPages] = useState<WikiPage[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<WikiPage | null>(null);
+  const [layoutHeight, setLayoutHeight] = useState<number | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -111,6 +113,21 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
   useEffect(() => {
     loadPages();
   }, [loadPages]);
+
+  useEffect(() => {
+    const updateLayoutHeight = () => {
+      if (!layoutRef.current) return;
+
+      const top = layoutRef.current.getBoundingClientRect().top;
+      const nextHeight = Math.round(Math.max(window.innerHeight - top - 24, 420));
+      setLayoutHeight((prev) => (prev === nextHeight ? prev : nextHeight));
+    };
+
+    updateLayoutHeight();
+    window.addEventListener("resize", updateLayoutHeight);
+
+    return () => window.removeEventListener("resize", updateLayoutHeight);
+  }, []);
 
   const handleCreatePage = async (parentId?: string) => {
     try {
@@ -218,108 +235,126 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
   }
 
   return (
-    <ResizablePanelGroup orientation="horizontal" className="w-full min-w-0 items-start">
-      {/* Sidebar */}
-      <ResizablePanel defaultSize="25%" minSize="15%" maxSize="45%" className="min-w-0 !overflow-visible">
-        <div className="sticky top-14 max-h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden scrollbar-subtle">
-        <div className="mb-3 flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            {t("project.wiki")}
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-6"
-            onClick={() => handleCreatePage()}
-          >
-            <Plus className="size-3.5" />
-          </Button>
-        </div>
+    <div
+      ref={layoutRef}
+      className="min-h-0"
+      style={layoutHeight ? { height: `${layoutHeight}px` } : undefined}
+    >
+      <ResizablePanelGroup
+        orientation="horizontal"
+        className="h-full w-full min-w-0 items-stretch"
+      >
+        {/* Sidebar */}
+        <ResizablePanel
+          defaultSize="25%"
+          minSize="15%"
+          maxSize="45%"
+          className="min-w-0 overflow-y-auto overflow-x-hidden pr-2 scrollbar-subtle"
+        >
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                {t("project.wiki")}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-6"
+                onClick={() => handleCreatePage()}
+              >
+                <Plus className="size-3.5" />
+              </Button>
+            </div>
 
-        {tree.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/60 px-4 py-12 text-center">
-            <FileText className="mb-3 size-8 text-muted-foreground/40" />
-            <p className="mb-1 text-sm font-medium text-foreground/80">
-              {t("project.wikiEmptyTitle")}
-            </p>
-            <p className="mb-4 text-xs text-muted-foreground">
-              {t("project.wikiEmptyDesc")}
-            </p>
-            <Button size="sm" onClick={() => handleCreatePage()}>
-              <Plus className="mr-1.5 size-3.5" />
-              {t("project.wikiCreateFirst")}
-            </Button>
-          </div>
-        ) : (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableTreeLevel
-              nodes={tree}
-              depth={0}
-              selectedId={selectedPageId}
-              expandedIds={expandedIds}
-              onSelect={setSelectedPageId}
-              onToggle={toggleExpanded}
-              onCreateChild={(parentId) => handleCreatePage(parentId)}
-              onDelete={setDeleteTarget}
-            />
-          </DndContext>
-        )}
-        </div>
-      </ResizablePanel>
-
-      <ResizableHandle withHandle className="mx-1 hover:bg-primary/20 transition-colors" />
-
-      {/* Content Area */}
-      <ResizablePanel defaultSize="75%" className="min-w-0 pl-3">
-        <div className="min-h-[400px] rounded-xl border border-border/40 bg-card/50">
-          {selectedPageId ? (
-            <WikiPageContent
-              projectId={projectId}
-              pageId={selectedPageId}
-              onTitleChange={(pageId, title) => {
-                setPages((prev) =>
-                  prev.map((p) => (p.id === pageId ? { ...p, title } as WikiPage : p)),
-                );
-              }}
-            />
-          ) : (
-            <div className="flex items-center justify-center py-20">
-              <div className="text-center">
-                <FileText className="mx-auto mb-3 size-10 text-muted-foreground/30" />
-                <p className="text-sm text-muted-foreground">
+            {tree.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/60 px-4 py-12 text-center">
+                <FileText className="mb-3 size-8 text-muted-foreground/40" />
+                <p className="mb-1 text-sm font-medium text-foreground/80">
+                  {t("project.wikiEmptyTitle")}
+                </p>
+                <p className="mb-4 text-xs text-muted-foreground">
                   {t("project.wikiEmptyDesc")}
                 </p>
+                <Button size="sm" onClick={() => handleCreatePage()}>
+                  <Plus className="mr-1.5 size-3.5" />
+                  {t("project.wikiCreateFirst")}
+                </Button>
               </div>
-            </div>
-          )}
-        </div>
-      </ResizablePanel>
+            ) : (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableTreeLevel
+                  nodes={tree}
+                  depth={0}
+                  selectedId={selectedPageId}
+                  expandedIds={expandedIds}
+                  onSelect={setSelectedPageId}
+                  onToggle={toggleExpanded}
+                  onCreateChild={(parentId) => handleCreatePage(parentId)}
+                  onDelete={setDeleteTarget}
+                />
+              </DndContext>
+            )}
+          </div>
+        </ResizablePanel>
 
-      {/* Delete Confirmation */}
-      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-destructive">{t("project.wikiDeleteTitle")}</DialogTitle>
-            <DialogDescription>{t("project.wikiDeleteDesc")}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
-              {t("common.cancel")}
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeletePage}
-            >
-              {t("project.wikiDeleteConfirm")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </ResizablePanelGroup>
+        <ResizableHandle withHandle className="mx-1 hover:bg-primary/20 transition-colors" />
+
+        {/* Content Area */}
+        <ResizablePanel
+          defaultSize="75%"
+          className="min-w-0 overflow-y-auto overflow-x-hidden pl-8 scrollbar-subtle"
+        >
+          <div className="min-h-full rounded-xl border border-border/40 bg-card/50">
+            {selectedPageId ? (
+              <WikiPageContent
+                key={selectedPageId}
+                projectId={projectId}
+                pageId={selectedPageId}
+                onTitleChange={(pageId, title) => {
+                  setPages((prev) =>
+                    prev.map((p) => (p.id === pageId ? { ...p, title } as WikiPage : p)),
+                  );
+                }}
+              />
+            ) : (
+              <div className="flex items-center justify-center py-20">
+                <div className="text-center">
+                  <FileText className="mx-auto mb-3 size-10 text-muted-foreground/30" />
+                  <p className="text-sm text-muted-foreground">
+                    {t("project.wikiEmptyDesc")}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </ResizablePanel>
+
+        {/* Delete Confirmation */}
+        <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-destructive">{t("project.wikiDeleteTitle")}</DialogTitle>
+              <DialogDescription>{t("project.wikiDeleteDesc")}</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+                {t("common.cancel")}
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeletePage}
+              >
+                {t("project.wikiDeleteConfirm")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </ResizablePanelGroup>
+    </div>
   );
 }
 
@@ -565,7 +600,6 @@ function WikiPageContent({
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     wikiClient
       .getWikiPage({ projectId, pageId })
       .then((res) => {
