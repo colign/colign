@@ -29,6 +29,7 @@ import (
 	"github.com/gobenpark/colign/gen/proto/organization/v1/organizationv1connect"
 	"github.com/gobenpark/colign/gen/proto/project/v1/projectv1connect"
 	taskv1connect "github.com/gobenpark/colign/gen/proto/task/v1/taskv1connect"
+	"github.com/gobenpark/colign/gen/proto/wiki/v1/wikiv1connect"
 	"github.com/gobenpark/colign/gen/proto/workflow/v1/workflowv1connect"
 	"github.com/gobenpark/colign/internal/acceptance"
 	"github.com/gobenpark/colign/internal/ai"
@@ -46,6 +47,7 @@ import (
 	"github.com/gobenpark/colign/internal/project"
 	"github.com/gobenpark/colign/internal/push"
 	"github.com/gobenpark/colign/internal/task"
+	"github.com/gobenpark/colign/internal/wiki"
 	"github.com/gobenpark/colign/internal/workflow"
 )
 
@@ -194,6 +196,13 @@ func (s *Server) setupRoutes(cfg *config.Config) error {
 	documentConnectHandler := document.NewConnectHandler(documentService, s.jwtManager, apiTokenService, s.EventHub)
 	documentPath, documentHandler := documentv1connect.NewDocumentServiceHandler(documentConnectHandler, rbacOpts)
 	s.mux.Handle(documentPath, documentHandler)
+
+	// Wiki service (Connect)
+	wikiService := wiki.NewService(s.db)
+	wikiConnectHandler := wiki.NewConnectHandler(wikiService, s.jwtManager, apiTokenService)
+	wikiPath, wikiHandler := wikiv1connect.NewWikiServiceHandler(wikiConnectHandler, rbacOpts)
+	s.mux.Handle(wikiPath, wikiHandler)
+	s.mux.Handle("/api/wiki/images/", wiki.ImageHandler(wikiService, s.jwtManager))
 
 	// Task service (Connect)
 	taskService := task.NewService(s.db, task.WithArchiveEvaluator(archiveService))

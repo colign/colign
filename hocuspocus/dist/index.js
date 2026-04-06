@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 const server_1 = require("@hocuspocus/server");
 const pg_1 = require("pg");
+const Y = __importStar(require("yjs"));
 const crypto = __importStar(require("crypto"));
 const html_to_yjs_1 = require("./html-to-yjs");
 const prosemirror_1 = require("./prosemirror");
@@ -110,6 +111,21 @@ const server = new server_1.Hocuspocus({
         }
     },
     async onLoadDocument({ documentName, document }) {
+        // Wiki pages: wiki-{uuid}
+        if (documentName.startsWith("wiki-")) {
+            const pageId = documentName.slice(5); // strip "wiki-"
+            try {
+                const result = await pool.query("SELECT yjs_state FROM wiki_pages WHERE id = $1 AND deleted_at IS NULL LIMIT 1", [pageId]);
+                if (result.rows.length > 0 && result.rows[0].yjs_state) {
+                    Y.applyUpdate(document, result.rows[0].yjs_state);
+                }
+            }
+            catch (err) {
+                console.error("Failed to load wiki page:", err);
+            }
+            return;
+        }
+        // Change documents: {prefix}-{changeId}-{docType}
         const parts = documentName.split("-");
         if (parts.length < 3)
             return;
@@ -133,6 +149,19 @@ const server = new server_1.Hocuspocus({
         }
     },
     async onStoreDocument({ documentName, document }) {
+        // Wiki pages: wiki-{uuid}
+        if (documentName.startsWith("wiki-")) {
+            const pageId = documentName.slice(5);
+            try {
+                const state = Buffer.from(Y.encodeStateAsUpdate(document));
+                await pool.query(`UPDATE wiki_pages SET yjs_state = $1, updated_at = NOW() WHERE id = $2`, [state, pageId]);
+            }
+            catch (err) {
+                console.error("Failed to store wiki page:", err);
+            }
+            return;
+        }
+        // Change documents: {prefix}-{changeId}-{docType}
         const parts = documentName.split("-");
         if (parts.length < 3)
             return;

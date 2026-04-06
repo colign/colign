@@ -100,6 +100,33 @@ const server = new Hocuspocus({
   },
 
   async onLoadDocument({ documentName, document }) {
+    // Wiki pages: wiki-{uuid}
+    if (documentName.startsWith("wiki-")) {
+      const pageId = documentName.slice(5); // strip "wiki-"
+      try {
+        const result = await pool.query(
+          "SELECT yjs_state, content_json FROM wiki_pages WHERE id = $1 AND deleted_at IS NULL LIMIT 1",
+          [pageId],
+        );
+        if (result.rows.length > 0) {
+          if (result.rows[0].yjs_state) {
+            // Preferred: restore from binary Yjs state
+            Y.applyUpdate(document, result.rows[0].yjs_state);
+          } else if (result.rows[0].content_json) {
+            // Fallback: seed from content_json (first open before Yjs state exists)
+            // Store the content_json in a temporary Y.Map so the frontend can read it
+            // and initialize BlockNote with it on first sync
+            const meta = document.getMap("blocknoteMeta");
+            meta.set("initialJSON", result.rows[0].content_json as string);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load wiki page:", err);
+      }
+      return;
+    }
+
+    // Change documents: {prefix}-{changeId}-{docType}
     const parts = documentName.split("-");
     if (parts.length < 3) return;
 
@@ -128,6 +155,22 @@ const server = new Hocuspocus({
   },
 
   async onStoreDocument({ documentName, document }) {
+    // Wiki pages: wiki-{uuid}
+    if (documentName.startsWith("wiki-")) {
+      const pageId = documentName.slice(5);
+      try {
+        const state = Buffer.from(Y.encodeStateAsUpdate(document));
+        await pool.query(
+          `UPDATE wiki_pages SET yjs_state = $1, updated_at = NOW() WHERE id = $2`,
+          [state, pageId],
+        );
+      } catch (err) {
+        console.error("Failed to store wiki page:", err);
+      }
+      return;
+    }
+
+    // Change documents: {prefix}-{changeId}-{docType}
     const parts = documentName.split("-");
     if (parts.length < 3) return;
 
