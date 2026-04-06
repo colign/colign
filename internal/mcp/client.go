@@ -11,6 +11,7 @@ import (
 	"github.com/gobenpark/colign/gen/proto/organization/v1/organizationv1connect"
 	"github.com/gobenpark/colign/gen/proto/project/v1/projectv1connect"
 	"github.com/gobenpark/colign/gen/proto/task/v1/taskv1connect"
+	"github.com/gobenpark/colign/gen/proto/wiki/v1/wikiv1connect"
 	"github.com/gobenpark/colign/gen/proto/workflow/v1/workflowv1connect"
 	"github.com/gobenpark/colign/internal/events"
 )
@@ -25,6 +26,7 @@ type apiClients struct {
 	memory              memoryv1connect.MemoryServiceClient
 	auth                authv1connect.AuthServiceClient
 	organization        organizationv1connect.OrganizationServiceClient
+	wiki                wikiv1connect.WikiServiceClient
 	hocuspocusURL       string
 	hocuspocusAPISecret string
 	eventHub            *events.Hub
@@ -59,6 +61,7 @@ func newAPIClients(apiURL, apiToken string, opts ...clientOption) *apiClients {
 		memory:       memoryv1connect.NewMemoryServiceClient(httpClient, apiURL),
 		auth:         authv1connect.NewAuthServiceClient(httpClient, apiURL),
 		organization: organizationv1connect.NewOrganizationServiceClient(httpClient, apiURL),
+		wiki:         wikiv1connect.NewWikiServiceClient(httpClient, apiURL),
 	}
 	for _, opt := range opts {
 		opt(c)

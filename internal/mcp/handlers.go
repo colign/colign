@@ -20,6 +20,7 @@ import (
 	organizationv1 "github.com/gobenpark/colign/gen/proto/organization/v1"
 	projectv1 "github.com/gobenpark/colign/gen/proto/project/v1"
 	taskv1 "github.com/gobenpark/colign/gen/proto/task/v1"
+	wikiv1 "github.com/gobenpark/colign/gen/proto/wiki/v1"
 	workflowv1 "github.com/gobenpark/colign/gen/proto/workflow/v1"
 	"github.com/gobenpark/colign/internal/events"
 	"github.com/gobenpark/colign/internal/models"
@@ -561,6 +562,92 @@ func init() {
 			return s.handleListMembers(ctx)
 		},
 	})
+
+	// ── wiki ─────────────────────────────────────────────────────────
+	RegisterTool(Tool{
+		Name:        "list_wiki_pages",
+		Description: "List all wiki pages in a project. Returns a flat list; use parent_id to reconstruct the tree.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]Property{
+				"project_id": {Type: "integer", Description: "Project ID"},
+			},
+			Required: []string{"project_id"},
+		},
+		ReadOnly: true,
+		Handler: func(s *Server, ctx context.Context, args json.RawMessage) (any, error) {
+			return s.handleListWikiPages(ctx, args)
+		},
+	})
+	RegisterTool(Tool{
+		Name:        "get_wiki_page",
+		Description: "Get a wiki page with its content",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]Property{
+				"project_id": {Type: "integer", Description: "Project ID"},
+				"page_id":    {Type: "string", Description: "Wiki page ID (UUID)"},
+			},
+			Required: []string{"project_id", "page_id"},
+		},
+		ReadOnly: true,
+		Handler: func(s *Server, ctx context.Context, args json.RawMessage) (any, error) {
+			return s.handleGetWikiPage(ctx, args)
+		},
+	})
+	RegisterTool(Tool{
+		Name:        "create_wiki_page",
+		Description: "Create a new wiki page in a project",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]Property{
+				"project_id": {Type: "integer", Description: "Project ID"},
+				"parent_id":  {Type: "string", Description: "Parent page ID (UUID, optional for root pages)"},
+				"title":      {Type: "string", Description: "Page title (optional, defaults to 'Untitled')"},
+			},
+			Required: []string{"project_id"},
+		},
+		ReadOnly: false,
+		Handler: func(s *Server, ctx context.Context, args json.RawMessage) (any, error) {
+			return s.handleCreateWikiPage(ctx, args)
+		},
+	})
+	RegisterTool(Tool{
+		Name:        "update_wiki_page",
+		Description: "Update a wiki page's title, icon, or content. Content should be markdown — it will be synced to the real-time editor.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]Property{
+				"project_id": {Type: "integer", Description: "Project ID"},
+				"page_id":    {Type: "string", Description: "Wiki page ID (UUID)"},
+				"title":      {Type: "string", Description: "New page title (optional)"},
+				"icon":       {Type: "string", Description: "New page icon emoji (optional)"},
+				"content":    {Type: "string", Description: "Page content in markdown (optional). Synced to the collaborative editor via Hocuspocus."},
+			},
+			Required: []string{"project_id", "page_id"},
+		},
+		ReadOnly: false,
+		Handler: func(s *Server, ctx context.Context, args json.RawMessage) (any, error) {
+			return s.handleUpdateWikiPage(ctx, args)
+		},
+	})
+	RegisterTool(Tool{
+		Name:        "delete_wiki_page",
+		Description: "Delete a wiki page and all its descendant pages",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]Property{
+				"project_id": {Type: "integer", Description: "Project ID"},
+				"page_id":    {Type: "string", Description: "Wiki page ID (UUID)"},
+			},
+			Required: []string{"project_id", "page_id"},
+		},
+		ReadOnly:    false,
+		Destructive: boolPtr(true),
+		Handler: func(s *Server, ctx context.Context, args json.RawMessage) (any, error) {
+			return s.handleDeleteWikiPage(ctx, args)
+		},
+	})
 }
 
 func (s *Server) handleCreateProject(ctx context.Context, args json.RawMessage) (any, error) {
@@ -763,34 +850,7 @@ func (s *Server) handleWriteSpec(ctx context.Context, args json.RawMessage) (any
 // which applies it as a Y.js CRDT update for real-time sync with web editors.
 func (s *Server) updateViaHocuspocus(changeID int64, docType, htmlContent string) error {
 	documentName := fmt.Sprintf("change-%d-%s", changeID, docType)
-
-	body, err := json.Marshal(map[string]string{
-		"document_name": documentName,
-		"content":       htmlContent,
-	})
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequest("POST", s.clients.hocuspocusURL+"/api/documents", bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+s.clients.hocuspocusAPISecret)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("hocuspocus request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("hocuspocus returned %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	return nil
+	return s.sendToHocuspocus(documentName, htmlContent, "")
 }
 
 func (s *Server) publishEvent(eventType string, changeID int64, data any) {
@@ -2082,4 +2142,215 @@ func (s *Server) handleListMembers(ctx context.Context) (any, error) {
 	return map[string]any{
 		"members": members,
 	}, nil
+}
+
+// ── wiki handlers ────────────────────────────────────────────────────
+
+func wikiPageToMap(p *wikiv1.WikiPage) map[string]any {
+	m := map[string]any{
+		"id":           p.Id,
+		"project_id":   p.ProjectId,
+		"title":        p.Title,
+		"icon":         p.Icon,
+		"sort_order":   p.SortOrder,
+		"creator_name": p.CreatorName,
+	}
+	if p.ParentId != "" {
+		m["parent_id"] = p.ParentId
+	}
+	if p.ContentText != "" {
+		m["content_text"] = p.ContentText
+	}
+	if p.CreatedAt != nil {
+		m["created_at"] = p.CreatedAt.AsTime().Format("2006-01-02T15:04:05Z")
+	}
+	if p.UpdatedAt != nil {
+		m["updated_at"] = p.UpdatedAt.AsTime().Format("2006-01-02T15:04:05Z")
+	}
+	return m
+}
+
+func (s *Server) handleListWikiPages(ctx context.Context, args json.RawMessage) (any, error) {
+	var params struct {
+		ProjectID FlexInt64 `json:"project_id"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return nil, fmt.Errorf("invalid arguments: %w", err)
+	}
+
+	resp, err := s.clients.wiki.ListWikiPages(ctx, connect.NewRequest(&wikiv1.ListWikiPagesRequest{
+		ProjectId: params.ProjectID.Int64(),
+	}))
+	if err != nil {
+		return nil, err
+	}
+
+	pages := make([]map[string]any, len(resp.Msg.Pages))
+	for i, p := range resp.Msg.Pages {
+		pages[i] = wikiPageToMap(p)
+	}
+	return pages, nil
+}
+
+func (s *Server) handleGetWikiPage(ctx context.Context, args json.RawMessage) (any, error) {
+	var params struct {
+		ProjectID FlexInt64 `json:"project_id"`
+		PageID    string    `json:"page_id"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return nil, fmt.Errorf("invalid arguments: %w", err)
+	}
+
+	resp, err := s.clients.wiki.GetWikiPage(ctx, connect.NewRequest(&wikiv1.GetWikiPageRequest{
+		ProjectId: params.ProjectID.Int64(),
+		PageId:    params.PageID,
+	}))
+	if err != nil {
+		return nil, err
+	}
+
+	return wikiPageToMap(resp.Msg.Page), nil
+}
+
+func (s *Server) handleCreateWikiPage(ctx context.Context, args json.RawMessage) (any, error) {
+	var params struct {
+		ProjectID FlexInt64 `json:"project_id"`
+		ParentID  string    `json:"parent_id"`
+		Title     string    `json:"title"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return nil, fmt.Errorf("invalid arguments: %w", err)
+	}
+
+	resp, err := s.clients.wiki.CreateWikiPage(ctx, connect.NewRequest(&wikiv1.CreateWikiPageRequest{
+		ProjectId: params.ProjectID.Int64(),
+		ParentId:  params.ParentID,
+		Title:     params.Title,
+	}))
+	if err != nil {
+		return nil, err
+	}
+
+	return wikiPageToMap(resp.Msg.Page), nil
+}
+
+func (s *Server) handleUpdateWikiPage(ctx context.Context, args json.RawMessage) (any, error) {
+	var params struct {
+		ProjectID FlexInt64 `json:"project_id"`
+		PageID    string    `json:"page_id"`
+		Title     string    `json:"title"`
+		Icon      string    `json:"icon"`
+		Content   string    `json:"content"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return nil, fmt.Errorf("invalid arguments: %w", err)
+	}
+
+	// Update title/icon via Connect RPC if provided
+	if params.Title != "" || params.Icon != "" {
+		resp, err := s.clients.wiki.UpdateWikiPage(ctx, connect.NewRequest(&wikiv1.UpdateWikiPageRequest{
+			ProjectId: params.ProjectID.Int64(),
+			PageId:    params.PageID,
+			Title:     params.Title,
+			Icon:      params.Icon,
+		}))
+		if err != nil {
+			return nil, err
+		}
+
+		// If no content update, return the updated page
+		if params.Content == "" {
+			return wikiPageToMap(resp.Msg.Page), nil
+		}
+	}
+
+	// Update content via Hocuspocus for real-time editor sync
+	if params.Content != "" {
+		html, err := markdownToHTML(params.Content)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert markdown: %w", err)
+		}
+
+		if s.clients.hocuspocusURL == "" {
+			return nil, fmt.Errorf("wiki content update requires hocuspocus to be configured")
+		}
+
+		documentName := fmt.Sprintf("wiki-%s", params.PageID)
+		if err := s.sendToHocuspocus(documentName, html, "document-store"); err != nil {
+			return nil, fmt.Errorf("failed to update wiki content: %w", err)
+		}
+
+		// Also persist content_text in DB so read-back is consistent
+		if _, err := s.clients.wiki.UpdateWikiPage(ctx, connect.NewRequest(&wikiv1.UpdateWikiPageRequest{
+			ProjectId:   params.ProjectID.Int64(),
+			PageId:      params.PageID,
+			ContentText: params.Content,
+		})); err != nil {
+			log.Printf("failed to persist wiki content_text: %v", err)
+		}
+	}
+
+	return map[string]any{
+		"page_id": params.PageID,
+		"saved":   true,
+	}, nil
+}
+
+func (s *Server) handleDeleteWikiPage(ctx context.Context, args json.RawMessage) (any, error) {
+	var params struct {
+		ProjectID FlexInt64 `json:"project_id"`
+		PageID    string    `json:"page_id"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return nil, fmt.Errorf("invalid arguments: %w", err)
+	}
+
+	_, err := s.clients.wiki.DeleteWikiPage(ctx, connect.NewRequest(&wikiv1.DeleteWikiPageRequest{
+		ProjectId: params.ProjectID.Int64(),
+		PageId:    params.PageID,
+	}))
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]any{
+		"page_id": params.PageID,
+		"deleted": true,
+	}, nil
+}
+
+// sendToHocuspocus sends an HTML document update to the Hocuspocus REST API.
+// fragment specifies the Yjs XML fragment name (e.g. "default" for TipTap, "document-store" for BlockNote).
+func (s *Server) sendToHocuspocus(documentName, htmlContent, fragment string) error {
+	payload := map[string]string{
+		"document_name": documentName,
+		"content":       htmlContent,
+	}
+	if fragment != "" {
+		payload["fragment"] = fragment
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", s.clients.hocuspocusURL+"/api/documents", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+s.clients.hocuspocusAPISecret)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("hocuspocus request failed: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("hocuspocus returned %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	return nil
 }

@@ -157,6 +157,11 @@
   pointer-events: none;
 }
 
+/* BlockNote: contain z-index so side-menu doesn't overlap sticky header */
+.bn-container {
+  isolation: isolate;
+}
+
 /* Tiptap editor focus */
 .tiptap:focus {
   outline: none;

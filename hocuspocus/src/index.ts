@@ -220,7 +220,7 @@ async function handleDocumentUpdate(req: IncomingMessage, res: ServerResponse): 
   }
 
   const body = await readBody(req);
-  let payload: { document_name: string; content: string };
+  let payload: { document_name: string; content: string; fragment?: string };
   try {
     payload = JSON.parse(body);
   } catch {
@@ -239,7 +239,8 @@ async function handleDocumentUpdate(req: IncomingMessage, res: ServerResponse): 
     });
 
     await connection.transact((doc) => {
-      const fragment = doc.getXmlFragment("default");
+      const fragmentName = payload.fragment ?? "default";
+      const fragment = doc.getXmlFragment(fragmentName);
 
       // Clear existing content
       while (fragment.length > 0) {
