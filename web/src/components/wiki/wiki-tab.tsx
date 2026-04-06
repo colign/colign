@@ -273,7 +273,7 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
 
       {/* Content Area */}
       <ResizablePanel defaultSize="75%" className="min-w-0 pl-3">
-        <div className="h-full rounded-xl border border-border/40 bg-card/50">
+        <div className="h-full overflow-y-auto overflow-x-hidden rounded-xl border border-border/40 bg-card/50 scrollbar-subtle">
           {selectedPageId ? (
             <WikiPageContent
               projectId={projectId}
@@ -640,7 +640,7 @@ function WikiPageContent({
     : undefined;
 
   return (
-    <div className="p-6">
+    <div className="min-w-0 p-6">
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
