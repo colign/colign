@@ -220,7 +220,7 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
   return (
     <ResizablePanelGroup orientation="horizontal" className="w-full min-w-0 items-start">
       {/* Sidebar */}
-      <ResizablePanel defaultSize="25%" minSize="15%" maxSize="45%" className="min-w-0">
+      <ResizablePanel defaultSize="25%" minSize="15%" maxSize="45%" className="min-w-0 !overflow-visible">
         <div className="sticky top-14 max-h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden scrollbar-subtle">
         <div className="mb-3 flex items-center justify-between">
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
