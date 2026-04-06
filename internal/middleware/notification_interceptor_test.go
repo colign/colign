@@ -126,6 +126,6 @@ func TestNotificationEventShape(t *testing.T) {
 			"reason":    "test",
 		},
 	}
-	assert.Equal(t, "stage_revert", evt.Type)
+	assert.Equal(t, "stage_change", evt.Type)
 	assert.Equal(t, int64(2), evt.ChangeID)
 }
