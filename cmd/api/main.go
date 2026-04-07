@@ -51,11 +51,10 @@ func main() {
 	defer func() { _ = s.Close() }()
 
 	srv := &http.Server{
-		Addr:         ":" + cfg.Port,
-		Handler:      s.Handler(),
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		Addr:              ":" + cfg.Port,
+		Handler:           s.Handler(),
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	go func() {
