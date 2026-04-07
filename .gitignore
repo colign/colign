@@ -38,6 +38,10 @@ web/.next/
 gen/
 web/src/gen/
 
+# Desktop
+desktop/dist/
+desktop/node_modules/
+
 # OS
 .DS_Store
 Thumbs.db

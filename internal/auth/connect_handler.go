@@ -57,6 +57,9 @@ func (h *ConnectHandler) Login(ctx context.Context, req *connect.Request[authv1.
 		if errors.Is(err, ErrInvalidCredentials) {
 			return nil, connect.NewError(connect.CodeUnauthenticated, err)
 		}
+		if errors.Is(err, ErrEmailNotVerified) {
+			return nil, connect.NewError(connect.CodePermissionDenied, err)
+		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 

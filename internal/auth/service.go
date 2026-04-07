@@ -20,6 +20,7 @@ import (
 
 var (
 	ErrEmailAlreadyExists  = errors.New("email already in use")
+	ErrEmailNotVerified    = errors.New("email not verified")
 	ErrInvalidCredentials  = errors.New("invalid email or password")
 	ErrInvalidRefreshToken = errors.New("invalid or expired refresh token")
 	ErrUserNotFound        = errors.New("user not found")
@@ -186,6 +187,10 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*TokenPair, erro
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
 		return nil, ErrInvalidCredentials
+	}
+
+	if !user.EmailVerified {
+		return nil, ErrEmailNotVerified
 	}
 
 	// Accept pending invitations on every login (without domain-based auto-join)

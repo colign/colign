@@ -130,6 +130,32 @@
   }
 }
 
+/* Desktop app: titlebar drag region + traffic light offset */
+html.desktop-app {
+  --titlebar-height: 38px;
+}
+
+html.desktop-app [data-slot="sidebar-container"] {
+  top: var(--titlebar-height);
+  height: calc(100svh - var(--titlebar-height));
+}
+
+html.desktop-app [data-slot="sidebar-inset"],
+html.desktop-app main {
+  padding-top: var(--titlebar-height);
+}
+
+html.desktop-app .desktop-drag-region {
+  -webkit-app-region: drag;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--titlebar-height);
+  z-index: 9999;
+  pointer-events: none;
+}
+
 /* Collaboration cursors */
 .collaboration-cursor__caret {
   position: relative;

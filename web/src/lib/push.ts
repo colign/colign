@@ -34,7 +34,12 @@ export async function getVAPIDPublicKey(): Promise<string | null> {
   }
 }
 
+export function isDesktopApp(): boolean {
+  return !!(window as unknown as { colignDesktop?: { isDesktop: boolean } }).colignDesktop?.isDesktop;
+}
+
 export async function subscribeToPush(): Promise<boolean> {
+  if (isDesktopApp()) return true; // Desktop app uses native notifications
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
     return false;
   }
@@ -97,6 +102,7 @@ export async function unsubscribeFromPush(): Promise<boolean> {
 }
 
 export async function isPushSubscribed(): Promise<boolean> {
+  if (isDesktopApp()) return true;
   try {
     if (!("serviceWorker" in navigator)) return false;
     const registration = await navigator.serviceWorker.getRegistration();

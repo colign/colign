@@ -34,9 +34,14 @@ export default function VerifyEmailPage() {
     if (pendingInvite) {
       sessionStorage.removeItem("pending_invite_token");
       router.push(`/invite/${pendingInvite}`);
-    } else {
-      router.push("/projects");
+      return;
     }
+
+    // Try opening desktop app via deep link, fallback to web
+    window.location.href = "colign://auth/verified";
+    setTimeout(() => {
+      router.push("/projects");
+    }, 1500);
   }
 
   async function handleResend() {

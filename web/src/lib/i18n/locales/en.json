@@ -51,7 +51,6 @@
     "checkEmailDescription": "We sent a verification email to {email}. Please check your inbox.",
     "resendVerification": "Resend verification email",
     "resendSuccess": "Verification email sent!",
-    "continueWithoutVerifying": "Continue without verifying",
     "verificationExpiry": "The link expires in 24 hours.",
     "verifyingEmail": "Verifying your email...",
     "emailVerified": "Your email has been verified!",

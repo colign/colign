@@ -4,6 +4,7 @@ import { GeistMono } from "geist/font/mono";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { Providers } from "@/components/providers";
+import { DesktopTitlebar } from "@/components/layout/desktop-titlebar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -28,6 +29,7 @@ export default async function RootLayout({
     <html lang={locale} className={`${GeistSans.variable} ${GeistMono.variable} dark h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <NextIntlClientProvider locale={locale} messages={messages}>
+          <DesktopTitlebar />
           <Providers>{children}</Providers>
         </NextIntlClientProvider>
       </body>

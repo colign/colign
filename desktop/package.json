@@ -1,0 +1,67 @@
+{
+  "name": "colign-desktop",
+  "version": "0.1.0",
+  "description": "Colign Desktop",
+  "main": "main.js",
+  "author": "Colign",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux"
+  },
+  "dependencies": {
+    "electron-store": "^8.2.0",
+    "electron-updater": "^6.3.9"
+  },
+  "devDependencies": {
+    "electron": "^35.0.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "co.colign.desktop",
+    "productName": "Colign",
+    "protocols": [
+      {
+        "name": "Colign",
+        "schemes": [
+          "colign"
+        ]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.icns",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "identity": null
+    },
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "icon": "assets/icon.png",
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Office"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "assets/**/*"
+    ]
+  }
+}

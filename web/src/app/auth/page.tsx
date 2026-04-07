@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { authClient, saveTokens, isLoggedIn } from "@/lib/auth";
+import { ConnectError, Code } from "@connectrpc/connect";
 import { Mail, Loader2 } from "lucide-react";
 
 const GETTING_STARTED_FLAG = "colign:show-getting-started";
@@ -90,7 +91,11 @@ export default function AuthPage() {
         router.push("/projects");
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      if (err instanceof ConnectError && err.code === Code.PermissionDenied) {
+        setRegisteredEmail(email);
+      } else {
+        setError(err instanceof Error ? err.message : "Login failed");
+      }
     } finally {
       setLoading(false);
     }
@@ -128,15 +133,6 @@ export default function AuthPage() {
     }
   }
 
-  function handleContinueWithoutVerifying() {
-    const pendingInvite = sessionStorage.getItem("pending_invite_token");
-    if (pendingInvite) {
-      sessionStorage.removeItem("pending_invite_token");
-      router.push(`/invite/${pendingInvite}`);
-    } else {
-      router.push("/projects");
-    }
-  }
 
   if (registeredEmail) {
     return (
@@ -167,13 +163,6 @@ export default function AuthPage() {
               >
                 {resendStatus === "sending" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {resendStatus === "sent" ? t("auth.resendSuccess") : t("auth.resendVerification")}
-              </Button>
-              <Button
-                variant="ghost"
-                className="w-full cursor-pointer"
-                onClick={handleContinueWithoutVerifying}
-              >
-                {t("auth.continueWithoutVerifying")}
               </Button>
             </CardContent>
           </Card>
