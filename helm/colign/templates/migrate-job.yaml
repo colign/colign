@@ -35,8 +35,5 @@ spec:
             - name: MIGRATIONS_PATH
               value: "/migrations"
             - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
-                  key: jwt-secret
+              value: {{ .Values.api.env.JWT_SECRET | quote }}
 {{- end }}

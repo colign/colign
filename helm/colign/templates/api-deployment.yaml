@@ -49,56 +49,21 @@ spec:
               value: {{ include "colign.redisURL" . | quote }}
             - name: MIGRATIONS_PATH
               value: "/migrations"
-            - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
-                  key: jwt-secret
             - name: FRONTEND_URL
               value: {{ .Values.api.frontendURL | default (printf "http://%s-web:3000" .Release.Name) | quote }}
             - name: REDIRECT_BASE_URL
               value: {{ .Values.api.redirectBaseURL | default (printf "http://%s-api:8080" .Release.Name) | quote }}
-            {{- if .Values.api.env.claudeApiKey }}
-            - name: CLAUDE_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
-                  key: claude-api-key
-            {{- end }}
-            {{- if .Values.api.env.githubClientId }}
-            - name: GITHUB_CLIENT_ID
-              value: {{ .Values.api.env.githubClientId | quote }}
-            - name: GITHUB_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
-                  key: github-client-secret
-            {{- end }}
-            {{- if .Values.api.env.googleClientId }}
-            - name: GOOGLE_CLIENT_ID
-              value: {{ .Values.api.env.googleClientId | quote }}
-            - name: GOOGLE_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
-                  key: google-client-secret
-            {{- end }}
-            {{- if .Values.api.env.vapidPublicKey }}
-            - name: VAPID_PUBLIC_KEY
-              value: {{ .Values.api.env.vapidPublicKey | quote }}
-            - name: VAPID_PRIVATE_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
-                  key: vapid-private-key
-            - name: VAPID_SUBJECT
-              value: {{ .Values.api.env.vapidSubject | default "mailto:admin@colign.io" | quote }}
-            {{- end }}
             {{- if and .Values.hocuspocus.enabled .Values.hocuspocus.apiSecret }}
             - name: HOCUSPOCUS_URL
               value: {{ printf "http://%s-hocuspocus:%v" .Release.Name (.Values.hocuspocus.service.port | default 1234) | quote }}
             - name: HOCUSPOCUS_API_SECRET
               value: {{ .Values.hocuspocus.apiSecret | quote }}
+            {{- end }}
+            {{- range $key, $value := .Values.api.env }}
+            {{- if $value }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
             {{- end }}
           lifecycle:
             preStop:

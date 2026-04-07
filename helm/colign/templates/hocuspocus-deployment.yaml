@@ -36,10 +36,7 @@ spec:
             - name: DATABASE_URL
               value: {{ include "colign.databaseURL" . | quote }}
             - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
-                  key: jwt-secret
+              value: {{ .Values.api.env.JWT_SECRET | quote }}
             {{- if .Values.hocuspocus.apiSecret }}
             - name: HOCUSPOCUS_API_SECRET
               value: {{ .Values.hocuspocus.apiSecret | quote }}
