@@ -161,7 +161,13 @@ export default function InboxPage() {
   function getNotificationHref(n: Notification): string {
     const project = { id: n.projectId, slug: n.projectSlug };
     if (n.type === "invite") return toProjectPath(project);
-    if (n.changeId) return toChangePath(project, n.changeId);
+    if (n.changeId) {
+      const base = toChangePath(project, n.changeId);
+      if (n.type === "comment" || n.type === "mention") {
+        return `${base}?tab=proposal&comments=open`;
+      }
+      return base;
+    }
     return toProjectPath(project);
   }
 

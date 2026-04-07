@@ -36,6 +36,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { MessageSquare, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { getTokenPayload } from "@/lib/auth";
+import { useSearchParams } from "next/navigation";
 import type { MentionMember } from "@/components/comment/mention-textarea";
 
 interface ProposalSections {
@@ -151,9 +152,11 @@ export function StructuredProposal({
 }: StructuredProposalProps) {
   const { t } = useI18n();
   const { on } = useEvents();
+  const searchParams = useSearchParams();
   const payload = typeof window !== "undefined" ? getTokenPayload() : null;
-  const [mobileCommentsOpen, setMobileCommentsOpen] = useState(false);
-  const [commentsOpen, setCommentsOpen] = useState(false);
+  const shouldOpenComments = searchParams.get("comments") === "open";
+  const [mobileCommentsOpen, setMobileCommentsOpen] = useState(shouldOpenComments);
+  const [commentsOpen, setCommentsOpen] = useState(shouldOpenComments);
   const [sections, setSections] = useState<ProposalSections>(EMPTY_SECTIONS);
   const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
