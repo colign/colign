@@ -89,7 +89,7 @@ function normalizeSectionContent(content: string): string {
   const trimmed = content.trim();
   if (!trimmed) return "";
   if (trimmed.startsWith("<")) return DOMPurify.sanitize(content);
-  return DOMPurify.sanitize(marked.parse(content, { async: false }) as string);
+  return DOMPurify.sanitize(marked.parse(content, { async: false, gfm: false }) as string);
 }
 
 function getPlainText(content: string): string {

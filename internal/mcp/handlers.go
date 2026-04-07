@@ -255,7 +255,7 @@ func init() {
 	})
 	RegisterTool(Tool{
 		Name:        "write_spec",
-		Description: "Write or update a spec document for a change. For proposals, content must be a JSON string with keys: problem (required), scope (required), outOfScope (optional), designLinks (optional string array), documentLinks (optional string array). Example: {\"problem\":\"...\",\"scope\":\"...\",\"outOfScope\":\"...\",\"documentLinks\":[\"https://...\"]}. For other doc types, content is plain markdown.",
+		Description: "Write or update a spec document for a change. For proposals, content must be a JSON string with keys: problem (required), scope (required), outOfScope (optional), designLinks (optional string array), documentLinks (optional string array). IMPORTANT: For newlines in JSON string values, use single-escaped \\n, NOT double-escaped \\\\n. Double-escaping causes literal backslash-n text to appear in the document. Example: {\"problem\":\"Line one\\nLine two\",\"scope\":\"...\",\"outOfScope\":\"...\",\"documentLinks\":[\"https://...\"]}. For other doc types, content is plain markdown.",
 		InputSchema: InputSchema{
 			Type: "object",
 			Properties: map[string]Property{
