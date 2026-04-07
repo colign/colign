@@ -51,7 +51,7 @@ func TestService_Login(t *testing.T) {
 
 		// 1) Select user by email
 		userRows := sqlmock.NewRows([]string{"id", "email", "password_hash", "name", "email_verified", "created_at", "updated_at"}).
-			AddRow(int64(1), "alice@example.com", passwordHash, "Alice", false, time.Now(), time.Now())
+			AddRow(int64(1), "alice@example.com", passwordHash, "Alice", true, time.Now(), time.Now())
 		mock.ExpectQuery("SELECT").
 			WillReturnRows(userRows)
 
