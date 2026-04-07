@@ -119,29 +119,41 @@ func (h *ConnectHandler) GetUnreadCount(ctx context.Context, req *connect.Reques
 }
 
 func (h *ConnectHandler) Subscribe(ctx context.Context, req *connect.Request[notificationv1.SubscribeRequest], stream *connect.ServerStream[notificationv1.SubscribeResponse]) error {
-	if _, err := h.extractClaims(ctx, req.Header().Get("Authorization")); err != nil {
+	claims, err := h.extractClaims(ctx, req.Header().Get("Authorization"))
+	if err != nil {
 		return err
 	}
 
 	sub := h.hub.Subscribe(req.Msg.ChangeId)
 	defer h.hub.Unsubscribe(sub)
 
+	userSub := h.hub.SubscribeUser(claims.UserID)
+	defer h.hub.UnsubscribeUser(userSub)
+
 	for {
+		var evt events.Event
+		var ok bool
+
 		select {
 		case <-ctx.Done():
 			return nil
-		case evt, ok := <-sub.Events():
+		case evt, ok = <-sub.Events():
 			if !ok {
 				return nil
 			}
-			if err := stream.Send(&notificationv1.SubscribeResponse{
-				Type:      evt.Type,
-				ChangeId:  evt.ChangeID,
-				Payload:   evt.Payload,
-				Timestamp: timestamppb.Now(),
-			}); err != nil {
-				return err
+		case evt, ok = <-userSub.Events():
+			if !ok {
+				return nil
 			}
+		}
+
+		if err := stream.Send(&notificationv1.SubscribeResponse{
+			Type:      evt.Type,
+			ChangeId:  evt.ChangeID,
+			Payload:   evt.Payload,
+			Timestamp: timestamppb.Now(),
+		}); err != nil {
+			return err
 		}
 	}
 }

@@ -4,6 +4,7 @@ import { OrgProvider } from "@/lib/org-context";
 import { EventProvider } from "@/lib/events";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
+import { DesktopNotificationBridge } from "@/components/layout/desktop-notification-bridge";
 import { CommandPalette } from "@/components/command-palette";
 import { Toaster } from "sonner";
 
@@ -13,6 +14,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <EventProvider>
         <TooltipProvider>
           <SidebarLayout>{children}</SidebarLayout>
+          <DesktopNotificationBridge />
           <CommandPalette />
           <Toaster
             position="bottom-right"
