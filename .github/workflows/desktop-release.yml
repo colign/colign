@@ -1,0 +1,79 @@
+name: Desktop Release
+
+on:
+  push:
+    tags:
+      - "desktop-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        working-directory: desktop
+        run: npm ci
+
+      - name: Build
+        working-directory: desktop
+        run: npx electron-builder --mac --${{ matrix.arch }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-${{ matrix.arch }}
+          path: desktop/dist/*.zip
+
+  release:
+    needs: build-mac
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Get version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#desktop-v}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Colign Desktop v${{ steps.version.outputs.version }}"
+          body: "Colign Desktop v${{ steps.version.outputs.version }}"
+          files: artifacts/**/*.zip
+
+      - name: Compute SHA256
+        id: sha
+        run: |
+          ARM64_SHA=$(shasum -a 256 artifacts/mac-arm64/*.zip | awk '{print $1}')
+          X64_SHA=$(shasum -a 256 artifacts/mac-x64/*.zip | awk '{print $1}')
+          echo "arm64=$ARM64_SHA" >> "$GITHUB_OUTPUT"
+          echo "x64=$X64_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Update Homebrew Tap
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.TAP_REPO_TOKEN }}
+          repository: colign/homebrew-tap
+          event-type: update-cask
+          client-payload: |
+            {
+              "version": "${{ steps.version.outputs.version }}",
+              "arm64_sha256": "${{ steps.sha.outputs.arm64 }}",
+              "x64_sha256": "${{ steps.sha.outputs.x64 }}"
+            }
