@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { authClient, saveTokens, isLoggedIn } from "@/lib/auth";
+import { Mail, Loader2 } from "lucide-react";
 
 const GETTING_STARTED_FLAG = "colign:show-getting-started";
 
@@ -22,6 +23,8 @@ export default function AuthPage() {
   const router = useRouter();
   const { t } = useI18n();
   const [oauthProviders, setOAuthProviders] = useState<OAuthProviders | null>(null);
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
+  const [resendStatus, setResendStatus] = useState<"idle" | "sending" | "sent">("idle");
 
   useEffect(() => {
     if (isLoggedIn()) {
@@ -101,13 +104,7 @@ export default function AuthPage() {
       const res = await authClient.register({ email, password, name });
       saveTokens(res.accessToken, res.refreshToken);
       sessionStorage.setItem(GETTING_STARTED_FLAG, "1");
-      const pendingInvite = sessionStorage.getItem("pending_invite_token");
-      if (pendingInvite) {
-        sessionStorage.removeItem("pending_invite_token");
-        router.push(`/invite/${pendingInvite}`);
-      } else {
-        router.push("/projects");
-      }
+      setRegisteredEmail(email);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
@@ -118,6 +115,71 @@ export default function AuthPage() {
   function handleOAuth(provider: string) {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
     window.location.href = `${apiUrl}/api/auth/${provider}`;
+  }
+
+  async function handleResend() {
+    if (!registeredEmail || resendStatus === "sending") return;
+    setResendStatus("sending");
+    try {
+      await authClient.resendVerificationEmail({ email: registeredEmail });
+      setResendStatus("sent");
+    } catch {
+      setResendStatus("idle");
+    }
+  }
+
+  function handleContinueWithoutVerifying() {
+    const pendingInvite = sessionStorage.getItem("pending_invite_token");
+    if (pendingInvite) {
+      sessionStorage.removeItem("pending_invite_token");
+      router.push(`/invite/${pendingInvite}`);
+    } else {
+      router.push("/projects");
+    }
+  }
+
+  if (registeredEmail) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <div className="w-full max-w-md space-y-8">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold tracking-tight">
+              Co<span className="text-primary">lign</span>
+            </h1>
+          </div>
+          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                <Mail className="h-6 w-6 text-primary" />
+              </div>
+              <CardTitle className="text-lg">{t("auth.checkEmail")}</CardTitle>
+              <CardDescription>
+                {t("auth.checkEmailDescription").replace("{email}", registeredEmail)}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <p className="text-center text-xs text-muted-foreground">{t("auth.verificationExpiry")}</p>
+              <Button
+                variant="outline"
+                className="w-full cursor-pointer"
+                disabled={resendStatus === "sending"}
+                onClick={handleResend}
+              >
+                {resendStatus === "sending" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {resendStatus === "sent" ? t("auth.resendSuccess") : t("auth.resendVerification")}
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full cursor-pointer"
+                onClick={handleContinueWithoutVerifying}
+              >
+                {t("auth.continueWithoutVerifying")}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
   }
 
   return (

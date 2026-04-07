@@ -89,11 +89,20 @@ message UpdateProfileResponse {
   string avatar_url = 5;
 }
 
+message ResendVerificationEmailRequest {
+  string email = 1;
+}
+
+message ResendVerificationEmailResponse {
+  string message = 1;
+}
+
 service AuthService {
   rpc Register(RegisterRequest) returns (RegisterResponse) {}
   rpc Login(LoginRequest) returns (LoginResponse) {}
   rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse) {}
   rpc VerifyEmail(VerifyEmailRequest) returns (VerifyEmailResponse) {}
+  rpc ResendVerificationEmail(ResendVerificationEmailRequest) returns (ResendVerificationEmailResponse) {}
   rpc GetOAuthURL(GetOAuthURLRequest) returns (GetOAuthURLResponse) {}
   rpc OAuthCallback(OAuthCallbackRequest) returns (OAuthCallbackResponse) {}
   rpc Me(MeRequest) returns (MeResponse) {}

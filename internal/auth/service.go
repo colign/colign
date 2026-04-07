@@ -14,6 +14,7 @@ import (
 	"github.com/uptrace/bun"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/gobenpark/colign/internal/email"
 	"github.com/gobenpark/colign/internal/models"
 )
 
@@ -39,6 +40,7 @@ type Service struct {
 	jwtManager        *JWTManager
 	orgJoiner         OrgJoiner
 	apiTokenValidator APITokenValidator
+	emailSender       email.Sender
 }
 
 func NewService(db *bun.DB, jwtManager *JWTManager) *Service {
@@ -53,6 +55,11 @@ func (s *Service) SetOrgJoiner(oj OrgJoiner) {
 // SetAPITokenValidator sets the API token validator to support MCP OAuth tokens.
 func (s *Service) SetAPITokenValidator(v APITokenValidator) {
 	s.apiTokenValidator = v
+}
+
+// SetEmailSender sets the email sender for verification emails.
+func (s *Service) SetEmailSender(sender email.Sender) {
+	s.emailSender = sender
 }
 
 type RegisterRequest struct {
@@ -116,7 +123,11 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (*TokenPair
 		return nil, err
 	}
 
-	// TODO: send verification email
+	if s.emailSender != nil {
+		if err := s.emailSender.SendVerificationEmail(req.Email, verification.Token); err != nil {
+			slog.Warn("failed to send verification email", "user_id", user.ID, "error", err)
+		}
+	}
 
 	// Try auto-joining existing orgs via domain or invitation
 	var orgID int64
@@ -308,6 +319,54 @@ func (s *Service) VerifyEmail(ctx context.Context, token string) error {
 
 	_, err = s.db.NewDelete().Model(verification).WherePK().Exec(ctx)
 	return err
+}
+
+// ResendVerificationEmail generates a new token and sends a verification email.
+// Returns nil even if the user doesn't exist to prevent email enumeration.
+func (s *Service) ResendVerificationEmail(ctx context.Context, emailAddr string) error {
+	user := new(models.User)
+	err := s.db.NewSelect().Model(user).Where("email = ?", emailAddr).Scan(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// User not found — return silently to prevent email enumeration
+			return nil
+		}
+		return err
+	}
+
+	if user.EmailVerified {
+		return nil
+	}
+
+	// Delete existing verification tokens for this user
+	if _, err := s.db.NewDelete().Model((*models.EmailVerification)(nil)).
+		Where("user_id = ?", user.ID).
+		Exec(ctx); err != nil {
+		return err
+	}
+
+	// Generate new token
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return err
+	}
+
+	verification := &models.EmailVerification{
+		UserID:    user.ID,
+		Token:     hex.EncodeToString(tokenBytes),
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+	}
+	if _, err := s.db.NewInsert().Model(verification).Exec(ctx); err != nil {
+		return err
+	}
+
+	if s.emailSender != nil {
+		if err := s.emailSender.SendVerificationEmail(emailAddr, verification.Token); err != nil {
+			slog.Warn("failed to resend verification email", "user_id", user.ID, "error", err)
+		}
+	}
+
+	return nil
 }
 
 func (s *Service) createSession(ctx context.Context, user *models.User, orgID int64) (*TokenPair, error) {

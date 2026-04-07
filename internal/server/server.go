@@ -16,6 +16,7 @@ import (
 	"github.com/gobenpark/colign/internal/authz"
 	"github.com/gobenpark/colign/internal/config"
 	"github.com/gobenpark/colign/internal/database"
+	"github.com/gobenpark/colign/internal/email"
 
 	eeoauth "github.com/gobenpark/colign/ee/mcp/oauth"
 	"github.com/gobenpark/colign/gen/proto/acceptance/v1/acceptancev1connect"
@@ -106,6 +107,14 @@ func (s *Server) setupRoutes(cfg *config.Config) error {
 	// Auth service (Connect)
 	authService := auth.NewService(s.db, s.jwtManager)
 	authService.SetOrgJoiner(orgService)
+
+	var emailSender email.Sender
+	if cfg.ResendAPIKey != "" {
+		emailSender = email.NewResendSender(cfg.ResendAPIKey, cfg.FrontendURL, cfg.EmailFrom)
+	} else {
+		emailSender = email.NewLogSender(cfg.FrontendURL)
+	}
+	authService.SetEmailSender(emailSender)
 	oauthService := auth.NewOAuthService(s.db, s.jwtManager, auth.OAuthConfig{
 		GitHubClientID:     cfg.GitHubClientID,
 		GitHubClientSecret: cfg.GitHubClientSecret,

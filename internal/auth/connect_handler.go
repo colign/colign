@@ -103,6 +103,16 @@ func (h *ConnectHandler) VerifyEmail(ctx context.Context, req *connect.Request[a
 	}), nil
 }
 
+func (h *ConnectHandler) ResendVerificationEmail(ctx context.Context, req *connect.Request[authv1.ResendVerificationEmailRequest]) (*connect.Response[authv1.ResendVerificationEmailResponse], error) {
+	if err := h.service.ResendVerificationEmail(ctx, req.Msg.Email); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&authv1.ResendVerificationEmailResponse{
+		Message: "if the email exists, a verification email has been sent",
+	}), nil
+}
+
 func (h *ConnectHandler) GetOAuthURL(ctx context.Context, req *connect.Request[authv1.GetOAuthURLRequest]) (*connect.Response[authv1.GetOAuthURLResponse], error) {
 	stateBytes := make([]byte, 16)
 	if _, err := rand.Read(stateBytes); err != nil {

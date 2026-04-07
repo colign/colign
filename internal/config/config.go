@@ -31,6 +31,8 @@ type Config struct {
 	VAPIDPublicKey      string
 	VAPIDPrivateKey     string
 	VAPIDSubject        string
+	ResendAPIKey        string
+	EmailFrom           string
 }
 
 func Load() (*Config, error) {
@@ -72,6 +74,8 @@ func Load() (*Config, error) {
 		VAPIDPublicKey:      getEnv("VAPID_PUBLIC_KEY", ""),
 		VAPIDPrivateKey:     getEnv("VAPID_PRIVATE_KEY", ""),
 		VAPIDSubject:        getEnv("VAPID_SUBJECT", ""),
+		ResendAPIKey:        getEnv("RESEND_API_KEY", ""),
+		EmailFrom:           getEnv("EMAIL_FROM", "Colign <noreply@colign.dev>"),
 	}, nil
 }
 
