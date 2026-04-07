@@ -101,19 +101,20 @@ func (s *Server) setupRoutes(cfg *config.Config) error {
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok", "db": "connected"})
 	})
 
-	// Organization service (created early for OrgJoiner injection)
-	orgService := organization.NewService(s.db)
-
-	// Auth service (Connect)
-	authService := auth.NewService(s.db, s.jwtManager)
-	authService.SetOrgJoiner(orgService)
-
+	// Email sender
 	var emailSender email.Sender
 	if cfg.ResendAPIKey != "" {
 		emailSender = email.NewResendSender(cfg.ResendAPIKey, cfg.FrontendURL, cfg.EmailFrom)
 	} else {
 		emailSender = email.NewLogSender(cfg.FrontendURL)
 	}
+
+	// Organization service (created early for OrgJoiner injection)
+	orgService := organization.NewService(s.db, emailSender)
+
+	// Auth service (Connect)
+	authService := auth.NewService(s.db, s.jwtManager)
+	authService.SetOrgJoiner(orgService)
 	authService.SetEmailSender(emailSender)
 	oauthService := auth.NewOAuthService(s.db, s.jwtManager, auth.OAuthConfig{
 		GitHubClientID:     cfg.GitHubClientID,

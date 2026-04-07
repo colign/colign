@@ -24,7 +24,7 @@ func setupTestDB(t *testing.T) (*bun.DB, sqlmock.Sqlmock) {
 
 func TestDelete_OwnerSuccess(t *testing.T) {
 	db, mock := setupTestDB(t)
-	svc := NewService(db)
+	svc := NewService(db, nil)
 	ctx := context.Background()
 
 	orgID := int64(1)
@@ -57,7 +57,7 @@ func TestDelete_OwnerSuccess(t *testing.T) {
 
 func TestDelete_NonOwnerRejected(t *testing.T) {
 	db, mock := setupTestDB(t)
-	svc := NewService(db)
+	svc := NewService(db, nil)
 	ctx := context.Background()
 
 	// SELECT member — user is admin, not owner
@@ -72,7 +72,7 @@ func TestDelete_NonOwnerRejected(t *testing.T) {
 
 func TestDelete_SingleOrgRejected(t *testing.T) {
 	db, mock := setupTestDB(t)
-	svc := NewService(db)
+	svc := NewService(db, nil)
 	ctx := context.Background()
 
 	// SELECT member — user is owner
@@ -91,7 +91,7 @@ func TestDelete_SingleOrgRejected(t *testing.T) {
 
 func TestDelete_NotMember(t *testing.T) {
 	db, mock := setupTestDB(t)
-	svc := NewService(db)
+	svc := NewService(db, nil)
 	ctx := context.Background()
 
 	// SELECT member — no rows
@@ -109,7 +109,7 @@ func TestDelete_NotMember(t *testing.T) {
 
 func TestAcceptPendingInvitations_NoPendingInvitations(t *testing.T) {
 	db, mock := setupTestDB(t)
-	svc := NewService(db)
+	svc := NewService(db, nil)
 	ctx := context.Background()
 
 	// FindPendingInvitationsByEmail returns empty set
@@ -124,7 +124,7 @@ func TestAcceptPendingInvitations_NoPendingInvitations(t *testing.T) {
 
 func TestAcceptPendingInvitations_AcceptsSingleInvitation(t *testing.T) {
 	db, mock := setupTestDB(t)
-	svc := NewService(db)
+	svc := NewService(db, nil)
 	ctx := context.Background()
 
 	// FindPendingInvitationsByEmail returns one invitation
@@ -148,7 +148,7 @@ func TestAcceptPendingInvitations_AcceptsSingleInvitation(t *testing.T) {
 
 func TestAcceptPendingInvitations_AcceptsMultipleInvitations(t *testing.T) {
 	db, mock := setupTestDB(t)
-	svc := NewService(db)
+	svc := NewService(db, nil)
 	ctx := context.Background()
 
 	// FindPendingInvitationsByEmail returns two invitations
@@ -178,7 +178,7 @@ func TestAcceptPendingInvitations_AcceptsMultipleInvitations(t *testing.T) {
 
 func TestAcceptPendingInvitations_DBErrorOnFindInvitations(t *testing.T) {
 	db, mock := setupTestDB(t)
-	svc := NewService(db)
+	svc := NewService(db, nil)
 	ctx := context.Background()
 
 	// FindPendingInvitationsByEmail returns a DB error
@@ -194,7 +194,7 @@ func TestAcceptPendingInvitations_DBErrorOnFindInvitations(t *testing.T) {
 
 func TestAcceptPendingInvitations_DoesNotDoDomainAutoJoin(t *testing.T) {
 	db, mock := setupTestDB(t)
-	svc := NewService(db)
+	svc := NewService(db, nil)
 	ctx := context.Background()
 
 	// AcceptPendingInvitations should ONLY query org_invitations, never organizations.

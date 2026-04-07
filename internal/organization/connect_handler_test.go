@@ -29,7 +29,7 @@ func reqWithAuth[T any](msg *T, authHeader string) *connect.Request[T] {
 func TestDeleteOrganization_OrgIDMismatch(t *testing.T) {
 	jwtManager := auth.NewJWTManager("test-secret")
 	db, _ := setupTestDB(t)
-	svc := NewService(db)
+	svc := NewService(db, nil)
 	h := NewConnectHandler(svc, jwtManager, nil, nil)
 
 	// JWT org_id = 10, but request org_id = 20
@@ -48,7 +48,7 @@ func TestDeleteOrganization_OrgIDMismatch(t *testing.T) {
 func TestDeleteOrganization_Unauthenticated(t *testing.T) {
 	jwtManager := auth.NewJWTManager("test-secret")
 	db, _ := setupTestDB(t)
-	svc := NewService(db)
+	svc := NewService(db, nil)
 	h := NewConnectHandler(svc, jwtManager, nil, nil)
 
 	req := connect.NewRequest(&organizationv1.DeleteOrganizationRequest{
