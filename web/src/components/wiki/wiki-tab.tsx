@@ -215,14 +215,11 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
 
   return (
     <>
-      <div className="flex gap-4">
+      <div className="flex gap-0">
         {/* Sidebar */}
-        <div className="w-56 shrink-0">
+        <div className="w-56 shrink-0 border-r border-border pr-4">
           <div className="sticky top-14 max-h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden scrollbar-subtle">
-            <div className="mb-3 flex items-center justify-between">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                {t("project.wiki")}
-              </span>
+            <div className="mb-3 flex items-center justify-end">
               <Button
                 variant="ghost"
                 size="icon"
@@ -234,8 +231,8 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
             </div>
 
             {tree.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/60 px-4 py-12 text-center">
-                <FileText className="mb-3 size-8 text-muted-foreground/40" />
+              <div className="flex flex-col items-center justify-center rounded-lg border border-border px-4 py-12 text-center">
+                <FileText className="mb-3 size-8 text-muted-foreground" />
                 <p className="mb-1 text-sm font-medium text-foreground/80">
                   {t("project.wikiEmptyTitle")}
                 </p>
@@ -269,30 +266,28 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
         </div>
 
         {/* Content Area */}
-        <div className="min-w-0 flex-1">
-          <div className="min-h-[400px] rounded-xl border border-border bg-card">
-            {selectedPageId ? (
-              <WikiPageContent
-                key={selectedPageId}
-                projectId={projectId}
-                pageId={selectedPageId}
-                onTitleChange={(pageId, title) => {
-                  setPages((prev) =>
-                    prev.map((p) => (p.id === pageId ? { ...p, title } as WikiPage : p)),
-                  );
-                }}
-              />
-            ) : (
-              <div className="flex items-center justify-center py-20">
-                <div className="text-center">
-                  <FileText className="mx-auto mb-3 size-10 text-muted-foreground/30" />
-                  <p className="text-sm text-muted-foreground">
-                    {t("project.wikiEmptyDesc")}
-                  </p>
-                </div>
+        <div className="min-w-0 flex-1 pl-4">
+          {selectedPageId ? (
+            <WikiPageContent
+              key={selectedPageId}
+              projectId={projectId}
+              pageId={selectedPageId}
+              onTitleChange={(pageId, title) => {
+                setPages((prev) =>
+                  prev.map((p) => (p.id === pageId ? { ...p, title } as WikiPage : p)),
+                );
+              }}
+            />
+          ) : (
+            <div className="flex items-center justify-center py-20">
+              <div className="text-center">
+                <FileText className="mx-auto mb-3 size-10 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  {t("project.wikiEmptyDesc")}
+                </p>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -410,7 +405,7 @@ function SortableTreeItem({
       <div
         className={`group flex items-center gap-1 rounded-md px-2 py-1.5 text-sm cursor-pointer transition-colors ${
           isSelected
-            ? "bg-primary/10 text-primary"
+            ? "bg-accent text-foreground"
             : "text-foreground/80 hover:bg-muted/50"
         }`}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
@@ -638,7 +633,7 @@ function WikiPageContent({
     : undefined;
 
   return (
-    <div className="min-w-0 p-6">
+    <div className="min-w-0">
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
@@ -647,7 +642,7 @@ function WikiPageContent({
           if (e.key === "Enter") e.currentTarget.blur();
         }}
         placeholder={t("project.wikiUntitled")}
-        className="mb-4 w-full bg-transparent text-2xl font-bold outline-none placeholder:text-muted-foreground/40"
+        className="mb-4 w-full bg-transparent text-[22px] font-semibold leading-[1.3] outline-none placeholder:text-muted-foreground"
       />
       <WikiEditor
         key={pageId}
