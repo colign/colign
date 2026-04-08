@@ -483,7 +483,7 @@ export default function ProjectDetailClient() {
     <div className="min-h-screen bg-background">
       <Header breadcrumbs={[{ label: project.name }]} />
 
-      <main className="px-6 lg:px-8 pt-6 pb-16">
+      <main className="mx-auto max-w-[1200px] px-6 lg:px-8 pt-6 pb-16">
         {/* Project Header — compact single row */}
         <div className="mb-4" ref={propertyRef}>
           {/* Title row: icon + title + primary props + menu */}
@@ -510,7 +510,7 @@ export default function ProjectDetailClient() {
                   <span>{statusConfig[project.status]?.label ?? project.status}</span>
                 </button>
                 {activeProperty === "status" && (
-                  <div className="absolute left-0 top-full z-50 mt-1 w-40 rounded-lg border border-border/50 bg-popover p-1 shadow-xl animate-in fade-in slide-in-from-top-1 duration-100">
+                  <div className="absolute left-0 top-full z-50 mt-1 w-40 rounded-lg border border-border bg-popover p-1 shadow-xl animate-in fade-in slide-in-from-top-1 duration-100">
                     {Object.entries(statusConfig).map(([key, cfg]) => (
                       <button
                         key={key}
@@ -537,7 +537,7 @@ export default function ProjectDetailClient() {
                   <span>{priorityConfig[project.priority]?.label ?? "No priority"}</span>
                 </button>
                 {activeProperty === "priority" && (
-                  <div className="absolute left-0 top-full z-50 mt-1 w-40 rounded-lg border border-border/50 bg-popover p-1 shadow-xl animate-in fade-in slide-in-from-top-1 duration-100">
+                  <div className="absolute left-0 top-full z-50 mt-1 w-40 rounded-lg border border-border bg-popover p-1 shadow-xl animate-in fade-in slide-in-from-top-1 duration-100">
                     {Object.entries(priorityConfig).map(([key, cfg]) => (
                       <button
                         key={key}
@@ -566,7 +566,7 @@ export default function ProjectDetailClient() {
                   <span>{healthConfig[project.health]?.label ?? "On Track"}</span>
                 </button>
                 {activeProperty === "health" && (
-                  <div className="absolute left-0 top-full z-50 mt-1 w-40 rounded-lg border border-border/50 bg-popover p-1 shadow-xl animate-in fade-in slide-in-from-top-1 duration-100">
+                  <div className="absolute left-0 top-full z-50 mt-1 w-40 rounded-lg border border-border bg-popover p-1 shadow-xl animate-in fade-in slide-in-from-top-1 duration-100">
                     {Object.entries(healthConfig).map(([key, cfg]) => (
                       <button
                         key={key}
@@ -587,9 +587,9 @@ export default function ProjectDetailClient() {
                 className="flex cursor-pointer items-center gap-1 rounded-md border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
               >
                 {propertiesExpanded ? (
-                  <>&#9652; Less</>
+                  <>&#9652; {t("project.showLess")}</>
                 ) : (
-                  <>+5 more &#9662;</>
+                  <>{t("project.showMore")} &#9662;</>
                 )}
               </button>
 
@@ -602,16 +602,16 @@ export default function ProjectDetailClient() {
                   <MoreHorizontal className="size-4" />
                 </button>
                 {menuOpen && (
-                  <div className="absolute right-0 top-9 z-50 w-48 rounded-xl border border-border/50 bg-popover p-1.5 shadow-xl animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="absolute right-0 top-9 z-50 w-48 rounded-xl border border-border bg-popover p-1.5 shadow-xl animate-in fade-in slide-in-from-top-2 duration-150">
                     <Link
                       href={`${toProjectPath(project)}/settings`}
                       onClick={() => setMenuOpen(false)}
                       className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
                     >
                       <Settings className="size-3.5 text-muted-foreground" />
-                      Settings
+                      {t("project.settings")}
                     </Link>
-                    <div className="my-1.5 border-t border-border/50" />
+                    <div className="my-1.5 border-t border-border" />
                     <button
                       onClick={() => {
                         setMenuOpen(false);
@@ -635,7 +635,7 @@ export default function ProjectDetailClient() {
               {/* Lead */}
               <div>
                 <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-                  Lead
+                  {t("project.lead")}
                 </div>
                 <div className="relative">
                   <button
@@ -644,16 +644,16 @@ export default function ProjectDetailClient() {
                   >
                     <User className="size-3.5 text-muted-foreground/60" />
                     <span className={project.leadName ? "text-foreground/80" : "text-muted-foreground/40"}>
-                      {project.leadName || "No lead"}
+                      {project.leadName || t("project.noLead")}
                     </span>
                   </button>
                   {activeProperty === "lead" && (
-                    <div className="absolute left-0 top-full z-50 mt-1 w-52 rounded-lg border border-border/50 bg-popover p-1 shadow-xl animate-in fade-in slide-in-from-top-1 duration-100">
+                    <div className="absolute left-0 top-full z-50 mt-1 w-52 rounded-lg border border-border bg-popover p-1 shadow-xl animate-in fade-in slide-in-from-top-1 duration-100">
                       <button
                         onClick={() => handlePropertyUpdate("leadId", BigInt(0))}
                         className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent"
                       >
-                        No lead
+                        {t("project.noLead")}
                       </button>
                       {members.map((m) => (
                         <button
@@ -678,11 +678,11 @@ export default function ProjectDetailClient() {
               {/* Start date */}
               <div>
                 <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-                  Start date
+                  {t("project.startDate")}
                 </div>
                 <DatePicker
                   value={project.startDate}
-                  placeholder="Set date"
+                  placeholder={t("project.setDate")}
                   onChange={(value) => handlePropertyUpdate("startDate", value ?? "")}
                 />
               </div>
@@ -690,11 +690,11 @@ export default function ProjectDetailClient() {
               {/* Target date */}
               <div>
                 <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-                  Target date
+                  {t("project.targetDate")}
                 </div>
                 <DatePicker
                   value={project.targetDate}
-                  placeholder="Set date"
+                  placeholder={t("project.setDate")}
                   onChange={(value) => handlePropertyUpdate("targetDate", value ?? "")}
                 />
               </div>
@@ -702,7 +702,7 @@ export default function ProjectDetailClient() {
               {/* Members */}
               <div>
                 <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-                  Members
+                  {t("project.members")}
                 </div>
                 <div className="flex items-center gap-1.5 px-1 py-0.5 text-sm text-foreground/80">
                   <Users className="size-3.5 text-muted-foreground/60" />
@@ -713,7 +713,7 @@ export default function ProjectDetailClient() {
               {/* Description — full width */}
               <div className="col-span-full">
                 <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-                  Description
+                  {t("project.description")}
                 </div>
                 <InlineSummary
                   value={project.description}
@@ -1411,7 +1411,7 @@ function ChangesTab({
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
       ) : displayChanges.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card/30 py-20">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card py-20">
           <div className="mb-5 rounded-2xl bg-primary/5 p-5">
             <FileText className="size-10 text-primary/40" />
           </div>
@@ -1439,7 +1439,7 @@ function ChangesTab({
               className="rounded-xl border border-border overflow-hidden"
             >
               {/* Group Header */}
-              <div className="flex items-center gap-2 border-b border-border/20 bg-muted/30 px-4 py-2">
+              <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-4 py-2">
                 {group.label ? (
                   <>
                     <span

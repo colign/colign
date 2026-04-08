@@ -167,7 +167,7 @@ export default function DashboardPage() {
 
       <main className="mx-auto max-w-6xl px-6 pt-8 pb-16">
         {/* Stat Cards */}
-        <div className="mb-8 grid grid-cols-3 gap-4">
+        <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {statCards.map((card) => (
             <div
               key={card.label}

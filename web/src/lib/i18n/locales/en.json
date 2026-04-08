@@ -121,7 +121,15 @@
     "addResource": "Add link...",
     "addSummary": "Add a short summary...",
     "settings": "Settings",
-    "searchPlaceholder": "Search changes..."
+    "searchPlaceholder": "Search changes...",
+    "lead": "Lead",
+    "noLead": "No lead",
+    "startDate": "Start date",
+    "targetDate": "Target date",
+    "description": "Description",
+    "setDate": "Set date",
+    "showMore": "+5 more",
+    "showLess": "Less"
   },
   "change": {
     "workflow": "Workflow",

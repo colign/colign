@@ -46,7 +46,7 @@ interface Notification {
 const stageConfig: Record<string, { label: string; color: string }> = {
   draft: { label: "Draft", color: "text-stage-draft" },
   design: { label: "Design", color: "text-stage-spec" },
-  review: { label: "Review", color: "text-violet-400" },
+  review: { label: "Review", color: "text-stage-review" },
   ready: { label: "Ready", color: "text-primary" },
 };
 

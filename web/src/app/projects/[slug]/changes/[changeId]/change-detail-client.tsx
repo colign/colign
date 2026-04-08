@@ -651,7 +651,7 @@ export default function ChangeDetailClient() {
             </div>
 
             {/* Gate Conditions + Advance */}
-            <div className="mb-4 rounded-lg border border-border/50 p-4">
+            <div className="mb-4 rounded-lg border border-border p-4">
               {/* Archived banner */}
               {archivedAt && (
                 <div className="mb-3 flex items-center gap-2 rounded-md border border-warning/30 bg-warning/5 px-3 py-2">
@@ -664,7 +664,7 @@ export default function ChangeDetailClient() {
                   {conditions.map((c) => (
                     <div
                       key={c.name}
-                      className="flex items-center gap-1.5 rounded-md border border-border/50 px-2.5 py-1"
+                      className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1"
                     >
                       {c.met ? (
                         <svg
@@ -902,7 +902,7 @@ export default function ChangeDetailClient() {
               <div className="relative" ref={labelDropdownRef}>
                 <button
                   onClick={() => setLabelDropdownOpen((v) => !v)}
-                  className="cursor-pointer inline-flex items-center gap-1 rounded-full border border-dashed border-border/50 px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:text-foreground"
+                  className="cursor-pointer inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:text-foreground"
                 >
                   + {t("change.addLabel")}
                 </button>
