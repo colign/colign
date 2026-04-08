@@ -735,51 +735,56 @@ export default function ProjectDetailClient() {
         )}
         </div>
 
-        {/* Tabs */}
-        <div className="mb-4 flex gap-1 border-b border-border/50">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`cursor-pointer whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-colors duration-200 ${
-                activeTab === tab.id
-                  ? "border-b-2 border-primary text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        {/* Tabs + Content card */}
+        <div className="rounded-xl border border-border bg-card">
+          {/* Tabs */}
+          <div className="flex gap-1 border-b border-border px-2">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`cursor-pointer whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-colors duration-200 ${
+                  activeTab === tab.id
+                    ? "border-b-2 border-primary text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab Content */}
+          <div className="p-4">
+            {activeTab === "wiki" && (
+              <WikiTab projectId={project.id} />
+            )}
+
+            {activeTab === "changes" && (
+              <ChangesTab
+                project={project}
+                initialChanges={changes}
+                newChangeName={newChangeName}
+                setNewChangeName={setNewChangeName}
+                creating={creating}
+                onCreateChange={handleCreateChange}
+                t={t}
+              />
+            )}
+
+            {activeTab === "members" && (
+              <MembersTab
+                members={members}
+                onInvite={() => router.push(`${toProjectPath(project)}/settings?tab=members`)}
+                t={t}
+              />
+            )}
+
+            {activeTab === "memory" && (
+              <MemoryTab projectId={project.id} content={memoryContent} t={t} />
+            )}
+          </div>
         </div>
-
-        {/* Tab Content */}
-        {activeTab === "wiki" && (
-          <WikiTab projectId={project.id} />
-        )}
-
-        {activeTab === "changes" && (
-          <ChangesTab
-            project={project}
-            initialChanges={changes}
-            newChangeName={newChangeName}
-            setNewChangeName={setNewChangeName}
-            creating={creating}
-            onCreateChange={handleCreateChange}
-            t={t}
-          />
-        )}
-
-        {activeTab === "members" && (
-          <MembersTab
-            members={members}
-            onInvite={() => router.push(`${toProjectPath(project)}/settings?tab=members`)}
-            t={t}
-          />
-        )}
-
-        {activeTab === "memory" && (
-          <MemoryTab projectId={project.id} content={memoryContent} t={t} />
-        )}
       </main>
 
       {/* Edit Project Dialog */}
