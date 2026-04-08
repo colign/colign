@@ -219,16 +219,14 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
         {/* Sidebar */}
         <div className="w-56 shrink-0 border-r border-border pr-4">
           <div className="sticky top-14 max-h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden scrollbar-subtle">
-            <div className="mb-3 flex items-center justify-end">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-6"
-                onClick={() => handleCreatePage()}
-              >
-                <Plus className="size-3.5" />
-              </Button>
-            </div>
+            <Button
+              variant="ghost"
+              className="mb-3 w-full justify-start gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+              onClick={() => handleCreatePage()}
+            >
+              <Plus className="size-3.5" />
+              {t("project.wikiNewPage")}
+            </Button>
 
             {tree.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-lg border border-border px-4 py-12 text-center">
