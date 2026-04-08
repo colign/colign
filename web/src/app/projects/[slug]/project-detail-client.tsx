@@ -48,7 +48,6 @@ import {
   Layers,
   Brain,
   User,
-  Signal,
   Search,
   Settings,
   List,
@@ -212,6 +211,7 @@ export default function ProjectDetailClient() {
   const [memoryContent, setMemoryContent] = useState("");
   const [activeProperty, setActiveProperty] = useState<string | null>(null);
   const propertyRef = useRef<HTMLDivElement>(null);
+  const [propertiesExpanded, setPropertiesExpanded] = useState(false);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -485,215 +485,148 @@ export default function ProjectDetailClient() {
       <Header breadcrumbs={[{ label: project.name }]} />
 
       <main className="px-6 lg:px-8 pt-6 pb-16">
-        {/* Project Hero — Linear style */}
-        <div className="mb-8">
-          {/* Icon */}
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Layers className="size-6" />
-          </div>
-
-          {/* Title + Menu */}
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">{project.name}</h1>
-              <InlineSummary
-                value={project.description}
-                placeholder={t("project.addSummary")}
-                onSave={async (desc) => {
-                  const res = await projectClient.updateProject({
-                    id: project.id,
-                    description: desc,
-                    projectId: project.id,
-                  });
-                  if (res.project) {
-                    setProject(mapProjectDetail(res.project));
-                    showSuccess(t("toast.saveSuccess"));
-                  }
-                }}
-              />
-            </div>
-            <div className="relative" ref={menuRef}>
-              <button
-                onClick={() => setMenuOpen(!menuOpen)}
-                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <MoreHorizontal className="size-4" />
-              </button>
-              {menuOpen && (
-                <div className="absolute right-0 top-10 z-50 w-48 rounded-xl border border-border/50 bg-popover p-1.5 shadow-xl animate-in fade-in slide-in-from-top-2 duration-150">
-                  <Link
-                    href={`${toProjectPath(project)}/settings`}
-                    onClick={() => setMenuOpen(false)}
-                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
-                  >
-                    <Settings className="size-3.5 text-muted-foreground" />
-                    Settings
-                  </Link>
-                  <div className="my-1.5 border-t border-border/50" />
-                  <button
-                    onClick={() => {
-                      setMenuOpen(false);
-                      setDeleteConfirm("");
-                      setDeleteOpen(true);
-                    }}
-                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/10"
-                  >
-                    <Trash2 className="size-3.5" />
-                    {t("project.deleteProject")}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Properties row — Linear style */}
-          <div
-            className="mt-5 flex flex-wrap items-center gap-x-1.5 gap-y-1.5 text-sm"
-            ref={propertyRef}
-          >
-            <span className="mr-1.5 text-xs text-muted-foreground/50">
-              {t("project.properties")}
-            </span>
-
-            {/* Status */}
-            <div className="relative">
-              <button
-                onClick={() => setActiveProperty(activeProperty === "status" ? null : "status")}
-                className="flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-foreground/80 transition-colors hover:bg-accent"
-              >
-                <div
-                  className={`h-2 w-2 rounded-full ${statusConfig[project.status]?.dotColor ?? "bg-muted-foreground"}`}
-                />
-                <span>{statusConfig[project.status]?.label ?? project.status}</span>
-              </button>
-              {activeProperty === "status" && (
-                <div className="absolute left-0 top-full z-50 mt-1 w-40 rounded-lg border border-border/50 bg-popover p-1 shadow-xl animate-in fade-in slide-in-from-top-1 duration-100">
-                  {Object.entries(statusConfig).map(([key, cfg]) => (
-                    <button
-                      key={key}
-                      onClick={() => handlePropertyUpdate("status", key)}
-                      className={`flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-accent ${project.status === key ? "bg-accent/50" : ""}`}
-                    >
-                      <div className={`h-2 w-2 rounded-full ${cfg.dotColor}`} />
-                      {cfg.label}
-                    </button>
-                  ))}
-                </div>
-              )}
+        {/* Project Header — compact single row */}
+        <div className="mb-4" ref={propertyRef}>
+          {/* Title row: icon + title + primary props + menu */}
+          <div className="flex items-center gap-2.5">
+            {/* Icon — 28px */}
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Layers className="size-4" />
             </div>
 
-            {/* Priority */}
-            <div className="relative">
-              <button
-                onClick={() => setActiveProperty(activeProperty === "priority" ? null : "priority")}
-                className="flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-foreground/80 transition-colors hover:bg-accent"
-              >
-                <span className="text-xs font-mono text-muted-foreground">
-                  {priorityConfig[project.priority]?.icon ?? "···"}
-                </span>
-                <span>{priorityConfig[project.priority]?.label ?? "No priority"}</span>
-              </button>
-              {activeProperty === "priority" && (
-                <div className="absolute left-0 top-full z-50 mt-1 w-40 rounded-lg border border-border/50 bg-popover p-1 shadow-xl animate-in fade-in slide-in-from-top-1 duration-100">
-                  {Object.entries(priorityConfig).map(([key, cfg]) => (
-                    <button
-                      key={key}
-                      onClick={() => handlePropertyUpdate("priority", key)}
-                      className={`flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-accent ${project.priority === key ? "bg-accent/50" : ""}`}
-                    >
-                      <span className="w-5 text-xs font-mono text-muted-foreground">
-                        {cfg.icon}
-                      </span>
-                      {cfg.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* Title */}
+            <h1 className="text-lg font-bold tracking-tight">{project.name}</h1>
 
-            {/* Health */}
-            <div className="relative">
-              <button
-                onClick={() => setActiveProperty(activeProperty === "health" ? null : "health")}
-                className="flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-foreground/80 transition-colors hover:bg-accent"
-              >
-                <Signal className="size-3.5 text-muted-foreground/60" />
-                <span>{healthConfig[project.health]?.label ?? "On Track"}</span>
-              </button>
-              {activeProperty === "health" && (
-                <div className="absolute left-0 top-full z-50 mt-1 w-40 rounded-lg border border-border/50 bg-popover p-1 shadow-xl animate-in fade-in slide-in-from-top-1 duration-100">
-                  {Object.entries(healthConfig).map(([key, cfg]) => (
-                    <button
-                      key={key}
-                      onClick={() => handlePropertyUpdate("health", key)}
-                      className={`flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-accent ${project.health === key ? "bg-accent/50" : ""}`}
-                    >
-                      <div className={`h-2 w-2 rounded-full ${cfg.dotColor}`} />
-                      {cfg.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Lead */}
-            <div className="relative">
-              <button
-                onClick={() => setActiveProperty(activeProperty === "lead" ? null : "lead")}
-                className="flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 transition-colors hover:bg-accent"
-              >
-                <User className="size-3.5 text-muted-foreground/60" />
-                <span
-                  className={project.leadName ? "text-foreground/80" : "text-muted-foreground/40"}
+            {/* Primary properties — right side */}
+            <div className="ml-auto flex items-center gap-1.5">
+              {/* Status */}
+              <div className="relative">
+                <button
+                  onClick={() => setActiveProperty(activeProperty === "status" ? null : "status")}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-md bg-card px-2.5 py-1 text-xs text-secondary-foreground transition-colors hover:bg-accent"
                 >
-                  {project.leadName || "Lead"}
-                </span>
+                  <div
+                    className={`h-1.5 w-1.5 rounded-full ${statusConfig[project.status]?.dotColor ?? "bg-muted-foreground"}`}
+                  />
+                  <span>{statusConfig[project.status]?.label ?? project.status}</span>
+                </button>
+                {activeProperty === "status" && (
+                  <div className="absolute left-0 top-full z-50 mt-1 w-40 rounded-lg border border-border/50 bg-popover p-1 shadow-xl animate-in fade-in slide-in-from-top-1 duration-100">
+                    {Object.entries(statusConfig).map(([key, cfg]) => (
+                      <button
+                        key={key}
+                        onClick={() => handlePropertyUpdate("status", key)}
+                        className={`flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-accent ${project.status === key ? "bg-accent/50" : ""}`}
+                      >
+                        <div className={`h-2 w-2 rounded-full ${cfg.dotColor}`} />
+                        {cfg.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Priority */}
+              <div className="relative">
+                <button
+                  onClick={() => setActiveProperty(activeProperty === "priority" ? null : "priority")}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-md bg-card px-2.5 py-1 text-xs text-secondary-foreground transition-colors hover:bg-accent"
+                >
+                  <span className="font-mono text-muted-foreground">
+                    {priorityConfig[project.priority]?.icon ?? "···"}
+                  </span>
+                  <span>{priorityConfig[project.priority]?.label ?? "No priority"}</span>
+                </button>
+                {activeProperty === "priority" && (
+                  <div className="absolute left-0 top-full z-50 mt-1 w-40 rounded-lg border border-border/50 bg-popover p-1 shadow-xl animate-in fade-in slide-in-from-top-1 duration-100">
+                    {Object.entries(priorityConfig).map(([key, cfg]) => (
+                      <button
+                        key={key}
+                        onClick={() => handlePropertyUpdate("priority", key)}
+                        className={`flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-accent ${project.priority === key ? "bg-accent/50" : ""}`}
+                      >
+                        <span className="w-5 text-xs font-mono text-muted-foreground">
+                          {cfg.icon}
+                        </span>
+                        {cfg.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Health */}
+              <div className="relative">
+                <button
+                  onClick={() => setActiveProperty(activeProperty === "health" ? null : "health")}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-md bg-card px-2.5 py-1 text-xs text-secondary-foreground transition-colors hover:bg-accent"
+                >
+                  <div
+                    className={`h-1.5 w-1.5 rounded-full ${healthConfig[project.health]?.dotColor ?? "bg-muted-foreground"}`}
+                  />
+                  <span>{healthConfig[project.health]?.label ?? "On Track"}</span>
+                </button>
+                {activeProperty === "health" && (
+                  <div className="absolute left-0 top-full z-50 mt-1 w-40 rounded-lg border border-border/50 bg-popover p-1 shadow-xl animate-in fade-in slide-in-from-top-1 duration-100">
+                    {Object.entries(healthConfig).map(([key, cfg]) => (
+                      <button
+                        key={key}
+                        onClick={() => handlePropertyUpdate("health", key)}
+                        className={`flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-accent ${project.health === key ? "bg-accent/50" : ""}`}
+                      >
+                        <div className={`h-2 w-2 rounded-full ${cfg.dotColor}`} />
+                        {cfg.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* +N more toggle */}
+              <button
+                onClick={() => setPropertiesExpanded(!propertiesExpanded)}
+                className="flex cursor-pointer items-center gap-1 rounded-md border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+              >
+                {propertiesExpanded ? (
+                  <>&#9652; Less</>
+                ) : (
+                  <>+4 more &#9662;</>
+                )}
               </button>
-              {activeProperty === "lead" && (
-                <div className="absolute left-0 top-full z-50 mt-1 w-52 rounded-lg border border-border/50 bg-popover p-1 shadow-xl animate-in fade-in slide-in-from-top-1 duration-100">
-                  <button
-                    onClick={() => handlePropertyUpdate("leadId", BigInt(0))}
-                    className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent"
-                  >
-                    No lead
-                  </button>
-                  {members.map((m) => (
-                    <button
-                      key={m.email}
-                      onClick={() => {
-                        const orgMember = orgMembers.find((om) => om.email === m.email);
-                        if (orgMember) handlePropertyUpdate("leadId", orgMember.userId);
-                      }}
-                      className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-accent"
+
+              {/* Menu */}
+              <div className="relative ml-1" ref={menuRef}>
+                <button
+                  onClick={() => setMenuOpen(!menuOpen)}
+                  className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <MoreHorizontal className="size-4" />
+                </button>
+                {menuOpen && (
+                  <div className="absolute right-0 top-9 z-50 w-48 rounded-xl border border-border/50 bg-popover p-1.5 shadow-xl animate-in fade-in slide-in-from-top-2 duration-150">
+                    <Link
+                      href={`${toProjectPath(project)}/settings`}
+                      onClick={() => setMenuOpen(false)}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
                     >
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary">
-                        {m.name?.[0]?.toUpperCase() ?? "?"}
-                      </div>
-                      {m.name || m.email}
+                      <Settings className="size-3.5 text-muted-foreground" />
+                      Settings
+                    </Link>
+                    <div className="my-1.5 border-t border-border/50" />
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setDeleteConfirm("");
+                        setDeleteOpen(true);
+                      }}
+                      className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/10"
+                    >
+                      <Trash2 className="size-3.5" />
+                      {t("project.deleteProject")}
                     </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <DatePicker
-              value={project.startDate}
-              placeholder="Start date"
-              onChange={(value) => handlePropertyUpdate("startDate", value ?? "")}
-            />
-
-            <DatePicker
-              value={project.targetDate}
-              placeholder="Target date"
-              onChange={(value) => handlePropertyUpdate("targetDate", value ?? "")}
-            />
-
-            {/* Members count */}
-            <div className="flex items-center gap-1.5 rounded-md px-2 py-1 text-foreground/80">
-              <Users className="size-3.5 text-muted-foreground/60" />
-              <span>
-                {members.length} {t("project.membersCount")}
-              </span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
