@@ -441,7 +441,7 @@ function SortableTreeItem({
         {pageIcon ? (
           <span className="shrink-0 text-sm">{pageIcon}</span>
         ) : (
-          <FileText className="size-3.5 shrink-0 text-muted-foreground/60" />
+          <FileText className="size-3.5 shrink-0 text-muted-foreground" />
         )}
 
         <span className="truncate">
