@@ -483,7 +483,7 @@ export default function ProjectDetailClient() {
     <div className="min-h-screen bg-background">
       <Header breadcrumbs={[{ label: project.name }]} />
 
-      <main className="mx-auto max-w-[1200px] px-6 lg:px-8 pt-6 pb-16">
+      <main className="px-6 lg:px-8 pt-6 pb-16">
         {/* Project Header — compact single row */}
         <div className="mb-4" ref={propertyRef}>
           {/* Title row: icon + title + primary props + menu */}
