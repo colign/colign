@@ -44,10 +44,10 @@ interface Notification {
 }
 
 const stageConfig: Record<string, { label: string; color: string }> = {
-  draft: { label: "Draft", color: "text-amber-400" },
-  design: { label: "Design", color: "text-blue-400" },
+  draft: { label: "Draft", color: "text-stage-draft" },
+  design: { label: "Design", color: "text-stage-spec" },
   review: { label: "Review", color: "text-violet-400" },
-  ready: { label: "Ready", color: "text-emerald-400" },
+  ready: { label: "Ready", color: "text-primary" },
 };
 
 function timeAgo(seconds: bigint | undefined): string {
@@ -71,9 +71,9 @@ const typeIcon: Record<string, typeof Eye> = {
 
 const typeColor: Record<string, string> = {
   review_request: "text-violet-400 bg-violet-400/10",
-  comment: "text-blue-400 bg-blue-400/10",
-  mention: "text-amber-400 bg-amber-400/10",
-  stage_change: "text-emerald-400 bg-emerald-400/10",
+  comment: "text-info bg-info/10",
+  mention: "text-warning bg-warning/10",
+  stage_change: "text-success bg-success/10",
   invite: "text-primary bg-primary/10",
 };
 
@@ -300,7 +300,7 @@ export default function InboxPage() {
         </div>
 
         {/* Filter tabs */}
-        <div className="mb-5 flex gap-1 overflow-x-auto border-b border-border/40 pb-px">
+        <div className="mb-5 flex gap-1 overflow-x-auto border-b border-border pb-px">
           {filters.map((f) => (
             <button
               key={f.id}
@@ -313,14 +313,14 @@ export default function InboxPage() {
             >
               {f.label}
               {f.count !== undefined && f.count > 0 && (
-                <span className="ml-1.5 text-muted-foreground/60">{f.count}</span>
+                <span className="ml-1.5 text-muted-foreground">{f.count}</span>
               )}
             </button>
           ))}
         </div>
 
         {/* Notification list */}
-        <div className="rounded-xl border border-border/40 bg-card/50">
+        <div className="rounded-xl border border-border bg-card">
           {notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20">
               <div className="mb-4 rounded-2xl bg-muted/50 p-4">

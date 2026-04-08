@@ -51,20 +51,20 @@ const stageConfig: Record<
 > = {
   draft: {
     label: "Draft",
-    color: "text-yellow-400",
-    activeColor: "border-yellow-400 bg-yellow-400/10",
+    color: "text-stage-draft",
+    activeColor: "border-stage-draft bg-stage-draft/10",
     icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
   },
   spec: {
     label: "Spec",
-    color: "text-blue-400",
-    activeColor: "border-blue-400 bg-blue-400/10",
+    color: "text-stage-spec",
+    activeColor: "border-stage-spec bg-stage-spec/10",
     icon: "M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm0 8a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6z",
   },
   approved: {
     label: "Approved",
-    color: "text-emerald-400",
-    activeColor: "border-emerald-400 bg-emerald-400/10",
+    color: "text-stage-approved",
+    activeColor: "border-stage-approved bg-stage-approved/10",
     icon: "M5 13l4 4L19 7",
   },
 };
@@ -93,9 +93,9 @@ function activityIcon(type: string) {
 
 function activityColor(type: string): string {
   if (type === "stage") return "bg-primary/10 text-primary";
-  if (type.startsWith("task")) return "bg-blue-500/10 text-blue-400";
-  if (type.startsWith("doc")) return "bg-amber-500/10 text-amber-400";
-  if (type === "ac_created") return "bg-emerald-500/10 text-emerald-400";
+  if (type.startsWith("task")) return "bg-info/10 text-info";
+  if (type.startsWith("doc")) return "bg-warning/10 text-warning";
+  if (type === "ac_created") return "bg-success/10 text-success";
   if (type === "comment") return "bg-purple-500/10 text-purple-400";
   return "bg-muted text-muted-foreground";
 }
@@ -502,34 +502,26 @@ export default function ChangeDetailClient() {
                               <div
                                 className="animate-stepper-ripple absolute h-9 w-9 rounded-full"
                                 style={{
-                                  background: isActive && subStatus === "ready" && s !== "approved"
-                                    ? "radial-gradient(circle, transparent 40%, rgb(16 185 129) 60%, transparent 75%)"
-                                    : "radial-gradient(circle, transparent 40%, var(--color-primary) 60%, transparent 75%)",
+                                  background: "radial-gradient(circle, transparent 40%, var(--color-primary) 60%, transparent 75%)",
                                 }}
                               />
-                              <div className={`animate-stepper-glow absolute h-10 w-10 rounded-full blur-md ${
-                                subStatus === "ready" && s !== "approved" ? "bg-emerald-500/20" : "bg-primary/20"
-                              }`} />
+                              <div className="animate-stepper-glow absolute h-10 w-10 rounded-full blur-md bg-primary/20" />
                             </>
                           )}
                           <div
                             className={`relative flex h-9 w-9 items-center justify-center rounded-full border-2 bg-background transition-all duration-300 ${
                               isActive
-                                ? subStatus === "ready" && s !== "approved"
-                                  ? "border-emerald-400 bg-emerald-400/10"
-                                  : cfg.activeColor
+                                ? cfg.activeColor
                                 : isPast
-                                  ? "border-emerald-500 bg-emerald-500/10"
+                                  ? "border-stage-approved bg-stage-approved/10"
                                   : "border-border bg-muted"
                             }`}
                           >
                             <svg
                               className={`h-4 w-4 ${
                                 isActive
-                                  ? subStatus === "ready" && s !== "approved"
-                                    ? "text-emerald-400"
-                                    : cfg.color
-                                  : isPast ? "text-emerald-400" : "text-muted-foreground"
+                                  ? cfg.color
+                                  : isPast ? "text-stage-approved" : "text-muted-foreground"
                               }`}
                               fill="none"
                               stroke="currentColor"
@@ -550,7 +542,7 @@ export default function ChangeDetailClient() {
                           {t(`stages.${s}`)}
                         </span>
                         {isActive && s !== "approved" && (
-                          <span className={`text-[9px] font-medium ${subStatus === "ready" ? "text-emerald-400" : "text-muted-foreground/60"}`}>
+                          <span className={`text-[9px] font-medium ${subStatus === "ready" ? "text-primary" : "text-muted-foreground"}`}>
                             {t(`stages.subStatus.${subStatus}`)}
                           </span>
                         )}
@@ -558,7 +550,7 @@ export default function ChangeDetailClient() {
                       {/* Connection line */}
                       {i < stages.length - 1 && (
                         <div className="relative mx-3 mt-[18px] flex-1" style={{ height: "2px" }}>
-                          {isPast && i === currentIdx - 1 ? (
+                          {isPast && i === currentIdx - 1 && currentIdx < stages.length - 1 ? (
                             <div
                               className="animate-stepper-dots-flow h-full rounded-full"
                               style={{
@@ -570,7 +562,7 @@ export default function ChangeDetailClient() {
                           ) : (
                             <div
                               className={`h-full rounded-full transition-colors duration-500 ${
-                                isPast ? "bg-emerald-500/50" : ""
+                                isPast ? "bg-stage-approved/50" : ""
                               }`}
                               style={
                                 isPast
@@ -608,34 +600,26 @@ export default function ChangeDetailClient() {
                             <div
                               className="animate-stepper-ripple absolute h-10 w-10 rounded-full"
                               style={{
-                                background: isActive && subStatus === "ready" && s !== "approved"
-                                  ? "radial-gradient(circle, transparent 40%, rgb(16 185 129) 60%, transparent 75%)"
-                                  : "radial-gradient(circle, transparent 40%, var(--color-primary) 60%, transparent 75%)",
+                                background: "radial-gradient(circle, transparent 40%, var(--color-primary) 60%, transparent 75%)",
                               }}
                             />
-                            <div className={`animate-stepper-glow absolute h-10 w-10 rounded-full blur-md ${
-                              subStatus === "ready" && s !== "approved" ? "bg-emerald-500/20" : "bg-primary/20"
-                            }`} />
+                            <div className="animate-stepper-glow absolute h-10 w-10 rounded-full blur-md bg-primary/20" />
                           </>
                         )}
                         <div
                           className={`relative flex items-center justify-center rounded-full border-2 transition-all duration-300 ${
                             isActive
-                              ? subStatus === "ready" && s !== "approved"
-                                ? "h-10 w-10 border-emerald-400 bg-emerald-400/10"
-                                : `h-10 w-10 ${cfg.activeColor}`
+                              ? `h-10 w-10 ${cfg.activeColor}`
                               : isPast
-                                ? "h-8 w-8 border-emerald-500 bg-emerald-500/10"
+                                ? "h-8 w-8 border-stage-approved bg-stage-approved/10"
                                 : "h-8 w-8 border-border bg-muted"
                           }`}
                         >
                           <svg
                             className={`${isActive ? "h-4.5 w-4.5" : "h-3.5 w-3.5"} ${
                               isActive
-                                ? subStatus === "ready" && s !== "approved"
-                                  ? "text-emerald-400"
-                                  : cfg.color
-                                : isPast ? "text-emerald-400" : "text-muted-foreground"
+                                ? cfg.color
+                                : isPast ? "text-stage-approved" : "text-muted-foreground"
                             }`}
                             fill="none"
                             stroke="currentColor"
@@ -656,7 +640,7 @@ export default function ChangeDetailClient() {
                         {t(`stages.${s}`)}
                       </span>
                       {isActive && s !== "approved" && (
-                        <span className={`text-[8px] font-medium ${subStatus === "ready" ? "text-emerald-400" : "text-muted-foreground/60"}`}>
+                        <span className={`text-[8px] font-medium ${subStatus === "ready" ? "text-primary" : "text-muted-foreground"}`}>
                           {t(`stages.subStatus.${subStatus}`)}
                         </span>
                       )}
@@ -670,9 +654,9 @@ export default function ChangeDetailClient() {
             <div className="mb-4 rounded-lg border border-border/50 p-4">
               {/* Archived banner */}
               {archivedAt && (
-                <div className="mb-3 flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2">
-                  <Archive className="h-4 w-4 text-amber-400 shrink-0" />
-                  <span className="text-sm text-amber-400">{t("change.archived")}</span>
+                <div className="mb-3 flex items-center gap-2 rounded-md border border-warning/30 bg-warning/5 px-3 py-2">
+                  <Archive className="h-4 w-4 text-warning shrink-0" />
+                  <span className="text-sm text-warning">{t("change.archived")}</span>
                 </div>
               )}
               <div className="flex flex-wrap items-center gap-3">
@@ -684,7 +668,7 @@ export default function ChangeDetailClient() {
                     >
                       {c.met ? (
                         <svg
-                          className="h-3.5 w-3.5 text-emerald-400"
+                          className="h-3.5 w-3.5 text-stage-approved"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -838,8 +822,8 @@ export default function ChangeDetailClient() {
 
               {/* Confirm dialog for advancing with unmet gates */}
               {showConfirmAdvance && (
-                <div className="mt-3 rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3">
-                  <p className="text-sm text-yellow-400">{t("change.advanceGateWarning")}</p>
+                <div className="mt-3 rounded-md border border-warning/30 bg-warning/5 p-3">
+                  <p className="text-sm text-warning">{t("change.advanceGateWarning")}</p>
                   <div className="mt-2 flex gap-2">
                     <Button
                       onClick={() => doAdvance(true)}
@@ -923,7 +907,7 @@ export default function ChangeDetailClient() {
                   + {t("change.addLabel")}
                 </button>
                 {labelDropdownOpen && (
-                  <div className="absolute left-0 top-full z-30 mt-1 min-w-[180px] rounded-lg border border-border/40 bg-popover p-1 shadow-lg">
+                  <div className="absolute left-0 top-full z-30 mt-1 min-w-[180px] rounded-lg border border-border bg-popover p-1 shadow-lg">
                     {orgLabels.filter((ol) => !changeLabels.some((cl) => cl.id === ol.id))
                       .length === 0 ? (
                       <div className="px-3 py-2 text-xs text-muted-foreground">
@@ -963,7 +947,7 @@ export default function ChangeDetailClient() {
                         ))
                     )}
                     {/* Create new label */}
-                    <div className="border-t border-border/30 mt-1 pt-1">
+                    <div className="border-t border-border mt-1 pt-1">
                       {creatingLabel ? (
                         <div className="px-2 py-1.5 space-y-2">
                           <input
@@ -972,7 +956,7 @@ export default function ChangeDetailClient() {
                             onChange={(e) => setNewLabelName(e.target.value)}
                             placeholder={t("change.addLabel")}
                             autoFocus
-                            className="w-full rounded-md border border-border/40 bg-transparent px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 focus:border-primary/50 focus:outline-none"
+                            className="w-full rounded-md border border-border bg-transparent px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 focus:border-primary/50 focus:outline-none"
                             onKeyDown={(e) => {
                               if (e.key === "Enter") handleCreateAndAssignLabel();
                               if (e.key === "Escape") {
@@ -1024,7 +1008,7 @@ export default function ChangeDetailClient() {
                             />
                           </div>
                           {showColorPicker && (
-                            <div className="space-y-2 rounded-md border border-border/30 bg-accent/30 p-2">
+                            <div className="space-y-2 rounded-md border border-border bg-accent/30 p-2">
                               <div
                                 className="relative h-24 w-full cursor-crosshair rounded"
                                 style={{
@@ -1076,7 +1060,7 @@ export default function ChangeDetailClient() {
                               />
                               <div className="flex items-center gap-1.5">
                                 <div
-                                  className="h-5 w-5 shrink-0 rounded border border-border/40"
+                                  className="h-5 w-5 shrink-0 rounded border border-border"
                                   style={{ backgroundColor: newLabelColor }}
                                 />
                                 <input
@@ -1089,7 +1073,7 @@ export default function ChangeDetailClient() {
                                       setNewLabelColor(v.toUpperCase());
                                   }}
                                   placeholder="#000000"
-                                  className="w-full rounded border border-border/40 bg-transparent px-1.5 py-0.5 font-mono text-[10px] text-foreground focus:border-primary/50 focus:outline-none"
+                                  className="w-full rounded border border-border bg-transparent px-1.5 py-0.5 font-mono text-[10px] text-foreground focus:border-primary/50 focus:outline-none"
                                 />
                               </div>
                             </div>
@@ -1130,7 +1114,7 @@ export default function ChangeDetailClient() {
           )}
 
           {/* Tab Navigation — sticky */}
-          <div className="sticky top-0 z-20 -mx-6 mb-4 border-b border-border/40 bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          <div className="sticky top-0 z-20 -mx-6 mb-4 border-b border-border bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/80">
             <div className="flex gap-1 overflow-x-auto">
               {(Object.keys(tabI18nKeys) as TabId[]).map((tabId) => (
                 <button

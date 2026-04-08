@@ -59,21 +59,21 @@ import {
 const stageConfig: Record<string, { label: string; color: string; icon: string; glow: string }> = {
   draft: {
     label: "Draft",
-    color: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    color: "bg-stage-draft/10 text-stage-draft border-stage-draft/20",
     icon: "M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10",
-    glow: "shadow-amber-500/5",
+    glow: "shadow-stage-draft/5",
   },
   spec: {
     label: "Spec",
-    color: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    color: "bg-stage-spec/10 text-stage-spec border-stage-spec/20",
     icon: "M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42",
-    glow: "shadow-blue-500/5",
+    glow: "shadow-stage-spec/5",
   },
   approved: {
     label: "Approved",
-    color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    color: "bg-stage-approved/10 text-stage-approved border-stage-approved/20",
     icon: "M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
-    glow: "shadow-emerald-500/5",
+    glow: "shadow-stage-approved/5",
   },
 };
 
@@ -81,8 +81,8 @@ const statusConfig: Record<string, { label: string; color: string; dotColor: str
   backlog: { label: "Backlog", color: "text-muted-foreground", dotColor: "bg-muted-foreground" },
   active: { label: "Active", color: "text-yellow-400", dotColor: "bg-yellow-400" },
   paused: { label: "Paused", color: "text-orange-400", dotColor: "bg-orange-400" },
-  completed: { label: "Completed", color: "text-emerald-400", dotColor: "bg-emerald-400" },
-  cancelled: { label: "Cancelled", color: "text-red-400", dotColor: "bg-red-400" },
+  completed: { label: "Completed", color: "text-success", dotColor: "bg-success" },
+  cancelled: { label: "Cancelled", color: "text-destructive", dotColor: "bg-destructive" },
 };
 
 const priorityConfig: Record<string, { label: string; icon: string }> = {
@@ -94,9 +94,9 @@ const priorityConfig: Record<string, { label: string; icon: string }> = {
 };
 
 const healthConfig: Record<string, { label: string; dotColor: string }> = {
-  on_track: { label: "On Track", dotColor: "bg-emerald-400" },
+  on_track: { label: "On Track", dotColor: "bg-success" },
   at_risk: { label: "At Risk", dotColor: "bg-yellow-400" },
-  off_track: { label: "Off Track", dotColor: "bg-red-400" },
+  off_track: { label: "Off Track", dotColor: "bg-destructive" },
 };
 
 interface ChangeLabel {
@@ -851,7 +851,7 @@ function ChangeRow({
             {t(`stages.${change.stage}`)}
           </span>
           {change.subStatus === "ready" && change.stage !== "approved" && (
-            <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
+            <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
               {t("stages.subStatus.ready")}
             </span>
           )}
@@ -871,7 +871,7 @@ function ChangeRow({
         {menuOpen && (
           <>
             <div className="fixed inset-0 z-20" onClick={() => setMenuOpen(false)} />
-            <div className="absolute right-0 top-full z-30 mt-1 min-w-[140px] rounded-lg border border-border/40 bg-popover p-1 shadow-lg">
+            <div className="absolute right-0 top-full z-30 mt-1 min-w-[140px] rounded-lg border border-border bg-popover p-1 shadow-lg">
               <button
                 onClick={(e) => {
                   e.preventDefault();
@@ -1350,7 +1350,7 @@ function ChangesTab({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t("project.searchPlaceholder")}
-            className="h-8 w-44 rounded-md border border-border/40 bg-transparent pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary/50 focus:outline-none transition-colors"
+            className="h-8 w-44 rounded-md border border-border bg-transparent pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary/50 focus:outline-none transition-colors"
           />
         </div>
 
@@ -1369,7 +1369,7 @@ function ChangesTab({
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
       ) : displayChanges.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/40 bg-card/30 py-20">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card/30 py-20">
           <div className="mb-5 rounded-2xl bg-primary/5 p-5">
             <FileText className="size-10 text-primary/40" />
           </div>
@@ -1394,7 +1394,7 @@ function ChangesTab({
           {groupedChanges.map((group, gi) => (
             <div
               key={group.label ? String(group.label.id) : "unlabeled"}
-              className="rounded-xl border border-border/30 overflow-hidden"
+              className="rounded-xl border border-border overflow-hidden"
             >
               {/* Group Header */}
               <div className="flex items-center gap-2 border-b border-border/20 bg-muted/30 px-4 py-2">
@@ -1607,7 +1607,7 @@ function MembersTab({
         {members.map((member) => (
           <div
             key={member.email}
-            className="flex items-center justify-between rounded-xl border border-border/40 bg-card/50 px-5 py-3.5"
+            className="flex items-center justify-between rounded-xl border border-border bg-card px-5 py-3.5"
           >
             <div className="flex items-center gap-3">
               <Avatar className="h-9 w-9">
@@ -1659,8 +1659,8 @@ function MemoryTab({
         <span className="text-sm text-muted-foreground">{t("project.memoryDesc")}</span>
       </div>
 
-      <div className="rounded-xl border border-border/40 bg-card/50">
-        <div className="flex items-center gap-2 border-b border-border/30 px-5 py-3">
+      <div className="rounded-xl border border-border bg-card">
+        <div className="flex items-center gap-2 border-b border-border px-5 py-3">
           <Brain className="size-3.5 text-primary/60" />
           <span className="text-sm font-medium">{t("project.memory")}</span>
         </div>
