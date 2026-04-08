@@ -629,11 +629,10 @@ export default function ProjectDetailClient() {
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Expanded properties panel */}
-        {propertiesExpanded && (
-          <div className="mb-4 grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-x-6 gap-y-3 rounded-md border border-border bg-card p-4">
+          {/* Expanded properties panel */}
+          {propertiesExpanded && (
+            <div className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-x-6 gap-y-3 rounded-md border border-border bg-card p-4">
             {/* Lead */}
             <div>
               <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
@@ -735,6 +734,7 @@ export default function ProjectDetailClient() {
             </div>
           </div>
         )}
+        </div>
 
         {/* Tabs */}
         <div className="mb-6 flex gap-1 border-b border-border/50">
