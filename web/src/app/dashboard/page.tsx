@@ -8,7 +8,7 @@ import { useOrg } from "@/lib/org-context";
 import { useEvents } from "@/lib/events";
 import { projectClient } from "@/lib/project";
 import { toChangePath, toProjectPath } from "@/lib/project-ref";
-import { FolderKanban, PenLine, FileText, CheckCircle2, ChevronRight } from "lucide-react";
+import { FolderKanban, ChevronRight } from "lucide-react";
 import { showError } from "@/lib/toast";
 
 interface Project {
@@ -37,9 +37,9 @@ interface Change {
 }
 
 const stageConfig: Record<string, { label: string; color: string; dot: string }> = {
-  draft: { label: "Draft", color: "text-amber-400", dot: "bg-amber-400" },
-  spec: { label: "Spec", color: "text-blue-400", dot: "bg-blue-400" },
-  approved: { label: "Approved", color: "text-emerald-400", dot: "bg-emerald-400" },
+  draft: { label: "Draft", color: "text-stage-draft", dot: "bg-stage-draft" },
+  spec: { label: "Spec", color: "text-stage-spec", dot: "bg-stage-spec" },
+  approved: { label: "Approved", color: "text-stage-approved", dot: "bg-stage-approved" },
 };
 
 function timeAgo(seconds: bigint | undefined): string {
@@ -142,32 +142,22 @@ export default function DashboardPage() {
 
   const statCards = [
     {
-      value: projects.length,
-      label: t("dashboard.projects"),
-      sub: `${allChanges.length} changes`,
-      icon: FolderKanban,
-      iconColor: "text-primary",
-    },
-    {
       value: draftChanges.length,
       label: t("dashboard.draft"),
       sub: `${draftChanges.map((c) => c.projectName).filter((v, i, a) => a.indexOf(v) === i).length} projects`,
-      icon: PenLine,
-      iconColor: "text-amber-400",
+      dot: "bg-stage-draft",
     },
     {
       value: specChanges.length,
       label: t("dashboard.spec"),
       sub: `${specChanges.map((c) => c.projectName).filter((v, i, a) => a.indexOf(v) === i).length} projects`,
-      icon: FileText,
-      iconColor: "text-blue-400",
+      dot: "bg-stage-spec",
     },
     {
       value: approvedChanges.length,
       label: t("dashboard.approved"),
       sub: `${approvedChanges.map((c) => c.projectName).filter((v, i, a) => a.indexOf(v) === i).length} projects`,
-      icon: CheckCircle2,
-      iconColor: "text-emerald-400",
+      dot: "bg-stage-approved",
     },
   ];
 
@@ -176,21 +166,18 @@ export default function DashboardPage() {
       <Header breadcrumbs={[{ label: t("dashboard.title") }]} />
 
       <main className="mx-auto max-w-6xl px-6 pt-8 pb-16">
-        {/* Org Name */}
-        {currentOrg && <p className="mb-6 text-sm text-muted-foreground">{currentOrg.name}</p>}
-
-        {/* Stat Cards — Paperclip style */}
-        <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {/* Stat Cards */}
+        <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {statCards.map((card) => (
             <div
               key={card.label}
-              className="rounded-xl border border-border/40 bg-card/50 px-5 py-4"
+              className="rounded-lg border border-border bg-card px-5 py-4 transition-colors hover:bg-accent"
             >
-              <div className="flex items-start justify-between">
-                <span className="text-3xl font-bold tracking-tight">{card.value}</span>
-                <card.icon className={`size-5 ${card.iconColor} opacity-60`} />
+              <div className="flex items-center gap-2">
+                <div className={`h-2 w-2 rounded-full ${card.dot}`} />
+                <span className="text-[13px] font-medium text-muted-foreground">{card.label}</span>
               </div>
-              <p className="mt-1 text-sm font-medium text-foreground/80">{card.label}</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight">{card.value}</p>
               <p className="mt-0.5 text-xs text-muted-foreground">{card.sub}</p>
             </div>
           ))}
@@ -199,13 +186,13 @@ export default function DashboardPage() {
         {/* Two-column: Recent Activity + Recent Changes */}
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Recent Activity */}
-          <div className="rounded-xl border border-border/40 bg-card/50">
-            <div className="flex items-center justify-between border-b border-border/30 px-5 py-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="rounded-xl border border-border bg-card">
+            <div className="flex items-center justify-between border-b border-border px-5 py-3">
+              <span className="text-[13px] font-semibold uppercase tracking-[0.06em] text-secondary-foreground">
                 {t("dashboard.recentActivity")}
               </span>
             </div>
-            <div className="divide-y divide-border/20">
+            <div className="divide-y divide-border">
               {recentChanges.length === 0 ? (
                 <div className="px-5 py-10 text-center text-sm text-muted-foreground">
                   {t("dashboard.noActivity")}
@@ -221,9 +208,9 @@ export default function DashboardPage() {
                         item.change.id,
                       )}
                     >
-                      <div className="flex cursor-pointer items-center justify-between px-5 py-3 transition-colors hover:bg-accent/30">
+                      <div className="flex cursor-pointer items-center justify-between px-5 py-3.5 transition-colors hover:bg-accent">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className={`h-2 w-2 shrink-0 rounded-full ${config.dot}`} />
+                          <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${config.dot}`} />
                           <div className="min-w-0">
                             <p className="truncate text-sm">
                               {item.change.identifier && (
@@ -256,14 +243,14 @@ export default function DashboardPage() {
                             <p className={`text-xs ${config.color}`}>
                               {config.label}
                               {item.change.subStatus === "ready" && item.change.stage !== "approved" && (
-                                <span className="ml-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
+                                <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
                                   {t("stages.subStatus.ready")}
                                 </span>
                               )}
                             </p>
                           </div>
                         </div>
-                        <span className="shrink-0 text-xs text-muted-foreground/60">
+                        <span className="shrink-0 text-[11px] text-muted-foreground">
                           {timeAgo(item.change.updatedAt?.seconds)}
                         </span>
                       </div>
@@ -275,9 +262,9 @@ export default function DashboardPage() {
           </div>
 
           {/* Recent Changes by Project */}
-          <div className="rounded-xl border border-border/40 bg-card/50">
-            <div className="flex items-center justify-between border-b border-border/30 px-5 py-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="rounded-xl border border-border bg-card">
+            <div className="flex items-center justify-between border-b border-border px-5 py-3">
+              <span className="text-[13px] font-semibold uppercase tracking-[0.06em] text-secondary-foreground">
                 {t("dashboard.recentChanges")}
               </span>
               <Link
@@ -288,7 +275,7 @@ export default function DashboardPage() {
                 <ChevronRight className="size-3" />
               </Link>
             </div>
-            <div className="divide-y divide-border/20">
+            <div className="divide-y divide-border">
               {projects.length === 0 ? (
                 <div className="px-5 py-10 text-center text-sm text-muted-foreground">
                   {t("dashboard.noChanges")}
@@ -302,15 +289,15 @@ export default function DashboardPage() {
                     <div key={String(project.id)} className="px-5 py-3">
                       <Link href={toProjectPath(project)}>
                         <div className="mb-2 flex cursor-pointer items-center gap-2 transition-colors hover:text-primary">
-                          <FolderKanban className="size-3.5 text-muted-foreground/60" />
+                          <FolderKanban className="size-3.5 text-muted-foreground" />
                           <span className="text-sm font-medium">{project.name}</span>
-                          <span className="text-xs text-muted-foreground/50">
+                          <span className="text-xs text-muted-foreground">
                             {projectChanges.length} changes
                           </span>
                         </div>
                       </Link>
                       {projectChanges.length === 0 ? (
-                        <p className="ml-5.5 text-xs text-muted-foreground/40">
+                        <p className="ml-5.5 text-xs text-muted-foreground">
                           {t("dashboard.noChanges")}
                         </p>
                       ) : (
@@ -322,7 +309,7 @@ export default function DashboardPage() {
                                 key={String(item.change.id)}
                                 href={toChangePath(project, item.change.id)}
                               >
-                                <div className="flex cursor-pointer items-center justify-between rounded-lg px-3 py-1.5 transition-colors hover:bg-accent/30">
+                                <div className="flex cursor-pointer items-center justify-between rounded-lg px-3 py-1.5 transition-colors hover:bg-accent">
                                   <div className="flex items-center gap-2">
                                     <div className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
                                     <span className="text-sm text-foreground/80">
@@ -355,7 +342,7 @@ export default function DashboardPage() {
                                       {config.label}
                                     </span>
                                     {item.change.subStatus === "ready" && item.change.stage !== "approved" && (
-                                      <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
+                                      <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
                                         {t("stages.subStatus.ready")}
                                       </span>
                                     )}

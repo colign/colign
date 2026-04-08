@@ -121,7 +121,15 @@
     "addResource": "링크 추가...",
     "addSummary": "짧은 요약을 추가하세요...",
     "settings": "설정",
-    "searchPlaceholder": "체인지 검색..."
+    "searchPlaceholder": "체인지 검색...",
+    "lead": "담당자",
+    "noLead": "담당자 없음",
+    "startDate": "시작일",
+    "targetDate": "목표일",
+    "description": "설명",
+    "setDate": "날짜 선택",
+    "showMore": "+5 더보기",
+    "showLess": "접기"
   },
   "change": {
     "workflow": "워크플로우",

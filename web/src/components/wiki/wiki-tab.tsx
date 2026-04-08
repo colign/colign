@@ -270,7 +270,7 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
 
         {/* Content Area */}
         <div className="min-w-0 flex-1">
-          <div className="min-h-[400px] rounded-xl border border-border/40 bg-card/50">
+          <div className="min-h-[400px] rounded-xl border border-border bg-card">
             {selectedPageId ? (
               <WikiPageContent
                 key={selectedPageId}
