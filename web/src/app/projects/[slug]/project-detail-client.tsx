@@ -631,6 +631,111 @@ export default function ProjectDetailClient() {
           </div>
         </div>
 
+        {/* Expanded properties panel */}
+        {propertiesExpanded && (
+          <div className="mb-4 grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-x-6 gap-y-3 rounded-md border border-border bg-card p-4">
+            {/* Lead */}
+            <div>
+              <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                Lead
+              </div>
+              <div className="relative">
+                <button
+                  onClick={() => setActiveProperty(activeProperty === "lead" ? null : "lead")}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-md px-1 py-0.5 text-sm transition-colors hover:bg-accent"
+                >
+                  <User className="size-3.5 text-muted-foreground/60" />
+                  <span className={project.leadName ? "text-foreground/80" : "text-muted-foreground/40"}>
+                    {project.leadName || "No lead"}
+                  </span>
+                </button>
+                {activeProperty === "lead" && (
+                  <div className="absolute left-0 top-full z-50 mt-1 w-52 rounded-lg border border-border/50 bg-popover p-1 shadow-xl animate-in fade-in slide-in-from-top-1 duration-100">
+                    <button
+                      onClick={() => handlePropertyUpdate("leadId", BigInt(0))}
+                      className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent"
+                    >
+                      No lead
+                    </button>
+                    {members.map((m) => (
+                      <button
+                        key={m.email}
+                        onClick={() => {
+                          const orgMember = orgMembers.find((om) => om.email === m.email);
+                          if (orgMember) handlePropertyUpdate("leadId", orgMember.userId);
+                        }}
+                        className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-accent"
+                      >
+                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary">
+                          {m.name?.[0]?.toUpperCase() ?? "?"}
+                        </div>
+                        {m.name || m.email}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Start date */}
+            <div>
+              <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                Start date
+              </div>
+              <DatePicker
+                value={project.startDate}
+                placeholder="Set date"
+                onChange={(value) => handlePropertyUpdate("startDate", value ?? "")}
+              />
+            </div>
+
+            {/* Target date */}
+            <div>
+              <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                Target date
+              </div>
+              <DatePicker
+                value={project.targetDate}
+                placeholder="Set date"
+                onChange={(value) => handlePropertyUpdate("targetDate", value ?? "")}
+              />
+            </div>
+
+            {/* Members */}
+            <div>
+              <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                Members
+              </div>
+              <div className="flex items-center gap-1.5 px-1 py-0.5 text-sm text-foreground/80">
+                <Users className="size-3.5 text-muted-foreground/60" />
+                <span>{members.length} {t("project.membersCount")}</span>
+              </div>
+            </div>
+
+            {/* Description — full width */}
+            <div className="col-span-full">
+              <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                Description
+              </div>
+              <InlineSummary
+                value={project.description}
+                placeholder={t("project.addSummary")}
+                onSave={async (desc) => {
+                  const res = await projectClient.updateProject({
+                    id: project.id,
+                    description: desc,
+                    projectId: project.id,
+                  });
+                  if (res.project) {
+                    setProject(mapProjectDetail(res.project));
+                    showSuccess(t("toast.saveSuccess"));
+                  }
+                }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Tabs */}
         <div className="mb-6 flex gap-1 border-b border-border/50">
           {tabs.map((tab) => (
