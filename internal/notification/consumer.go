@@ -2,6 +2,7 @@ package notification
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 
@@ -77,6 +78,10 @@ func (c *Consumer) handle(ctx context.Context, evt events.NotificationEvent) {
 		}
 	}
 
+	// Precompute shared fields for push & SSE notifications.
+	changeName := c.lookupChangeName(ctx, evt.ChangeID)
+	actorName := c.lookupUserName(ctx, evt.ActorID)
+
 	for _, userID := range targetIDs {
 		if userID == evt.ActorID {
 			continue // don't notify the actor
@@ -85,16 +90,18 @@ func (c *Consumer) handle(ctx context.Context, evt events.NotificationEvent) {
 		// Mentioned users already have a DB row from notifyMentions;
 		// only send them a push notification.
 		if _, isMentioned := mentionedSet[userID]; isMentioned {
+			title := formatPushTitle("mention", actorName)
+			body := formatPushBody(evt, changeName)
+			notifURL := fmt.Sprintf("/projects/_/changes/%d", evt.ChangeID)
 			if c.push != nil {
-				changeName := c.lookupChangeName(ctx, evt.ChangeID)
-				actorName := c.lookupUserName(ctx, evt.ActorID)
 				c.push.SendToUser(ctx, userID, push.Payload{
-					Title: formatPushTitle("mention", actorName),
-					Body:  formatPushBody(evt, changeName),
-					URL:   fmt.Sprintf("/projects/_/changes/%d", evt.ChangeID),
+					Title: title,
+					Body:  body,
+					URL:   notifURL,
 					Tag:   fmt.Sprintf("change-%d", evt.ChangeID),
 				})
 			}
+			c.broadcastNotificationEvent(userID, "mention", evt.ChangeID, title, body, notifURL)
 			continue
 		}
 
@@ -116,17 +123,38 @@ func (c *Consumer) handle(ctx context.Context, evt events.NotificationEvent) {
 		}
 
 		// Send push notification
+		title := formatPushTitle(evt.Type, actorName)
+		body := formatPushBody(evt, changeName)
+		notifURL := fmt.Sprintf("/projects/_/changes/%d", n.ChangeID)
 		if c.push != nil {
-			changeName := c.lookupChangeName(ctx, evt.ChangeID)
-			actorName := c.lookupUserName(ctx, evt.ActorID)
 			c.push.SendToUser(ctx, userID, push.Payload{
-				Title: formatPushTitle(evt.Type, actorName),
-				Body:  formatPushBody(evt, changeName),
-				URL:   fmt.Sprintf("/projects/_/changes/%d", n.ChangeID),
+				Title: title,
+				Body:  body,
+				URL:   notifURL,
 				Tag:   fmt.Sprintf("change-%d", n.ChangeID),
 			})
 		}
+		c.broadcastNotificationEvent(userID, string(notifType), n.ChangeID, title, body, notifURL)
 	}
+}
+
+// broadcastNotificationEvent publishes a notification event to the SSE hub
+// so desktop app clients can trigger native OS notifications.
+func (c *Consumer) broadcastNotificationEvent(userID int64, notifType string, changeID int64, title, body, url string) {
+	payload, err := json.Marshal(map[string]any{
+		"userId": userID,
+		"title":  title,
+		"body":   body,
+		"url":    url,
+	})
+	if err != nil {
+		return
+	}
+	c.hub.PublishToUser(userID, events.Event{
+		Type:     "notification_" + notifType,
+		ChangeID: changeID,
+		Payload:  string(payload),
+	})
 }
 
 func (c *Consumer) resolveTargets(ctx context.Context, evt events.NotificationEvent) ([]int64, error) {

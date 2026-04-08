@@ -155,8 +155,15 @@ export function StructuredProposal({
   const searchParams = useSearchParams();
   const payload = typeof window !== "undefined" ? getTokenPayload() : null;
   const shouldOpenComments = searchParams.get("comments") === "open";
-  const [mobileCommentsOpen, setMobileCommentsOpen] = useState(shouldOpenComments);
+  const [mobileCommentsOpen, setMobileCommentsOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(shouldOpenComments);
+
+  // On mobile, auto-open the comment sheet when navigating from inbox with ?comments=open
+  useEffect(() => {
+    if (shouldOpenComments && window.matchMedia("(max-width: 767px)").matches) {
+      setMobileCommentsOpen(true);
+    }
+  }, [shouldOpenComments]);
   const [sections, setSections] = useState<ProposalSections>(EMPTY_SECTIONS);
   const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({

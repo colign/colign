@@ -16,6 +16,7 @@ class ElectronNotification {
     ipcRenderer.send("show-notification", {
       title,
       body: options.body || "",
+      url: options.data?.url || "",
     });
   }
 

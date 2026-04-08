@@ -13,6 +13,7 @@ import (
 
 	"github.com/uptrace/bun"
 
+	emailpkg "github.com/gobenpark/colign/internal/email"
 	"github.com/gobenpark/colign/internal/models"
 )
 
@@ -25,11 +26,12 @@ var (
 )
 
 type Service struct {
-	db *bun.DB
+	db    *bun.DB
+	email emailpkg.Sender
 }
 
-func NewService(db *bun.DB) *Service {
-	return &Service{db: db}
+func NewService(db *bun.DB, emailSender emailpkg.Sender) *Service {
+	return &Service{db: db, email: emailSender}
 }
 
 func (s *Service) Create(ctx context.Context, userID int64, name string) (*models.Organization, error) {
@@ -151,6 +153,20 @@ func (s *Service) InviteMember(ctx context.Context, orgID, invitedBy int64, emai
 		Set("expires_at = EXCLUDED.expires_at").
 		Exec(ctx); err != nil {
 		return nil, err
+	}
+
+	// Send invitation email
+	if s.email != nil {
+		orgName := s.lookupOrgName(ctx, orgID)
+		inviterName := s.lookupUserName(ctx, invitedBy)
+		if err := s.email.SendInvitationEmail(email, emailpkg.InviteParams{
+			Token:       invitation.Token,
+			OrgName:     orgName,
+			InviterName: inviterName,
+			Role:        string(role),
+		}); err != nil {
+			slog.WarnContext(ctx, "failed to send invitation email", "to", email, "org_id", orgID, "error", err)
+		}
 	}
 
 	return invitation, nil
@@ -483,6 +499,30 @@ func (s *Service) Delete(ctx context.Context, orgID, userID int64) (int64, error
 	}
 
 	return nextOrg.OrganizationID, nil
+}
+
+func (s *Service) lookupOrgName(ctx context.Context, orgID int64) string {
+	var name string
+	if err := s.db.NewSelect().
+		TableExpr("organizations").
+		ColumnExpr("name").
+		Where("id = ?", orgID).
+		Scan(ctx, &name); err != nil {
+		return ""
+	}
+	return name
+}
+
+func (s *Service) lookupUserName(ctx context.Context, userID int64) string {
+	var name string
+	if err := s.db.NewSelect().
+		TableExpr("users").
+		ColumnExpr("name").
+		Where("id = ?", userID).
+		Scan(ctx, &name); err != nil {
+		return ""
+	}
+	return name
 }
 
 func generateOrgSlug(name string) string {
