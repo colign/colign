@@ -737,7 +737,7 @@ export default function ProjectDetailClient() {
         </div>
 
         {/* Tabs */}
-        <div className="mb-6 flex gap-1 border-b border-border/50">
+        <div className="mb-4 flex gap-1 border-b border-border/50">
           {tabs.map((tab) => (
             <button
               key={tab.id}
