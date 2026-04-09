@@ -666,13 +666,19 @@ function WikiPageContent({
           className="mb-4 w-full bg-transparent text-2xl font-bold outline-none placeholder:text-muted-foreground/40"
         />
       )}
-      <WikiEditor
-        key={pageId}
-        projectId={projectId}
-        pageId={pageId}
-        initialContent={initialBlocks}
-        onContentChange={handleContentChange}
-      />
+      {page ? (
+        <WikiEditor
+          key={pageId}
+          projectId={projectId}
+          pageId={pageId}
+          initialContent={initialBlocks}
+          onContentChange={handleContentChange}
+        />
+      ) : (
+        <div className="flex items-center justify-center py-20">
+          <div className="size-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      )}
     </div>
   );
 }

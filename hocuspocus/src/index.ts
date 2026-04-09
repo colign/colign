@@ -3,7 +3,7 @@ import { IncomingMessage, ServerResponse } from "http";
 import { Pool } from "pg";
 import * as Y from "yjs";
 import * as crypto from "crypto";
-import { htmlToYXmlFragment } from "./html-to-yjs";
+import { htmlToYXmlFragment, htmlToBlockNoteFragment } from "./html-to-yjs";
 import {
   isProseMirrorJSONContent,
   proseMirrorJSONToYXmlFragment,
@@ -249,6 +249,9 @@ async function handleDocumentUpdate(req: IncomingMessage, res: ServerResponse): 
 
       if (isProseMirrorJSONContent(payload.content)) {
         proseMirrorJSONToYXmlFragment(doc, fragment, JSON.parse(payload.content) as PMNode);
+      } else if (fragmentName === "document-store") {
+        // Wiki pages use BlockNote which expects blockGroup → blockContainer → content
+        htmlToBlockNoteFragment(doc, fragment, payload.content);
       } else {
         htmlToYXmlFragment(doc, fragment, payload.content);
       }

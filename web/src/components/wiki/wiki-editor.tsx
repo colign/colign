@@ -127,7 +127,13 @@ function CollaborativeEditor({
     const trySeed = () => {
       if (seededRef.current) return;
       seededRef.current = true;
-      if (fragment.length === 0) {
+      // Seed when fragment is empty OR when the editor document has no meaningful content
+      // (BlockNote may write a default empty paragraph before sync completes)
+      const isDocEmpty = fragment.length === 0 || editor.document.every(
+        (block) => !block.content || block.content.length === 0 ||
+          block.content.every((inline) => inline.type !== "text" || !(inline as { text?: string }).text?.trim()),
+      );
+      if (isDocEmpty) {
         try {
           editor.replaceBlocks(editor.document, initialContent);
         } catch {

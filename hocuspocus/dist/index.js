@@ -115,9 +115,19 @@ const server = new server_1.Hocuspocus({
         if (documentName.startsWith("wiki-")) {
             const pageId = documentName.slice(5); // strip "wiki-"
             try {
-                const result = await pool.query("SELECT yjs_state FROM wiki_pages WHERE id = $1 AND deleted_at IS NULL LIMIT 1", [pageId]);
-                if (result.rows.length > 0 && result.rows[0].yjs_state) {
-                    Y.applyUpdate(document, result.rows[0].yjs_state);
+                const result = await pool.query("SELECT yjs_state, content_json FROM wiki_pages WHERE id = $1 AND deleted_at IS NULL LIMIT 1", [pageId]);
+                if (result.rows.length > 0) {
+                    if (result.rows[0].yjs_state) {
+                        // Preferred: restore from binary Yjs state
+                        Y.applyUpdate(document, result.rows[0].yjs_state);
+                    }
+                    else if (result.rows[0].content_json) {
+                        // Fallback: seed from content_json (first open before Yjs state exists)
+                        // Store the content_json in a temporary Y.Map so the frontend can read it
+                        // and initialize BlockNote with it on first sync
+                        const meta = document.getMap("blocknoteMeta");
+                        meta.set("initialJSON", result.rows[0].content_json);
+                    }
                 }
             }
             catch (err) {
@@ -218,13 +228,18 @@ async function handleDocumentUpdate(req, res) {
             user: { id: "mcp-server", name: "MCP Server" },
         });
         await connection.transact((doc) => {
-            const fragment = doc.getXmlFragment("default");
+            const fragmentName = payload.fragment ?? "default";
+            const fragment = doc.getXmlFragment(fragmentName);
             // Clear existing content
             while (fragment.length > 0) {
                 fragment.delete(0, 1);
             }
             if ((0, prosemirror_1.isProseMirrorJSONContent)(payload.content)) {
                 (0, prosemirror_1.proseMirrorJSONToYXmlFragment)(doc, fragment, JSON.parse(payload.content));
+            }
+            else if (fragmentName === "document-store") {
+                // Wiki pages use BlockNote which expects blockGroup → blockContainer → content
+                (0, html_to_yjs_1.htmlToBlockNoteFragment)(doc, fragment, payload.content);
             }
             else {
                 (0, html_to_yjs_1.htmlToYXmlFragment)(doc, fragment, payload.content);

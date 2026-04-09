@@ -169,6 +169,8 @@ function proseMirrorTypeToYNode(type) {
             return "tableHeader";
         case "tableCell":
             return "tableCell";
+        case "tableParagraph":
+            return "tableParagraph";
         case "codeBlock":
             return "codeBlock";
         default:
@@ -197,6 +199,8 @@ function yNodeToProseMirrorType(type) {
             return "tableHeader";
         case "tableCell":
             return "tableCell";
+        case "tableParagraph":
+            return "tableParagraph";
         case "codeBlock":
             return "codeBlock";
         case "hardBreak":
