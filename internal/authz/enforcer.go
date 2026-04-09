@@ -48,6 +48,7 @@ p, editor, comment, create
 p, editor, comment, resolve
 p, editor, comment, delete
 p, editor, comment, reply
+p, editor, comment, edit
 p, editor, document, save
 p, editor, ac, create
 p, editor, ac, update

@@ -209,7 +209,10 @@ function createTableRow(cells: string[], isHeader: boolean): Y.XmlElement {
 
   for (const cellHtml of cells) {
     const cell = new Y.XmlElement(isHeader ? "tableHeader" : "tableCell");
-    const paragraph = new Y.XmlElement("paragraph");
+    // BlockNote expects "tableParagraph" (not "paragraph") inside table cells.
+    // The tableCell/tableHeader content spec is "tableContent+" which only
+    // accepts nodes in the "tableContent" group — i.e. tableParagraph.
+    const paragraph = new Y.XmlElement("tableParagraph");
     const text = new Y.XmlText();
     applyInlineFormatting(text, stripWrappingParagraph(cellHtml));
     paragraph.insert(0, [text]);

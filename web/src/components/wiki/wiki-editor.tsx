@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
 import type { PartialBlock } from "@blocknote/core";
@@ -42,9 +42,8 @@ function getUserColor(name: string): string {
 
 export function WikiEditor({ projectId, pageId, initialContent, onContentChange }: WikiEditorProps) {
   const hocuspocusUrl = process.env.NEXT_PUBLIC_HOCUSPOCUS_URL ?? "ws://localhost:1234";
-  const [collab, setCollab] = useState<{ doc: Y.Doc; provider: HocuspocusProvider } | null>(null);
 
-  useEffect(() => {
+  const collab = useMemo(() => {
     const doc = new Y.Doc();
     const provider = new HocuspocusProvider({
       url: hocuspocusUrl,
@@ -55,22 +54,15 @@ export function WikiEditor({ projectId, pageId, initialContent, onContentChange 
         console.warn("Hocuspocus auth failed for wiki page");
       },
     });
-
-    setCollab({ doc, provider });
-
-    return () => {
-      provider.destroy();
-      doc.destroy();
-    };
+    return { doc, provider };
   }, [pageId, hocuspocusUrl]);
 
-  if (!collab) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="size-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-      </div>
-    );
-  }
+  useEffect(() => {
+    return () => {
+      collab.provider.destroy();
+      collab.doc.destroy();
+    };
+  }, [collab]);
 
   return (
     <CollaborativeEditor
@@ -131,20 +123,37 @@ function CollaborativeEditor({
     if (seededRef.current || !initialContent || initialContent.length === 0) return;
 
     const fragment = doc.getXmlFragment("document-store");
-    // Wait a tick for the provider sync, then check if doc is still empty
-    const timer = setTimeout(() => {
-      if (fragment.length === 0 && !seededRef.current) {
-        seededRef.current = true;
+
+    const trySeed = () => {
+      if (seededRef.current) return;
+      seededRef.current = true;
+      if (fragment.length === 0) {
         try {
           editor.replaceBlocks(editor.document, initialContent);
         } catch {
           // Editor may not be ready yet; ignore
         }
       }
-    }, 500);
+    };
 
-    return () => clearTimeout(timer);
-  }, [doc, editor, initialContent]);
+    // If provider already synced, seed immediately
+    if (provider.isSynced) {
+      trySeed();
+      return;
+    }
+
+    // Wait for provider sync event
+    const onSynced = () => trySeed();
+    provider.on("synced", onSynced);
+
+    // Fallback if server is unreachable
+    const fallback = setTimeout(trySeed, 2000);
+
+    return () => {
+      provider.off("synced", onSynced);
+      clearTimeout(fallback);
+    };
+  }, [doc, editor, initialContent, provider]);
 
   const handleChange = useCallback(() => {
     if (!onContentChange) return;

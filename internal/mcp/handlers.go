@@ -310,13 +310,16 @@ func init() {
 	})
 	RegisterTool(Tool{
 		Name:        "update_task",
-		Description: "Update a task's status or assignee",
+		Description: "Update a task's title, description, status, assignee, or spec reference",
 		InputSchema: InputSchema{
 			Type: "object",
 			Properties: map[string]Property{
 				"task_id":        {Type: "integer", Description: "Task ID"},
 				"project_id":     {Type: "integer", Description: "Project ID"},
-				"status":         {Type: "string", Description: "New status: todo, in_progress, done"},
+				"title":          {Type: "string", Description: "New task title (optional)"},
+				"description":    {Type: "string", Description: "New task description (optional)"},
+				"status":         {Type: "string", Description: "New status: todo, in_progress, done (optional)"},
+				"spec_ref":       {Type: "string", Description: "Spec section reference (optional)"},
 				"assignee_id":    {Type: "integer", Description: "User ID to assign the task to (optional)"},
 				"clear_assignee": {Type: "boolean", Description: "Set to true to remove the current assignee (optional)"},
 			},
@@ -959,7 +962,10 @@ func (s *Server) handleUpdateTask(ctx context.Context, args json.RawMessage) (an
 	var params struct {
 		TaskID        FlexInt64  `json:"task_id"`
 		ProjectID     FlexInt64  `json:"project_id"`
+		Title         string     `json:"title"`
+		Description   string     `json:"description"`
 		Status        string     `json:"status"`
+		SpecRef       string     `json:"spec_ref"`
 		AssigneeID    *FlexInt64 `json:"assignee_id"`
 		ClearAssignee bool       `json:"clear_assignee"`
 	}
@@ -971,8 +977,17 @@ func (s *Server) handleUpdateTask(ctx context.Context, args json.RawMessage) (an
 		Id:        params.TaskID.Int64(),
 		ProjectId: params.ProjectID.Int64(),
 	}
+	if params.Title != "" {
+		req.Title = &params.Title
+	}
+	if params.Description != "" {
+		req.Description = &params.Description
+	}
 	if params.Status != "" {
 		req.Status = &params.Status
+	}
+	if params.SpecRef != "" {
+		req.SpecRef = &params.SpecRef
 	}
 	if params.AssigneeID != nil {
 		req.AssigneeId = params.AssigneeID.Int64Ptr()
@@ -990,7 +1005,9 @@ func (s *Server) handleUpdateTask(ctx context.Context, args json.RawMessage) (an
 	result := map[string]any{
 		"id":            t.Id,
 		"title":         t.Title,
+		"description":   t.Description,
 		"status":        t.Status,
+		"spec_ref":      t.SpecRef,
 		"assignee_id":   t.AssigneeId,
 		"assignee_name": t.AssigneeName,
 	}

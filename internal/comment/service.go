@@ -16,8 +16,11 @@ import (
 )
 
 var (
-	ErrCommentNotFound = errors.New("comment not found")
-	ErrNotAuthorized   = errors.New("not authorized")
+	ErrCommentNotFound  = errors.New("comment not found")
+	ErrNotAuthorized    = errors.New("not authorized")
+	ErrCommentResolved  = errors.New("cannot edit a resolved comment")
+	ErrBodyEmpty        = errors.New("body must not be empty")
+	ErrBodyTooLong      = errors.New("body too long")
 )
 
 type Service struct {
@@ -141,6 +144,58 @@ func (s *Service) Delete(ctx context.Context, commentID int64, userID int64, org
 		return err
 	}
 	return nil
+}
+
+func (s *Service) Edit(ctx context.Context, commentID int64, body string, userID int64, orgID int64) (*models.Comment, error) {
+	body = strings.TrimSpace(body)
+	if body == "" {
+		return nil, ErrBodyEmpty
+	}
+	if len(body) > 10000 {
+		return nil, ErrBodyTooLong
+	}
+
+	comment := new(models.Comment)
+	err := s.db.NewSelect().Model(comment).
+		Join("JOIN changes AS ch ON ch.id = c.change_id").
+		Join("JOIN projects AS p ON p.id = ch.project_id").
+		Where("c.id = ?", commentID).
+		Where("p.organization_id = ?", orgID).
+		Scan(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrCommentNotFound
+		}
+		return nil, err
+	}
+
+	if comment.UserID != userID {
+		return nil, ErrNotAuthorized
+	}
+
+	if comment.Resolved {
+		return nil, ErrCommentResolved
+	}
+
+	comment.Body = body
+	comment.UpdatedAt = time.Now()
+
+	if _, err := s.db.NewUpdate().Model(comment).
+		Column("body", "updated_at").
+		WherePK().
+		Exec(ctx); err != nil {
+		return nil, err
+	}
+
+	// Reload with user relation
+	if err := s.db.NewSelect().Model(comment).
+		Relation("User").
+		Where("c.id = ?", comment.ID).
+		Scan(ctx); err != nil {
+		return nil, err
+	}
+
+	return comment, nil
 }
 
 func (s *Service) CreateReply(ctx context.Context, commentID int64, body string, userID int64, orgID int64, mentionedUserIDs []int64) (*models.CommentReply, error) {

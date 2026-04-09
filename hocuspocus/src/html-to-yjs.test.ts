@@ -300,7 +300,7 @@ function elementChildren(el: Y.XmlElement): string {
   console.log("PASS: listItem contains paragraph");
 }
 
-// Test table conversion
+// Test table conversion (inline HTML)
 {
   const doc = convert(
     "<table><thead><tr><th>Stage</th><th>Owner</th></tr></thead><tbody><tr><td>Design</td><td>Ben</td></tr></tbody></table>",
@@ -322,10 +322,11 @@ function elementChildren(el: Y.XmlElement): string {
   console.assert(headerCell.nodeName === "tableHeader", `Expected tableHeader, got ${headerCell.nodeName}`);
   console.assert(bodyCell.nodeName === "tableCell", `Expected tableCell, got ${bodyCell.nodeName}`);
 
+  // BlockNote requires "tableParagraph" (not "paragraph") inside table cells
   const headerParagraph = headerCell.get(0) as Y.XmlElement;
   const bodyParagraph = bodyCell.get(0) as Y.XmlElement;
-  console.assert(headerParagraph.nodeName === "paragraph", `Expected paragraph inside header cell`);
-  console.assert(bodyParagraph.nodeName === "paragraph", `Expected paragraph inside body cell`);
+  console.assert(headerParagraph.nodeName === "tableParagraph", `Expected tableParagraph inside header cell, got ${headerParagraph.nodeName}`);
+  console.assert(bodyParagraph.nodeName === "tableParagraph", `Expected tableParagraph inside body cell, got ${bodyParagraph.nodeName}`);
 
   const headerText = headerParagraph.get(0) as Y.XmlText;
   const bodyText = bodyParagraph.get(0) as Y.XmlText;
@@ -333,6 +334,113 @@ function elementChildren(el: Y.XmlElement): string {
   console.assert(bodyText.toString() === "Design", `Expected 'Design', got '${bodyText.toString()}'`);
 
   console.log("PASS: table conversion");
+}
+
+// Test table conversion with Goldmark GFM output (newlines between tags)
+{
+  const goldmarkHtml = `<table>
+<thead>
+<tr>
+<th>원칙</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Phase 1/2 호환</strong></td>
+<td>Phase 1은 규칙 기반</td>
+</tr>
+</tbody>
+</table>`;
+
+  const doc = convert(goldmarkHtml);
+  const fragment = doc.getXmlFragment("default");
+
+  console.assert(fragment.length === 1, `Expected 1 table from Goldmark HTML, got ${fragment.length}`);
+
+  const table = fragment.get(0) as Y.XmlElement;
+  console.assert(table.nodeName === "table", `Expected table, got ${table.nodeName}`);
+
+  let rowCount = 0;
+  table.forEach(() => rowCount++);
+  console.assert(rowCount === 2, `Expected 2 table rows, got ${rowCount}`);
+
+  const headerRow = table.get(0) as Y.XmlElement;
+  const bodyRow = table.get(1) as Y.XmlElement;
+
+  // Verify header cell
+  const headerCell = headerRow.get(0) as Y.XmlElement;
+  console.assert(headerCell.nodeName === "tableHeader", `Expected tableHeader, got ${headerCell.nodeName}`);
+  const headerParagraph = headerCell.get(0) as Y.XmlElement;
+  console.assert(headerParagraph.nodeName === "tableParagraph", `Expected tableParagraph in Goldmark header cell, got ${headerParagraph.nodeName}`);
+  const headerText = headerParagraph.get(0) as Y.XmlText;
+  console.assert(headerText.toString() === "원칙", `Expected '원칙', got '${headerText.toString()}'`);
+
+  // Verify body cell with bold formatting
+  const bodyCell = bodyRow.get(0) as Y.XmlElement;
+  console.assert(bodyCell.nodeName === "tableCell", `Expected tableCell, got ${bodyCell.nodeName}`);
+  const bodyParagraph = bodyCell.get(0) as Y.XmlElement;
+  console.assert(bodyParagraph.nodeName === "tableParagraph", `Expected tableParagraph in Goldmark body cell, got ${bodyParagraph.nodeName}`);
+  const bodyText = bodyParagraph.get(0) as Y.XmlText;
+  const delta = bodyText.toDelta();
+  console.assert(
+    delta.some((op: { insert?: unknown; attributes?: { bold?: boolean } }) => op.attributes?.bold && op.insert === "Phase 1/2 호환"),
+    "Expected bold formatting preserved in Goldmark table cell",
+  );
+
+  console.log("PASS: table conversion (Goldmark GFM format)");
+}
+
+// Test table with multiple body rows
+{
+  const multiRowHtml = `<table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Event Sourcing</td>
+<td><strong>Approved</strong></td>
+</tr>
+<tr>
+<td>CQRS</td>
+<td>Proposed</td>
+</tr>
+<tr>
+<td>DDD</td>
+<td><em>In Review</em></td>
+</tr>
+</tbody>
+</table>`;
+
+  const doc = convert(multiRowHtml);
+  const fragment = doc.getXmlFragment("default");
+
+  console.assert(fragment.length === 1, `Expected 1 table, got ${fragment.length}`);
+
+  const table = fragment.get(0) as Y.XmlElement;
+  let rowCount = 0;
+  table.forEach(() => rowCount++);
+  console.assert(rowCount === 4, `Expected 4 rows (1 header + 3 body), got ${rowCount}`);
+
+  // Verify all cells use tableParagraph
+  for (let r = 0; r < rowCount; r++) {
+    const row = table.get(r) as Y.XmlElement;
+    row.forEach((cell) => {
+      if (cell instanceof Y.XmlElement) {
+        const para = cell.get(0) as Y.XmlElement;
+        console.assert(
+          para.nodeName === "tableParagraph",
+          `Expected tableParagraph in row ${r}, got ${para.nodeName}`,
+        );
+      }
+    });
+  }
+
+  console.log("PASS: table with multiple body rows");
 }
 
 console.log("\nAll tests passed!");

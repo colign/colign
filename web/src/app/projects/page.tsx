@@ -136,15 +136,18 @@ export default function ProjectsPage() {
             </div>
           </div>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" style={{ gridAutoRows: 128 }}>
             {projects.map((project) => {
               const status = statusConfig[project.status] ?? statusConfig.backlog;
               const priority = priorityConfig[project.priority] ?? priorityConfig.none;
               const health = project.health ? healthConfig[project.health] : null;
 
               return (
-                <Link key={String(project.id)} href={toProjectPath(project)}>
-                  <div className="group relative flex flex-col rounded-xl border border-border/50 bg-card p-4 transition-all duration-200 hover:border-primary/30 hover:bg-card/80 cursor-pointer">
+                <Link
+                  key={String(project.id)}
+                  href={toProjectPath(project)}
+                  className="group relative flex flex-col overflow-hidden rounded-xl border border-border/50 bg-card p-4 transition-all duration-200 hover:border-primary/30 hover:bg-card/80 cursor-pointer"
+                >
                     {/* Header: Icon + Name + Status */}
                     <div className="flex items-start gap-3 mb-2">
                       <div
@@ -174,7 +177,7 @@ export default function ProjectsPage() {
                     </div>
 
                     {/* Metadata */}
-                    <div className="mt-auto flex flex-col gap-2 pt-3 border-t border-border/30">
+                    <div className="flex flex-col gap-2 pt-3 border-t border-border/30">
                       {/* Row 1: Status / Priority / Health */}
                       <div className="flex items-center gap-2.5">
                         <div className="flex items-center gap-1.5">
@@ -194,30 +197,27 @@ export default function ProjectsPage() {
                         )}
                       </div>
 
-                      {/* Row 2: Lead / Target date */}
-                      {(project.leadName || project.targetDate) && (
-                        <div className="flex items-center gap-2">
-                          {project.leadName && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Avatar size="sm" className="size-4">
-                                <AvatarImage src={project.leadAvatarUrl} alt={project.leadName} />
-                                <AvatarFallback className="bg-primary/10 text-[9px] font-medium text-primary">
-                                  {project.leadName.charAt(0).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="max-w-[80px] truncate">{project.leadName}</span>
-                            </div>
-                          )}
-                          {project.targetDate && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Calendar className="h-3 w-3" />
-                              <span>{formatDate(project.targetDate)}</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      {/* Row 2: Lead / Target date — always rendered for uniform card height */}
+                      <div className="flex items-center gap-2 h-5">
+                        {project.leadName && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Avatar size="sm" className="size-4">
+                              <AvatarImage src={project.leadAvatarUrl} alt={project.leadName} />
+                              <AvatarFallback className="bg-primary/10 text-[9px] font-medium text-primary">
+                                {project.leadName.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="max-w-[80px] truncate">{project.leadName}</span>
+                          </div>
+                        )}
+                        {project.targetDate && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Calendar className="h-3 w-3" />
+                            <span>{formatDate(project.targetDate)}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
                 </Link>
               );
             })}

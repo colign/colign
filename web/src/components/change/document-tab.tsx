@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback } from "react";
-import { SpecEditor } from "@/components/editor/spec-editor";
+import { SpecBlockNoteEditor, type SpecBlockNoteEditorHandle } from "@/components/editor/spec-blocknote-editor";
 import { MarginComments } from "@/components/comment/margin-comments";
 import { sddTemplates } from "@/components/editor/templates";
 import { commentClient } from "@/lib/comment";
@@ -41,12 +41,7 @@ export function DocumentTab({
   const editorWrapperRef = useRef<HTMLDivElement>(null);
   const payload = typeof window !== "undefined" ? getTokenPayload() : null;
 
-  const editorRef = useRef<{
-    addHighlightAtSavedSelection: (commentId: string) => void;
-    removeHighlight: (commentId: string) => void;
-    scrollToHighlight: (commentId: string) => void;
-    getEditorDom: () => HTMLElement | null;
-  } | null>(null);
+  const editorRef = useRef<SpecBlockNoteEditorHandle | null>(null);
 
   const commentRefreshRef = useRef<(() => void) | null>(null);
 
@@ -203,15 +198,13 @@ export function DocumentTab({
             </div>
           )}
 
-          <SpecEditor
+          <SpecBlockNoteEditor
             key={`spec-editor-${String(changeId)}-${docType}-${editorVersion}`}
+            ref={editorRef}
             initialContent={content}
-            placeholder={`Start writing your ${docType}...`}
             onAddComment={handleAddComment}
             onHighlightClick={handleHighlightClick}
-            editorRef={editorRef}
             documentId={`change-${changeId}-${docType}`}
-            userName={payload?.name || payload?.email?.split("@")[0] || "Anonymous"}
           />
         </div>
 

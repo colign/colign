@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import { commentClient } from "@/lib/comment";
-import { MessageSquare, Check, Trash2, ChevronDown, ChevronUp, Send } from "lucide-react";
+import { MessageSquare, Check, Trash2, ChevronDown, ChevronUp, Send, Pencil } from "lucide-react";
 import { showError } from "@/lib/toast";
 import { MentionTextarea, renderMentionBody, type MentionMember } from "./mention-textarea";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -67,12 +67,8 @@ export function CommentPanel({
   const [showResolved, setShowResolved] = useState(false);
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState("");
-  const [composeText, setComposeText] = useState("");
-  const [replyMentionIds, setReplyMentionIds] = useState<bigint[]>([]);
-  const [composeMentionIds, setComposeMentionIds] = useState<bigint[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [showAllComments, setShowAllComments] = useState(false);
-  const submittingRef = useRef(false);
   const VISIBLE_RECENT_COUNT = 5;
 
   const loadComments = useCallback(async () => {
@@ -115,66 +111,24 @@ export function CommentPanel({
   }, [refreshRef, loadComments]);
 
   const handleResolve = async (commentId: bigint) => {
-    await commentClient.resolveComment({ commentId, projectId });
-    if (replyingTo === String(commentId)) {
-      setReplyingTo(null);
-      setReplyText("");
+    try {
+      await commentClient.resolveComment({ commentId, projectId });
+      if (replyingTo === String(commentId)) {
+        setReplyingTo(null);
+      }
+      loadComments();
+    } catch (err) {
+      showError(t("toast.saveFailed"), err);
     }
-    loadComments();
   };
 
   const handleDelete = async (commentId: bigint) => {
     if (!confirm(t("comments.deleteConfirm"))) return;
-    await commentClient.deleteComment({ commentId, projectId });
-    loadComments();
-  };
-
-  const handleReply = async (commentId: bigint) => {
-    if (!replyText.trim() || submittingRef.current) return;
-    const targetComment = comments.find((comment) => comment.id === commentId);
-    if (!targetComment || targetComment.resolved) {
-      setReplyingTo(null);
-      setReplyText("");
-      return;
-    }
-    submittingRef.current = true;
     try {
-      await commentClient.createReply({
-        commentId,
-        body: replyText,
-        projectId,
-        mentionedUserIds: replyMentionIds,
-      });
-      const threadId = String(commentId);
-      setReplyText("");
-      setReplyMentionIds([]);
-      setReplyingTo(null);
-      setExpandedThreads((prev) => new Set(prev).add(threadId));
-      loadComments();
-    } finally {
-      submittingRef.current = false;
-    }
-  };
-
-  const handleCompose = async () => {
-    if (!composeText.trim() || submittingRef.current) return;
-    submittingRef.current = true;
-    try {
-      await commentClient.createComment({
-        changeId,
-        documentType,
-        quotedText: "",
-        body: composeText,
-        projectId,
-        mentionedUserIds: composeMentionIds,
-      });
-      setComposeText("");
-      setComposeMentionIds([]);
+      await commentClient.deleteComment({ commentId, projectId });
       loadComments();
     } catch (err) {
-      showError(t("toast.saveFailed"), err);
-    } finally {
-      submittingRef.current = false;
+      showError(t("toast.deleteFailed"), err);
     }
   };
 
@@ -189,8 +143,6 @@ export function CommentPanel({
 
   const toggleReplyComposer = (id: string) => {
     setReplyingTo((prev) => (prev === id ? null : id));
-    setReplyText("");
-    setReplyMentionIds([]);
   };
 
   const filteredComments = showResolved ? comments : comments.filter((c) => !c.resolved);
@@ -291,9 +243,24 @@ export function CommentPanel({
                   )}
 
                   {/* Comment body */}
-                  <p className="mt-1.5 text-sm">{renderMentionBody(comment.body, members)}</p>
+                  {editingId === id ? (
+                    <EditComposer
+                      commentId={comment.id}
+                      projectId={projectId}
+                      initialBody={comment.body}
+                      members={members}
+                      onSaved={() => {
+                        setEditingId(null);
+                        loadComments();
+                      }}
+                      onCancel={() => setEditingId(null)}
+                    />
+                  ) : (
+                    <p className="mt-1.5 text-sm">{renderMentionBody(comment.body, members)}</p>
+                  )}
 
                   {/* Actions */}
+                  {editingId !== id && (
                   <div className="mt-2 flex items-center gap-1">
                     {!comment.resolved && (
                       <Button
@@ -314,6 +281,17 @@ export function CommentPanel({
                         className="h-6 cursor-pointer gap-1 px-1.5 text-[10px] text-muted-foreground"
                       >
                         {t("comments.reply")}
+                      </Button>
+                    )}
+                    {isOwner && !comment.resolved && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditingId(id)}
+                        className="h-6 cursor-pointer gap-1 px-1.5 text-[10px] text-muted-foreground"
+                      >
+                        <Pencil className="size-3" />
+                        {t("comments.edit")}
                       </Button>
                     )}
                     {isOwner && (
@@ -342,6 +320,7 @@ export function CommentPanel({
                       </button>
                     )}
                   </div>
+                  )}
 
                   {/* Replies */}
                   {isExpanded && comment.replies.length > 0 && (
@@ -370,30 +349,16 @@ export function CommentPanel({
 
                   {/* Reply input */}
                   {replyingTo === id && !comment.resolved && (
-                    <div className="mt-2 flex gap-1.5">
-                      <div className="min-w-0 flex-1">
-                        <MentionTextarea
-                          value={replyText}
-                          onChange={setReplyText}
-                          members={members}
-                          onMentionedIdsChange={setReplyMentionIds}
-                          autoFocus
-                          rows={2}
-                          submitShortcut="enter"
-                          onSubmit={() => handleReply(comment.id)}
-                          placeholder={t("comments.replyPlaceholder")}
-                          className="w-full rounded-md border border-border/50 bg-transparent px-2 py-1 text-xs outline-none focus:border-primary"
-                        />
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => handleReply(comment.id)}
-                        disabled={!replyText.trim()}
-                        className="h-7 cursor-pointer px-2 self-start"
-                      >
-                        <Send className="size-3" />
-                      </Button>
-                    </div>
+                    <ReplyComposer
+                      commentId={comment.id}
+                      projectId={projectId}
+                      members={members}
+                      onSubmitted={() => {
+                        setReplyingTo(null);
+                        setExpandedThreads((prev) => new Set(prev).add(id));
+                        loadComments();
+                      }}
+                    />
                   )}
                 </div>
               );
@@ -404,32 +369,218 @@ export function CommentPanel({
 
       {/* Compose new comment */}
       {showCompose && (
-        <div className="shrink-0 border-t border-border/50 bg-card/95 px-4 py-3 supports-backdrop-filter:backdrop-blur-xs">
-          <MentionTextarea
-            value={composeText}
-            onChange={setComposeText}
-            members={members}
-            onMentionedIdsChange={setComposeMentionIds}
-            submitShortcut="mod-enter"
-            onSubmit={handleCompose}
-            placeholder={t("comments.composePlaceholder")}
-            rows={2}
-            className="w-full resize-none rounded-md border border-border/50 bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground/50 focus:border-primary"
-          />
-          <div className="mt-1.5 flex items-center justify-between">
-            <span className="text-[10px] text-muted-foreground">⌘+Enter</span>
-            <Button
-              size="sm"
-              onClick={handleCompose}
-              disabled={!composeText.trim()}
-              className="h-7 cursor-pointer gap-1 px-2"
-            >
-              <Send className="size-3" />
-              {t("comments.send")}
-            </Button>
-          </div>
-        </div>
+        <ComposeComposer
+          changeId={changeId}
+          projectId={projectId}
+          documentType={documentType}
+          members={members}
+          onSubmitted={loadComments}
+        />
       )}
     </div>
   );
 }
+
+/** Isolated edit composer — typing here does not re-render the comment list. */
+const EditComposer = memo(function EditComposer({
+  commentId,
+  projectId,
+  initialBody,
+  members,
+  onSaved,
+  onCancel,
+}: {
+  commentId: bigint;
+  projectId: bigint;
+  initialBody: string;
+  members: MentionMember[];
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  const { t } = useI18n();
+  const [text, setText] = useState(initialBody);
+  const submittingRef = useRef(false);
+
+  const handleSubmit = async () => {
+    if (!text.trim() || submittingRef.current) return;
+    submittingRef.current = true;
+    try {
+      await commentClient.editComment({ commentId, body: text, projectId });
+      onSaved();
+    } catch (err) {
+      showError(t("toast.saveFailed"), err);
+    } finally {
+      submittingRef.current = false;
+    }
+  };
+
+  return (
+    <div className="mt-1.5">
+      <MentionTextarea
+        value={text}
+        onChange={setText}
+        members={members}
+        autoFocus
+        rows={2}
+        submitShortcut="mod-enter"
+        onSubmit={handleSubmit}
+        onEscape={onCancel}
+        placeholder={t("comments.editPlaceholder")}
+        className="w-full rounded-md border border-primary/40 bg-transparent px-2 py-1 text-sm outline-none"
+      />
+      <div className="mt-1.5 flex items-center justify-end gap-1.5">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onCancel}
+          className="h-6 cursor-pointer px-2 text-[10px] text-muted-foreground"
+        >
+          {t("comments.cancel")}
+        </Button>
+        <Button
+          size="sm"
+          onClick={handleSubmit}
+          disabled={!text.trim() || text === initialBody}
+          className="h-6 cursor-pointer gap-1 px-2 text-[10px]"
+        >
+          {t("comments.save")}
+        </Button>
+      </div>
+    </div>
+  );
+});
+
+/** Isolated reply composer — typing here does not re-render the comment list. */
+const ReplyComposer = memo(function ReplyComposer({
+  commentId,
+  projectId,
+  members,
+  onSubmitted,
+}: {
+  commentId: bigint;
+  projectId: bigint;
+  members: MentionMember[];
+  onSubmitted: () => void;
+}) {
+  const { t } = useI18n();
+  const [text, setText] = useState("");
+  const [mentionIds, setMentionIds] = useState<bigint[]>([]);
+  const submittingRef = useRef(false);
+
+  const handleSubmit = async () => {
+    if (!text.trim() || submittingRef.current) return;
+    submittingRef.current = true;
+    try {
+      await commentClient.createReply({
+        commentId,
+        body: text,
+        projectId,
+        mentionedUserIds: mentionIds,
+      });
+      setText("");
+      setMentionIds([]);
+      onSubmitted();
+    } catch (err) {
+      showError(t("toast.saveFailed"), err);
+    } finally {
+      submittingRef.current = false;
+    }
+  };
+
+  return (
+    <div className="mt-2 flex gap-1.5">
+      <div className="min-w-0 flex-1">
+        <MentionTextarea
+          value={text}
+          onChange={setText}
+          members={members}
+          onMentionedIdsChange={setMentionIds}
+          autoFocus
+          rows={2}
+          submitShortcut="enter"
+          onSubmit={handleSubmit}
+          placeholder={t("comments.replyPlaceholder")}
+          className="w-full rounded-md border border-border/50 bg-transparent px-2 py-1 text-xs outline-none focus:border-primary"
+        />
+      </div>
+      <Button
+        size="sm"
+        onClick={handleSubmit}
+        disabled={!text.trim()}
+        className="h-7 cursor-pointer self-start px-2"
+      >
+        <Send className="size-3" />
+      </Button>
+    </div>
+  );
+});
+
+/** Isolated compose box — typing here does not re-render the comment list. */
+const ComposeComposer = memo(function ComposeComposer({
+  changeId,
+  projectId,
+  documentType,
+  members,
+  onSubmitted,
+}: {
+  changeId: bigint;
+  projectId: bigint;
+  documentType: string;
+  members: MentionMember[];
+  onSubmitted: () => void;
+}) {
+  const { t } = useI18n();
+  const [text, setText] = useState("");
+  const [mentionIds, setMentionIds] = useState<bigint[]>([]);
+  const submittingRef = useRef(false);
+
+  const handleSubmit = async () => {
+    if (!text.trim() || submittingRef.current) return;
+    submittingRef.current = true;
+    try {
+      await commentClient.createComment({
+        changeId,
+        documentType,
+        quotedText: "",
+        body: text,
+        projectId,
+        mentionedUserIds: mentionIds,
+      });
+      setText("");
+      setMentionIds([]);
+      onSubmitted();
+    } catch (err) {
+      showError(t("toast.saveFailed"), err);
+    } finally {
+      submittingRef.current = false;
+    }
+  };
+
+  return (
+    <div className="shrink-0 border-t border-border/50 bg-card/95 px-4 py-3 supports-backdrop-filter:backdrop-blur-xs">
+      <MentionTextarea
+        value={text}
+        onChange={setText}
+        members={members}
+        onMentionedIdsChange={setMentionIds}
+        submitShortcut="mod-enter"
+        onSubmit={handleSubmit}
+        placeholder={t("comments.composePlaceholder")}
+        rows={2}
+        className="w-full resize-none rounded-md border border-border/50 bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground/50 focus:border-primary"
+      />
+      <div className="mt-1.5 flex items-center justify-between">
+        <span className="text-[10px] text-muted-foreground">⌘+Enter</span>
+        <Button
+          size="sm"
+          onClick={handleSubmit}
+          disabled={!text.trim()}
+          className="h-7 cursor-pointer gap-1 px-2"
+        >
+          <Send className="size-3" />
+          {t("comments.send")}
+        </Button>
+      </div>
+    </div>
+  );
+});

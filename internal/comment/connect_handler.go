@@ -111,6 +111,34 @@ func (h *ConnectHandler) DeleteComment(ctx context.Context, req *connect.Request
 	return connect.NewResponse(&commentv1.DeleteCommentResponse{}), nil
 }
 
+func (h *ConnectHandler) EditComment(ctx context.Context, req *connect.Request[commentv1.EditCommentRequest]) (*connect.Response[commentv1.EditCommentResponse], error) {
+	claims, err := h.extractClaims(ctx, req.Header().Get("Authorization"))
+	if err != nil {
+		return nil, err
+	}
+
+	comment, err := h.service.Edit(ctx, req.Msg.CommentId, req.Msg.Body, claims.UserID, claims.OrgID)
+	if err != nil {
+		if errors.Is(err, ErrBodyEmpty) || errors.Is(err, ErrBodyTooLong) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		if errors.Is(err, ErrCommentNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		if errors.Is(err, ErrNotAuthorized) {
+			return nil, connect.NewError(connect.CodePermissionDenied, err)
+		}
+		if errors.Is(err, ErrCommentResolved) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&commentv1.EditCommentResponse{
+		Comment: commentToProto(comment),
+	}), nil
+}
+
 func (h *ConnectHandler) CreateReply(ctx context.Context, req *connect.Request[commentv1.CreateReplyRequest]) (*connect.Response[commentv1.CreateReplyResponse], error) {
 	claims, err := h.extractClaims(ctx, req.Header().Get("Authorization"))
 	if err != nil {
