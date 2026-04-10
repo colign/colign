@@ -3,10 +3,12 @@ import { IncomingMessage, ServerResponse } from "http";
 import { Pool } from "pg";
 import * as Y from "yjs";
 import * as crypto from "crypto";
-import { htmlToYXmlFragment } from "./html-to-yjs";
+import { htmlToBlockNoteFragment } from "./html-to-yjs";
 import {
   isProseMirrorJSONContent,
-  proseMirrorJSONToYXmlFragment,
+  proseMirrorJSONToBlockNoteYFragment,
+  isBlockNoteFragment,
+  yBlockNoteFragmentToProseMirrorJSON,
   yXmlFragmentToProseMirrorJSON,
   type PMNode,
 } from "./prosemirror";
@@ -146,7 +148,9 @@ const server = new Hocuspocus({
           if (!isProseMirrorJSONContent(content)) {
             throw new Error(`document ${documentName} is not ProseMirror JSON; run the migration first`);
           }
-          proseMirrorJSONToYXmlFragment(document, yXmlFragment, JSON.parse(content) as PMNode);
+          // Convert to BlockNote structure (blockGroup → blockContainer → content)
+          // since the spec editor now uses BlockNote
+          proseMirrorJSONToBlockNoteYFragment(document, yXmlFragment, JSON.parse(content) as PMNode);
         }
       }
     } catch (err) {
@@ -179,7 +183,11 @@ const server = new Hocuspocus({
 
     try {
       const yXmlFragment = document.getXmlFragment("default");
-      const content = JSON.stringify(yXmlFragmentToProseMirrorJSON(yXmlFragment));
+      // Detect BlockNote vs flat TipTap structure and serialize accordingly
+      const pmJson = isBlockNoteFragment(yXmlFragment)
+        ? yBlockNoteFragmentToProseMirrorJSON(yXmlFragment)
+        : yXmlFragmentToProseMirrorJSON(yXmlFragment);
+      const content = JSON.stringify(pmJson);
 
       if (!content) return;
 
@@ -248,9 +256,12 @@ async function handleDocumentUpdate(req: IncomingMessage, res: ServerResponse): 
       }
 
       if (isProseMirrorJSONContent(payload.content)) {
-        proseMirrorJSONToYXmlFragment(doc, fragment, JSON.parse(payload.content) as PMNode);
+        // ProseMirror JSON → convert to BlockNote Y.js structure
+        proseMirrorJSONToBlockNoteYFragment(doc, fragment, JSON.parse(payload.content) as PMNode);
       } else {
-        htmlToYXmlFragment(doc, fragment, payload.content);
+        // HTML → convert to BlockNote Y.js structure
+        // Both wiki (document-store) and spec (default) editors use BlockNote
+        htmlToBlockNoteFragment(doc, fragment, payload.content);
       }
     });
 

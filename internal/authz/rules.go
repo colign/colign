@@ -50,6 +50,7 @@ var rpcRules = map[string]AuthRule{
 	"/comment.v1.CommentService/ResolveComment": {Resource: "comment", Action: "resolve"},
 	"/comment.v1.CommentService/DeleteComment":  {Resource: "comment", Action: "delete"},
 	"/comment.v1.CommentService/CreateReply":    {Resource: "comment", Action: "reply"},
+	"/comment.v1.CommentService/EditComment":    {Resource: "comment", Action: "edit"},
 
 	// DocumentService
 	"/document.v1.DocumentService/GetDocument":  {Resource: "document", Action: "read"},

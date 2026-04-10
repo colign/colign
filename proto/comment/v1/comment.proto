@@ -82,10 +82,21 @@ message CreateReplyResponse {
   Reply reply = 1;
 }
 
+message EditCommentRequest {
+  int64 comment_id = 1;
+  string body = 2;
+  int64 project_id = 3;
+}
+
+message EditCommentResponse {
+  Comment comment = 1;
+}
+
 service CommentService {
   rpc CreateComment(CreateCommentRequest) returns (CreateCommentResponse) {}
   rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse) {}
   rpc ResolveComment(ResolveCommentRequest) returns (ResolveCommentResponse) {}
   rpc DeleteComment(DeleteCommentRequest) returns (DeleteCommentResponse) {}
   rpc CreateReply(CreateReplyRequest) returns (CreateReplyResponse) {}
+  rpc EditComment(EditCommentRequest) returns (EditCommentResponse) {}
 }

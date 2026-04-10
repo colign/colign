@@ -247,7 +247,7 @@ function elementChildren(el) {
     console.assert(paragraph.nodeName === "paragraph", `Expected paragraph inside listItem, got ${paragraph.nodeName}`);
     console.log("PASS: listItem contains paragraph");
 }
-// Test table conversion
+// Test table conversion (inline HTML)
 {
     const doc = convert("<table><thead><tr><th>Stage</th><th>Owner</th></tr></thead><tbody><tr><td>Design</td><td>Ben</td></tr></tbody></table>");
     const fragment = doc.getXmlFragment("default");
@@ -262,14 +262,220 @@ function elementChildren(el) {
     const bodyCell = bodyRow.get(0);
     console.assert(headerCell.nodeName === "tableHeader", `Expected tableHeader, got ${headerCell.nodeName}`);
     console.assert(bodyCell.nodeName === "tableCell", `Expected tableCell, got ${bodyCell.nodeName}`);
+    // BlockNote requires "tableParagraph" (not "paragraph") inside table cells
     const headerParagraph = headerCell.get(0);
     const bodyParagraph = bodyCell.get(0);
-    console.assert(headerParagraph.nodeName === "paragraph", `Expected paragraph inside header cell`);
-    console.assert(bodyParagraph.nodeName === "paragraph", `Expected paragraph inside body cell`);
+    console.assert(headerParagraph.nodeName === "tableParagraph", `Expected tableParagraph inside header cell, got ${headerParagraph.nodeName}`);
+    console.assert(bodyParagraph.nodeName === "tableParagraph", `Expected tableParagraph inside body cell, got ${bodyParagraph.nodeName}`);
     const headerText = headerParagraph.get(0);
     const bodyText = bodyParagraph.get(0);
     console.assert(headerText.toString() === "Stage", `Expected 'Stage', got '${headerText.toString()}'`);
     console.assert(bodyText.toString() === "Design", `Expected 'Design', got '${bodyText.toString()}'`);
     console.log("PASS: table conversion");
+}
+// Test table conversion with Goldmark GFM output (newlines between tags)
+{
+    const goldmarkHtml = `<table>
+<thead>
+<tr>
+<th>원칙</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Phase 1/2 호환</strong></td>
+<td>Phase 1은 규칙 기반</td>
+</tr>
+</tbody>
+</table>`;
+    const doc = convert(goldmarkHtml);
+    const fragment = doc.getXmlFragment("default");
+    console.assert(fragment.length === 1, `Expected 1 table from Goldmark HTML, got ${fragment.length}`);
+    const table = fragment.get(0);
+    console.assert(table.nodeName === "table", `Expected table, got ${table.nodeName}`);
+    let rowCount = 0;
+    table.forEach(() => rowCount++);
+    console.assert(rowCount === 2, `Expected 2 table rows, got ${rowCount}`);
+    const headerRow = table.get(0);
+    const bodyRow = table.get(1);
+    // Verify header cell
+    const headerCell = headerRow.get(0);
+    console.assert(headerCell.nodeName === "tableHeader", `Expected tableHeader, got ${headerCell.nodeName}`);
+    const headerParagraph = headerCell.get(0);
+    console.assert(headerParagraph.nodeName === "tableParagraph", `Expected tableParagraph in Goldmark header cell, got ${headerParagraph.nodeName}`);
+    const headerText = headerParagraph.get(0);
+    console.assert(headerText.toString() === "원칙", `Expected '원칙', got '${headerText.toString()}'`);
+    // Verify body cell with bold formatting
+    const bodyCell = bodyRow.get(0);
+    console.assert(bodyCell.nodeName === "tableCell", `Expected tableCell, got ${bodyCell.nodeName}`);
+    const bodyParagraph = bodyCell.get(0);
+    console.assert(bodyParagraph.nodeName === "tableParagraph", `Expected tableParagraph in Goldmark body cell, got ${bodyParagraph.nodeName}`);
+    const bodyText = bodyParagraph.get(0);
+    const delta = bodyText.toDelta();
+    console.assert(delta.some((op) => op.attributes?.bold && op.insert === "Phase 1/2 호환"), "Expected bold formatting preserved in Goldmark table cell");
+    console.log("PASS: table conversion (Goldmark GFM format)");
+}
+// Test table with multiple body rows
+{
+    const multiRowHtml = `<table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Event Sourcing</td>
+<td><strong>Approved</strong></td>
+</tr>
+<tr>
+<td>CQRS</td>
+<td>Proposed</td>
+</tr>
+<tr>
+<td>DDD</td>
+<td><em>In Review</em></td>
+</tr>
+</tbody>
+</table>`;
+    const doc = convert(multiRowHtml);
+    const fragment = doc.getXmlFragment("default");
+    console.assert(fragment.length === 1, `Expected 1 table, got ${fragment.length}`);
+    const table = fragment.get(0);
+    let rowCount = 0;
+    table.forEach(() => rowCount++);
+    console.assert(rowCount === 4, `Expected 4 rows (1 header + 3 body), got ${rowCount}`);
+    // Verify all cells use tableParagraph
+    for (let r = 0; r < rowCount; r++) {
+        const row = table.get(r);
+        row.forEach((cell) => {
+            if (cell instanceof Y.XmlElement) {
+                const para = cell.get(0);
+                console.assert(para.nodeName === "tableParagraph", `Expected tableParagraph in row ${r}, got ${para.nodeName}`);
+            }
+        });
+    }
+    console.log("PASS: table with multiple body rows");
+}
+// ==========================================================================
+// BlockNote format tests (htmlToBlockNoteFragment)
+// ==========================================================================
+function convertBN(html) {
+    const doc = new Y.Doc();
+    const fragment = doc.getXmlFragment("document-store");
+    (0, html_to_yjs_1.htmlToBlockNoteFragment)(doc, fragment, html);
+    return doc;
+}
+// BlockNote: basic structure — blockGroup → blockContainer → content
+{
+    const doc = convertBN("<h2>Title</h2><p>Hello</p>");
+    const fragment = doc.getXmlFragment("document-store");
+    console.assert(fragment.length === 1, `BN: Expected 1 blockGroup, got ${fragment.length}`);
+    const blockGroup = fragment.get(0);
+    console.assert(blockGroup.nodeName === "blockGroup", `BN: Expected blockGroup, got ${blockGroup.nodeName}`);
+    let containerCount = 0;
+    blockGroup.forEach(() => containerCount++);
+    console.assert(containerCount === 2, `BN: Expected 2 blockContainers, got ${containerCount}`);
+    const bc0 = blockGroup.get(0);
+    const bc1 = blockGroup.get(1);
+    console.assert(bc0.nodeName === "blockContainer", `BN: Expected blockContainer, got ${bc0.nodeName}`);
+    console.assert(bc1.nodeName === "blockContainer", `BN: Expected blockContainer, got ${bc1.nodeName}`);
+    console.assert(bc0.getAttribute("id") !== undefined, `BN: blockContainer must have id`);
+    const heading = bc0.get(0);
+    const paragraph = bc1.get(0);
+    console.assert(heading.nodeName === "heading", `BN: Expected heading content, got ${heading.nodeName}`);
+    console.assert(paragraph.nodeName === "paragraph", `BN: Expected paragraph content, got ${paragraph.nodeName}`);
+    console.log("PASS: BlockNote basic structure");
+}
+// BlockNote: code block with language attribute
+{
+    const doc = convertBN('<pre><code class="language-go">func main() {}</code></pre>');
+    const fragment = doc.getXmlFragment("document-store");
+    const blockGroup = fragment.get(0);
+    const container = blockGroup.get(0);
+    console.assert(container.nodeName === "blockContainer", `BN code: Expected blockContainer`);
+    const codeBlock = container.get(0);
+    console.assert(codeBlock.nodeName === "codeBlock", `BN code: Expected codeBlock, got ${codeBlock.nodeName}`);
+    console.assert(codeBlock.getAttribute("language") === "go", `BN code: Expected language=go, got ${codeBlock.getAttribute("language")}`);
+    const codeText = codeBlock.get(0);
+    console.assert(codeText.toString() === "func main() {}", `BN code: Expected code text, got ${codeText.toString()}`);
+    console.log("PASS: BlockNote code block");
+}
+// BlockNote: code block without language defaults to "text"
+{
+    const doc = convertBN("<pre><code>plain code</code></pre>");
+    const fragment = doc.getXmlFragment("document-store");
+    const blockGroup = fragment.get(0);
+    const codeBlock = blockGroup.get(0).get(0);
+    console.assert(codeBlock.getAttribute("language") === "text", `BN code: Expected language=text for no-lang code block`);
+    console.log("PASS: BlockNote code block default language");
+}
+// BlockNote: lists become individual blockContainers with bulletListItem/numberedListItem
+{
+    const doc = convertBN("<ul><li>A</li><li>B</li></ul><ol><li>One</li></ol>");
+    const fragment = doc.getXmlFragment("document-store");
+    const blockGroup = fragment.get(0);
+    let count = 0;
+    blockGroup.forEach(() => count++);
+    console.assert(count === 3, `BN list: Expected 3 blockContainers, got ${count}`);
+    const bc0 = blockGroup.get(0);
+    const bc1 = blockGroup.get(1);
+    const bc2 = blockGroup.get(2);
+    const li0 = bc0.get(0);
+    const li1 = bc1.get(0);
+    const li2 = bc2.get(0);
+    console.assert(li0.nodeName === "bulletListItem", `BN list: Expected bulletListItem, got ${li0.nodeName}`);
+    console.assert(li1.nodeName === "bulletListItem", `BN list: Expected bulletListItem, got ${li1.nodeName}`);
+    console.assert(li2.nodeName === "numberedListItem", `BN list: Expected numberedListItem, got ${li2.nodeName}`);
+    console.log("PASS: BlockNote lists");
+}
+// BlockNote: blockquote → "quote"
+{
+    const doc = convertBN("<blockquote><p>Quoted text</p></blockquote>");
+    const fragment = doc.getXmlFragment("document-store");
+    const blockGroup = fragment.get(0);
+    const container = blockGroup.get(0);
+    const quote = container.get(0);
+    console.assert(quote.nodeName === "quote", `BN quote: Expected "quote", got ${quote.nodeName}`);
+    console.log("PASS: BlockNote blockquote → quote");
+}
+// BlockNote: table inside blockContainer
+{
+    const doc = convertBN("<table><thead><tr><th>A</th></tr></thead><tbody><tr><td>1</td></tr></tbody></table>");
+    const fragment = doc.getXmlFragment("document-store");
+    const blockGroup = fragment.get(0);
+    const container = blockGroup.get(0);
+    console.assert(container.nodeName === "blockContainer", `BN table: Expected blockContainer`);
+    const table = container.get(0);
+    console.assert(table.nodeName === "table", `BN table: Expected table, got ${table.nodeName}`);
+    console.log("PASS: BlockNote table");
+}
+// BlockNote: mixed content — full document
+{
+    const doc = convertBN('<h2>Title</h2><p>Text</p><pre><code class="language-sql">SELECT 1;</code></pre>' +
+        "<ul><li>Item</li></ul><blockquote><p>Quote</p></blockquote>" +
+        "<table><thead><tr><th>Col</th></tr></thead><tbody><tr><td>Val</td></tr></tbody></table>");
+    const fragment = doc.getXmlFragment("document-store");
+    const blockGroup = fragment.get(0);
+    let count = 0;
+    blockGroup.forEach(() => count++);
+    // heading, paragraph, codeBlock, bulletListItem, quote, table = 6
+    console.assert(count === 6, `BN mixed: Expected 6 blockContainers, got ${count}`);
+    const types = [];
+    blockGroup.forEach((bc) => {
+        if (bc instanceof Y.XmlElement) {
+            const content = bc.get(0);
+            types.push(content.nodeName);
+        }
+    });
+    console.assert(types[0] === "heading", `BN mixed[0]: Expected heading, got ${types[0]}`);
+    console.assert(types[1] === "paragraph", `BN mixed[1]: Expected paragraph, got ${types[1]}`);
+    console.assert(types[2] === "codeBlock", `BN mixed[2]: Expected codeBlock, got ${types[2]}`);
+    console.assert(types[3] === "bulletListItem", `BN mixed[3]: Expected bulletListItem, got ${types[3]}`);
+    console.assert(types[4] === "quote", `BN mixed[4]: Expected quote, got ${types[4]}`);
+    console.assert(types[5] === "table", `BN mixed[5]: Expected table, got ${types[5]}`);
+    console.log("PASS: BlockNote mixed content");
 }
 console.log("\nAll tests passed!");

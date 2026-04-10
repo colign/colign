@@ -115,9 +115,19 @@ const server = new server_1.Hocuspocus({
         if (documentName.startsWith("wiki-")) {
             const pageId = documentName.slice(5); // strip "wiki-"
             try {
-                const result = await pool.query("SELECT yjs_state FROM wiki_pages WHERE id = $1 AND deleted_at IS NULL LIMIT 1", [pageId]);
-                if (result.rows.length > 0 && result.rows[0].yjs_state) {
-                    Y.applyUpdate(document, result.rows[0].yjs_state);
+                const result = await pool.query("SELECT yjs_state, content_json FROM wiki_pages WHERE id = $1 AND deleted_at IS NULL LIMIT 1", [pageId]);
+                if (result.rows.length > 0) {
+                    if (result.rows[0].yjs_state) {
+                        // Preferred: restore from binary Yjs state
+                        Y.applyUpdate(document, result.rows[0].yjs_state);
+                    }
+                    else if (result.rows[0].content_json) {
+                        // Fallback: seed from content_json (first open before Yjs state exists)
+                        // Store the content_json in a temporary Y.Map so the frontend can read it
+                        // and initialize BlockNote with it on first sync
+                        const meta = document.getMap("blocknoteMeta");
+                        meta.set("initialJSON", result.rows[0].content_json);
+                    }
                 }
             }
             catch (err) {
@@ -140,7 +150,9 @@ const server = new server_1.Hocuspocus({
                     if (!(0, prosemirror_1.isProseMirrorJSONContent)(content)) {
                         throw new Error(`document ${documentName} is not ProseMirror JSON; run the migration first`);
                     }
-                    (0, prosemirror_1.proseMirrorJSONToYXmlFragment)(document, yXmlFragment, JSON.parse(content));
+                    // Convert to BlockNote structure (blockGroup → blockContainer → content)
+                    // since the spec editor now uses BlockNote
+                    (0, prosemirror_1.proseMirrorJSONToBlockNoteYFragment)(document, yXmlFragment, JSON.parse(content));
                 }
             }
         }
@@ -169,7 +181,11 @@ const server = new server_1.Hocuspocus({
         const docType = parts.slice(2).join("-");
         try {
             const yXmlFragment = document.getXmlFragment("default");
-            const content = JSON.stringify((0, prosemirror_1.yXmlFragmentToProseMirrorJSON)(yXmlFragment));
+            // Detect BlockNote vs flat TipTap structure and serialize accordingly
+            const pmJson = (0, prosemirror_1.isBlockNoteFragment)(yXmlFragment)
+                ? (0, prosemirror_1.yBlockNoteFragmentToProseMirrorJSON)(yXmlFragment)
+                : (0, prosemirror_1.yXmlFragmentToProseMirrorJSON)(yXmlFragment);
+            const content = JSON.stringify(pmJson);
             if (!content)
                 return;
             await pool.query(`INSERT INTO documents (change_id, type, title, content, version)
@@ -218,16 +234,20 @@ async function handleDocumentUpdate(req, res) {
             user: { id: "mcp-server", name: "MCP Server" },
         });
         await connection.transact((doc) => {
-            const fragment = doc.getXmlFragment("default");
+            const fragmentName = payload.fragment ?? "default";
+            const fragment = doc.getXmlFragment(fragmentName);
             // Clear existing content
             while (fragment.length > 0) {
                 fragment.delete(0, 1);
             }
             if ((0, prosemirror_1.isProseMirrorJSONContent)(payload.content)) {
-                (0, prosemirror_1.proseMirrorJSONToYXmlFragment)(doc, fragment, JSON.parse(payload.content));
+                // ProseMirror JSON → convert to BlockNote Y.js structure
+                (0, prosemirror_1.proseMirrorJSONToBlockNoteYFragment)(doc, fragment, JSON.parse(payload.content));
             }
             else {
-                (0, html_to_yjs_1.htmlToYXmlFragment)(doc, fragment, payload.content);
+                // HTML → convert to BlockNote Y.js structure
+                // Both wiki (document-store) and spec (default) editors use BlockNote
+                (0, html_to_yjs_1.htmlToBlockNoteFragment)(doc, fragment, payload.content);
             }
         });
         await connection.disconnect();

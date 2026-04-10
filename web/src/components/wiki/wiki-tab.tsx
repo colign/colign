@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { wikiClient } from "@/lib/wiki";
 import { showError, showSuccess } from "@/lib/toast";
 import { useI18n } from "@/lib/i18n";
@@ -81,11 +82,13 @@ function buildTree(pages: WikiPage[]): TreeNode[] {
 
 export function WikiTab({ projectId }: { projectId: bigint }) {
   const { t } = useI18n();
+  const searchParams = useSearchParams();
   const [pages, setPages] = useState<WikiPage[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<WikiPage | null>(null);
+  const lastPageParamRef = useRef<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -106,6 +109,26 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
   useEffect(() => {
     loadPages();
   }, [loadPages]);
+
+  // Auto-select wiki page from URL ?page= parameter (e.g. from document links)
+  useEffect(() => {
+    const pageParam = searchParams.get("page");
+    if (!pageParam || pages.length === 0) return;
+    if (pageParam === lastPageParamRef.current) return;
+    lastPageParamRef.current = pageParam;
+    // Match by title (case-insensitive, strip extension)
+    const normalized = pageParam.replace(/\.md$/i, "").toLowerCase();
+    const match = pages.find((p) => {
+      const title = normalizeWikiText(p.title).toLowerCase();
+      return title === normalized || title === pageParam.toLowerCase();
+    });
+    if (match) {
+      setSelectedPageId(match.id);
+      if (match.parentId) {
+        setExpandedIds((prev) => new Set([...prev, match.parentId]));
+      }
+    }
+  }, [searchParams, pages]);
 
 
   const handleCreatePage = async (parentId?: string) => {
@@ -550,24 +573,25 @@ function WikiPageContent({
 }) {
   const { t } = useI18n();
   const [page, setPage] = useState<WikiPage | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [titleLoading, setTitleLoading] = useState(true);
   const [title, setTitle] = useState("");
 
   useEffect(() => {
     let cancelled = false;
+    setTitleLoading(true);
     wikiClient
       .getWikiPage({ projectId, pageId })
       .then((res) => {
         if (!cancelled) {
           setPage(res.page!);
           setTitle(normalizeWikiText(res.page?.title));
-          setLoading(false);
+          setTitleLoading(false);
         }
       })
       .catch((err) => {
         if (!cancelled) {
           showError(t("toast.loadFailed"), err);
-          setLoading(false);
+          setTitleLoading(false);
         }
       });
     return () => {
@@ -592,11 +616,10 @@ function WikiPageContent({
 
   const handleContentChange = useCallback(
     async (json: string) => {
-      if (!page) return;
       try {
         await wikiClient.updateWikiPage({
           projectId,
-          pageId: page.id,
+          pageId,
           title: "",
           icon: "",
           contentJson: json,
@@ -606,20 +629,10 @@ function WikiPageContent({
         showError(t("toast.saveFailed"), err);
       }
     },
-    [page, projectId, t],
+    [pageId, projectId, t],
   );
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="size-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
-  if (!page) return null;
-
-  const initialBlocks = page.contentJson
+  const initialBlocks = page?.contentJson
     ? (() => {
         try {
           const parsed = JSON.parse(page.contentJson);
@@ -632,23 +645,33 @@ function WikiPageContent({
 
   return (
     <div className="min-w-0">
-      <input
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onBlur={handleTitleBlur}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") e.currentTarget.blur();
-        }}
-        placeholder={t("project.wikiUntitled")}
-        className="mb-4 w-full bg-transparent text-[22px] font-semibold leading-[1.3] outline-none placeholder:text-muted-foreground"
-      />
-      <WikiEditor
-        key={pageId}
-        projectId={projectId}
-        pageId={pageId}
-        initialContent={initialBlocks}
-        onContentChange={handleContentChange}
-      />
+      {titleLoading ? (
+        <div className="mb-4 h-9 w-48 animate-pulse rounded bg-muted" />
+      ) : (
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={handleTitleBlur}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+          }}
+          placeholder={t("project.wikiUntitled")}
+          className="mb-4 w-full bg-transparent text-[22px] font-semibold leading-[1.3] outline-none placeholder:text-muted-foreground"
+        />
+      )}
+      {page ? (
+        <WikiEditor
+          key={pageId}
+          projectId={projectId}
+          pageId={pageId}
+          initialContent={initialBlocks}
+          onContentChange={handleContentChange}
+        />
+      ) : (
+        <div className="flex items-center justify-center py-20">
+          <div className="size-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      )}
     </div>
   );
 }

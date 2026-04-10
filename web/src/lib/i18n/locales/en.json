@@ -306,7 +306,11 @@
     "hidePanel": "Hide comments",
     "showPanel": "Show comments",
     "showOlder": "Show {count} older comments",
-    "hideOlder": "Hide older comments"
+    "hideOlder": "Hide older comments",
+    "edit": "Edit",
+    "editPlaceholder": "Edit comment...",
+    "save": "Save",
+    "cancel": "Cancel"
   },
   "ac": {
     "title": "Acceptance Criteria",

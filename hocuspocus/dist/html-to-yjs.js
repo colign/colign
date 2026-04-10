@@ -34,6 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.htmlToYXmlFragment = htmlToYXmlFragment;
+exports.htmlToBlockNoteFragment = htmlToBlockNoteFragment;
 const Y = __importStar(require("yjs"));
 /**
  * Converts simple HTML (from TipTap/markdownToHTML) into Y.js XmlFragment nodes.
@@ -134,7 +135,8 @@ function htmlToYXmlFragment(doc, fragment, html) {
 function tokenize(html) {
     const tokens = [];
     // Match top-level HTML elements
-    const tagRegex = /<(h[1-6]|p|ul|ol|pre|blockquote|table)([^>]*)>([\s\S]*?)<\/\1>/gi;
+    // Order matters: "pre" must come before "p" to avoid partial match on <pre>
+    const tagRegex = /<(h[1-6]|pre|blockquote|table|ul|ol|p)([^>]*)>([\s\S]*?)<\/\1>/gi;
     let match;
     while ((match = tagRegex.exec(html)) !== null) {
         const tag = match[1].toLowerCase();
@@ -166,10 +168,17 @@ function tokenize(html) {
             }
         }
         else if (tag === "pre") {
-            const codeMatch = content.match(/<code[^>]*>([\s\S]*?)<\/code>/i);
+            const codeMatch = content.match(/<code([^>]*)>([\s\S]*?)<\/code>/i);
+            let language;
+            if (codeMatch) {
+                const langMatch = codeMatch[1].match(/(?:class="[^"]*language-|data-language=")([^"\s]+)/i);
+                if (langMatch)
+                    language = langMatch[1];
+            }
             tokens.push({
                 type: "codeblock",
-                content: codeMatch ? codeMatch[1] : stripTags(content),
+                content: codeMatch ? codeMatch[2] : stripTags(content),
+                language,
             });
         }
         else if (tag === "blockquote") {
@@ -220,7 +229,10 @@ function createTableRow(cells, isHeader) {
     const row = new Y.XmlElement("tableRow");
     for (const cellHtml of cells) {
         const cell = new Y.XmlElement(isHeader ? "tableHeader" : "tableCell");
-        const paragraph = new Y.XmlElement("paragraph");
+        // BlockNote expects "tableParagraph" (not "paragraph") inside table cells.
+        // The tableCell/tableHeader content spec is "tableContent+" which only
+        // accepts nodes in the "tableContent" group — i.e. tableParagraph.
+        const paragraph = new Y.XmlElement("tableParagraph");
         const text = new Y.XmlText();
         applyInlineFormatting(text, stripWrappingParagraph(cellHtml));
         paragraph.insert(0, [text]);
@@ -313,4 +325,123 @@ function unescapeHtml(text) {
         .replace(/&gt;/g, ">")
         .replace(/&quot;/g, '"')
         .replace(/&#39;/g, "'");
+}
+// ---------------------------------------------------------------------------
+// BlockNote-compatible Y.js output
+// ---------------------------------------------------------------------------
+// BlockNote expects: blockGroup → blockContainer(id) → blockContent
+// This differs from flat TipTap nodes that htmlToYXmlFragment produces.
+let blockIdCounter = 0;
+function nextBlockId() {
+    return `bn-${Date.now().toString(36)}-${(blockIdCounter++).toString(36)}`;
+}
+function createBlockContainer() {
+    const container = new Y.XmlElement("blockContainer");
+    container.setAttribute("id", nextBlockId());
+    return container;
+}
+/**
+ * Converts HTML to a BlockNote-compatible Y.XmlFragment.
+ *
+ * BlockNote uses blockGroup → blockContainer → blockContent structure.
+ * Lists become individual blockContainer(bulletListItem/numberedListItem).
+ * Blockquotes become "quote" blocks.
+ */
+function htmlToBlockNoteFragment(doc, fragment, html) {
+    const tokens = tokenize(html);
+    const blockGroup = new Y.XmlElement("blockGroup");
+    let i = 0;
+    while (i < tokens.length) {
+        const token = tokens[i];
+        if (token.type === "heading") {
+            const container = createBlockContainer();
+            const el = new Y.XmlElement("heading");
+            el.setAttribute("level", String(token.level));
+            const text = new Y.XmlText();
+            applyInlineFormatting(text, token.content);
+            el.insert(0, [text]);
+            container.insert(0, [el]);
+            blockGroup.insert(blockGroup.length, [container]);
+            i++;
+        }
+        else if (token.type === "paragraph") {
+            const container = createBlockContainer();
+            const el = new Y.XmlElement("paragraph");
+            const text = new Y.XmlText();
+            applyInlineFormatting(text, token.content);
+            el.insert(0, [text]);
+            container.insert(0, [el]);
+            blockGroup.insert(blockGroup.length, [container]);
+            i++;
+        }
+        else if (token.type === "codeblock") {
+            const container = createBlockContainer();
+            const el = new Y.XmlElement("codeBlock");
+            el.setAttribute("language", token.language ?? "text");
+            const text = new Y.XmlText();
+            text.insert(0, unescapeHtml(token.content));
+            el.insert(0, [text]);
+            container.insert(0, [el]);
+            blockGroup.insert(blockGroup.length, [container]);
+            i++;
+        }
+        else if (token.type === "listitem") {
+            // BlockNote: each list item is its own blockContainer
+            const listType = token.listType;
+            const contentType = listType === "ol" ? "numberedListItem" : "bulletListItem";
+            while (i < tokens.length && tokens[i].type === "listitem" && tokens[i].listType === listType) {
+                const container = createBlockContainer();
+                const el = new Y.XmlElement(contentType);
+                const text = new Y.XmlText();
+                applyInlineFormatting(text, tokens[i].content);
+                el.insert(0, [text]);
+                container.insert(0, [el]);
+                blockGroup.insert(blockGroup.length, [container]);
+                i++;
+            }
+        }
+        else if (token.type === "blockquote") {
+            // BlockNote uses "quote", not "blockquote"
+            const innerParagraphs = token.content.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+            if (innerParagraphs) {
+                for (const pMatch of innerParagraphs) {
+                    const pContent = pMatch.replace(/^<p[^>]*>/i, "").replace(/<\/p>$/i, "");
+                    const container = createBlockContainer();
+                    const el = new Y.XmlElement("quote");
+                    const text = new Y.XmlText();
+                    applyInlineFormatting(text, pContent);
+                    el.insert(0, [text]);
+                    container.insert(0, [el]);
+                    blockGroup.insert(blockGroup.length, [container]);
+                }
+            }
+            else {
+                const container = createBlockContainer();
+                const el = new Y.XmlElement("quote");
+                const text = new Y.XmlText();
+                applyInlineFormatting(text, token.content);
+                el.insert(0, [text]);
+                container.insert(0, [el]);
+                blockGroup.insert(blockGroup.length, [container]);
+            }
+            i++;
+        }
+        else if (token.type === "table") {
+            const container = createBlockContainer();
+            const table = new Y.XmlElement("table");
+            for (const row of token.headerRows ?? []) {
+                table.insert(table.length, [createTableRow(row, true)]);
+            }
+            for (const row of token.bodyRows ?? []) {
+                table.insert(table.length, [createTableRow(row, false)]);
+            }
+            container.insert(0, [table]);
+            blockGroup.insert(blockGroup.length, [container]);
+            i++;
+        }
+        else {
+            i++;
+        }
+    }
+    fragment.insert(fragment.length, [blockGroup]);
 }

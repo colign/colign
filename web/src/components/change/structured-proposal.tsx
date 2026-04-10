@@ -36,8 +36,10 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { MessageSquare, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { getTokenPayload } from "@/lib/auth";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useParams } from "next/navigation";
+import Link from "next/link";
 import type { MentionMember } from "@/components/comment/mention-textarea";
+import { toProjectPath } from "@/lib/project-ref";
 
 interface ProposalSections {
   problem: string;
@@ -288,7 +290,9 @@ export function StructuredProposal({
 
   function addDocumentLink(url: string) {
     const trimmed = url.trim();
-    if (!trimmed || !isSafeUrl(trimmed)) return;
+    if (!trimmed) return;
+    // Allow both external URLs and internal doc paths (e.g. docs/prd/file.md)
+    if (!isSafeUrl(trimmed) && !isInternalDocPath(trimmed)) return;
     if ((sectionsRef.current.documentLinks || []).includes(trimmed)) return;
     localRevisionRef.current += 1;
     setSections((prev) => {
@@ -437,6 +441,7 @@ export function StructuredProposal({
           onRemove={removeDocumentLink}
           readOnly={isReviewMode}
           t={t}
+          projectId={projectId}
         />
 
         {/* Acceptance Criteria */}
@@ -813,6 +818,16 @@ function DesignLinksSection({ links, onAdd, onRemove, readOnly, t }: DesignLinks
 
 // --- Document Links Section ---
 
+function isInternalDocPath(link: string): boolean {
+  return /^[\w][\w/.-]*\.\w+$/.test(link) && !link.includes("://") && !link.includes("..");
+}
+
+function wikiTitleFromDocPath(path: string): string {
+  // "docs/prd/PRD-16-aha-moment.md" → "PRD-16-aha-moment"
+  const basename = path.split("/").pop() ?? path;
+  return basename.replace(/\.\w+$/, "");
+}
+
 type DocumentLinkType = "google" | "notion" | "confluence" | "generic";
 
 function getDocumentLinkType(url: string): DocumentLinkType {
@@ -853,9 +868,12 @@ interface DocumentLinksSectionProps {
   onRemove: (index: number) => void;
   readOnly: boolean;
   t: (key: string) => string;
+  projectId: bigint;
 }
 
-function DocumentLinksSection({ links, onAdd, onRemove, readOnly, t }: DocumentLinksSectionProps) {
+function DocumentLinksSection({ links, onAdd, onRemove, readOnly, t, projectId }: DocumentLinksSectionProps) {
+  const params = useParams();
+  const projectSlug = params.slug as string;
   const [inputValue, setInputValue] = useState("");
 
   function handleAdd() {
@@ -884,8 +902,12 @@ function DocumentLinksSection({ links, onAdd, onRemove, readOnly, t }: DocumentL
 
       <div className="border-t border-border/30 px-5 py-4 space-y-3">
         {links.map((link, index) => {
+          const isInternal = isInternalDocPath(link);
           const type = getDocumentLinkType(link);
-          const label = getDocumentLinkLabel(type);
+          const label = isInternal ? "" : getDocumentLinkLabel(type);
+          const wikiHref = isInternal
+            ? `${toProjectPath({ id: projectId, slug: projectSlug })}?tab=wiki&page=${encodeURIComponent(wikiTitleFromDocPath(link))}`
+            : undefined;
           const safeHref = isSafeUrl(link) ? link : "#";
 
           return (
@@ -894,28 +916,47 @@ function DocumentLinksSection({ links, onAdd, onRemove, readOnly, t }: DocumentL
               className="group flex items-center gap-2 rounded-lg border border-border/30 bg-background/50 px-3 py-2"
             >
               {getDocumentLinkIcon(type)}
-              <a
-                href={safeHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 truncate text-sm text-primary hover:underline"
-                title={link}
-              >
-                {extractLinkTitle(link)}
-              </a>
+              {wikiHref ? (
+                <Link
+                  href={wikiHref}
+                  className="flex-1 truncate text-sm text-primary hover:underline"
+                  title={link}
+                >
+                  {extractLinkTitle(link)}
+                </Link>
+              ) : (
+                <a
+                  href={safeHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 truncate text-sm text-primary hover:underline"
+                  title={link}
+                >
+                  {extractLinkTitle(link)}
+                </a>
+              )}
               {label && (
                 <span className="shrink-0 rounded bg-muted/80 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                   {label}
                 </span>
               )}
-              <a
-                href={safeHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <ExternalLink className="size-3.5" />
-              </a>
+              {wikiHref ? (
+                <Link
+                  href={wikiHref}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <ExternalLink className="size-3.5" />
+                </Link>
+              ) : (
+                <a
+                  href={safeHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <ExternalLink className="size-3.5" />
+                </a>
+              )}
               {!readOnly && (
                 <button
                   onClick={() => onRemove(index)}
@@ -931,7 +972,7 @@ function DocumentLinksSection({ links, onAdd, onRemove, readOnly, t }: DocumentL
         {!readOnly && (
           <div className="flex items-center gap-2">
             <input
-              type="url"
+              type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
