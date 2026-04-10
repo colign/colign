@@ -7,7 +7,7 @@ import {
   FormattingToolbarController,
 } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
-import { createExtension } from "@blocknote/core";
+import { BlockNoteSchema, defaultStyleSpecs } from "@blocknote/core";
 import type { PartialBlock } from "@blocknote/core";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
@@ -33,13 +33,11 @@ function normalizeCollaboratorName(value: unknown): string {
   return typeof value === "string" && value.trim() ? value : "Anonymous";
 }
 
-/**
- * BlockNote extension that wraps the Tiptap CommentHighlight mark,
- * enabling inline comment highlights in the editor.
- */
-const commentHighlightExtension = createExtension({
-  key: "commentHighlight",
-  tiptapExtensions: [CommentHighlight],
+const schema = BlockNoteSchema.create({
+  styleSpecs: {
+    ...defaultStyleSpecs,
+    commentHighlight: CommentHighlight,
+  },
 });
 
 export interface SpecBlockNoteEditorHandle {
@@ -122,6 +120,7 @@ const CollaborativeSpecEditor = forwardRef<
   const userName = normalizeCollaboratorName(payload?.name);
 
   const editor = useCreateBlockNote({
+    schema,
     collaboration: {
       provider: provider as HocuspocusProvider & {
         awareness?: NonNullable<HocuspocusProvider["awareness"]>;
@@ -132,7 +131,6 @@ const CollaborativeSpecEditor = forwardRef<
         color: getUserColor(userName),
       },
     },
-    extensions: [commentHighlightExtension],
   });
 
   // Seed editor from initialContent when Yjs doc is empty
@@ -191,11 +189,20 @@ const CollaborativeSpecEditor = forwardRef<
         const sel = savedSelectionRef.current;
         if (!sel) return;
         const tiptap = editor._tiptapEditor;
-        tiptap.chain().focus().setTextSelection(sel).setCommentHighlight({ commentId }).run();
+        tiptap.chain().focus().setTextSelection(sel).setMark("commentHighlight", { stringValue: commentId }).run();
         savedSelectionRef.current = null;
       },
       removeHighlight: (commentId: string) => {
-        editor._tiptapEditor.chain().focus().unsetCommentHighlight(commentId).run();
+        const tiptap = editor._tiptapEditor;
+        const { tr, doc } = tiptap.state;
+        doc.descendants((node, pos) => {
+          node.marks.forEach((mark) => {
+            if (mark.type.name === "commentHighlight" && mark.attrs.stringValue === commentId) {
+              tr.removeMark(pos, pos + node.nodeSize, mark);
+            }
+          });
+        });
+        tiptap.view.dispatch(tr);
       },
       scrollToHighlight: (commentId: string) => {
         const dom = editor._tiptapEditor.view.dom;
