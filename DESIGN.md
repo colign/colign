@@ -93,7 +93,7 @@ Restrained — cool neutral dark foundation with the existing blue primary. Sema
 ## Layout
 - **Approach:** Grid-disciplined
 - **Grid:** Sidebar (220px fixed) + content area
-- **Max content width:** 1200px (dashboard), 680px (spec reading area)
+- **Max content width:** 1152px / `max-w-6xl` (dashboard, project list), 1024px / `max-w-5xl` (settings, change detail), full-width (project detail — workspace with wiki sidebar + editor), 680px (spec reading area)
 - **Border radius:** Tight hierarchy — sm:4px, md:6px, lg:8px (no rounded-full on cards)
 - **Surfaces:** Flat, bordered. No box-shadows on cards. Border is the primary spatial separator.
 
