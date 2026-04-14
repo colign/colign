@@ -15,6 +15,7 @@ import {
   Trash2,
   FilePlus,
   GripVertical,
+  Link2,
 } from "lucide-react";
 import {
   Dialog,
@@ -129,6 +130,21 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
       }
     }
   }, [searchParams, pages]);
+
+  // Navigate to a page when clicking a [[Page Link]] in the editor
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail?.pageId) return;
+      setSelectedPageId(detail.pageId);
+      const target = pages.find((p) => p.id === detail.pageId);
+      if (target?.parentId) {
+        setExpandedIds((prev) => new Set([...prev, target.parentId]));
+      }
+    };
+    window.addEventListener("wiki-navigate", handler);
+    return () => window.removeEventListener("wiki-navigate", handler);
+  }, [pages]);
 
 
   const handleCreatePage = async (parentId?: string) => {
@@ -625,6 +641,14 @@ function WikiPageContent({
           contentJson: json,
           contentText: "",
         });
+
+        // Extract page link IDs and sync to wiki_page_links table
+        const targetIds = extractPageLinkIds(json);
+        await wikiClient.syncLinks({
+          projectId,
+          sourcePageId: pageId,
+          targetPageIds: targetIds,
+        });
       } catch (err) {
         showError(t("toast.saveFailed"), err);
       }
@@ -660,18 +684,109 @@ function WikiPageContent({
         />
       )}
       {page ? (
-        <WikiEditor
-          key={pageId}
-          projectId={projectId}
-          pageId={pageId}
-          initialContent={initialBlocks}
-          onContentChange={handleContentChange}
-        />
+        <>
+          <WikiEditor
+            key={pageId}
+            projectId={projectId}
+            pageId={pageId}
+            initialContent={initialBlocks}
+            onContentChange={handleContentChange}
+          />
+          <BacklinksPanel
+            projectId={projectId}
+            pageId={pageId}
+            onNavigate={(id) => {
+              window.dispatchEvent(
+                new CustomEvent("wiki-navigate", { detail: { pageId: id } }),
+              );
+            }}
+          />
+        </>
       ) : (
         <div className="flex items-center justify-center py-20">
           <div className="size-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Recursively extract all pageLink pageId values from BlockNote JSON.
+ */
+function extractPageLinkIds(json: string): string[] {
+  const ids = new Set<string>();
+  try {
+    const blocks = JSON.parse(json);
+    const walk = (obj: unknown) => {
+      if (!obj || typeof obj !== "object") return;
+      if (Array.isArray(obj)) {
+        for (const item of obj) walk(item);
+        return;
+      }
+      const rec = obj as Record<string, unknown>;
+      if (rec.type === "pageLink" && rec.props) {
+        const pageId = (rec.props as Record<string, unknown>).pageId;
+        if (typeof pageId === "string" && pageId) ids.add(pageId);
+      }
+      for (const val of Object.values(rec)) walk(val);
+    };
+    walk(blocks);
+  } catch {
+    // malformed JSON — return empty
+  }
+  return Array.from(ids);
+}
+
+function BacklinksPanel({
+  projectId,
+  pageId,
+  onNavigate,
+}: {
+  projectId: bigint;
+  pageId: string;
+  onNavigate: (pageId: string) => void;
+}) {
+  const { t } = useI18n();
+  const [backlinks, setBacklinks] = useState<
+    Array<{ sourcePageId: string; sourcePageTitle: string; sourcePageIcon: string }>
+  >([]);
+
+  useEffect(() => {
+    wikiClient
+      .getBacklinks({ projectId, pageId })
+      .then((res) =>
+        setBacklinks(
+          res.links.map((l) => ({
+            sourcePageId: l.sourcePageId,
+            sourcePageTitle: l.sourcePageTitle || t("project.wikiUntitled"),
+            sourcePageIcon: l.sourcePageIcon || "",
+          })),
+        ),
+      )
+      .catch(() => {});
+  }, [projectId, pageId, t]);
+
+  if (backlinks.length === 0) return null;
+
+  return (
+    <div className="mt-8 border-t border-border pt-4">
+      <div className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <Link2 className="size-3" />
+        {t("project.wikiBacklinks")}
+      </div>
+      <div className="space-y-1">
+        {backlinks.map((link) => (
+          <button
+            key={link.sourcePageId}
+            onClick={() => onNavigate(link.sourcePageId)}
+            className="block w-full text-left text-sm text-primary hover:underline"
+          >
+            {link.sourcePageIcon ? `${link.sourcePageIcon} ` : ""}
+            {link.sourcePageTitle}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

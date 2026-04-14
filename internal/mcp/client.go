@@ -13,6 +13,8 @@ import (
 	"github.com/gobenpark/colign/gen/proto/task/v1/taskv1connect"
 	"github.com/gobenpark/colign/gen/proto/wiki/v1/wikiv1connect"
 	"github.com/gobenpark/colign/gen/proto/workflow/v1/workflowv1connect"
+	"github.com/gobenpark/colign/internal/ai"
+	"github.com/gobenpark/colign/internal/aiconfig"
 	"github.com/gobenpark/colign/internal/events"
 )
 
@@ -30,6 +32,8 @@ type apiClients struct {
 	hocuspocusURL       string
 	hocuspocusAPISecret string
 	eventHub            *events.Hub
+	aiSvc               *ai.Service
+	aiConfigSvc         *aiconfig.Service
 }
 
 // tokenTransport injects the Authorization header into every request.
@@ -84,5 +88,12 @@ func WithHocuspocus(url, secret string) clientOption {
 func WithEventHub(hub *events.Hub) clientOption {
 	return func(c *apiClients) {
 		c.eventHub = hub
+	}
+}
+
+func WithAI(aiSvc *ai.Service, aiConfigSvc *aiconfig.Service) clientOption {
+	return func(c *apiClients) {
+		c.aiSvc = aiSvc
+		c.aiConfigSvc = aiConfigSvc
 	}
 }

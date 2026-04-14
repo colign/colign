@@ -262,6 +262,67 @@ func (h *ConnectHandler) GetWikiImage(ctx context.Context, req *connect.Request[
 	}), nil
 }
 
+func (h *ConnectHandler) GetBacklinks(ctx context.Context, req *connect.Request[wikiv1.GetBacklinksRequest]) (*connect.Response[wikiv1.GetBacklinksResponse], error) {
+	_, err := h.resolveAuth(ctx, req.Header().Get("Authorization"))
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	pageID, err := uuid.Parse(req.Msg.PageId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid page_id: %w", err))
+	}
+
+	links, err := h.service.GetBacklinks(ctx, req.Msg.ProjectId, pageID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	protoLinks := make([]*wikiv1.WikiPageLink, 0, len(links))
+	for _, l := range links {
+		pl := &wikiv1.WikiPageLink{
+			SourcePageId: l.SourcePageID.String(),
+			TargetPageId: l.TargetPageID.String(),
+		}
+		if l.SourcePage != nil {
+			pl.SourcePageTitle = l.SourcePage.Title
+			pl.SourcePageIcon = l.SourcePage.Icon
+		}
+		protoLinks = append(protoLinks, pl)
+	}
+
+	return connect.NewResponse(&wikiv1.GetBacklinksResponse{
+		Links: protoLinks,
+	}), nil
+}
+
+func (h *ConnectHandler) SyncLinks(ctx context.Context, req *connect.Request[wikiv1.SyncLinksRequest]) (*connect.Response[wikiv1.SyncLinksResponse], error) {
+	_, err := h.resolveAuth(ctx, req.Header().Get("Authorization"))
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	sourcePageID, err := uuid.Parse(req.Msg.SourcePageId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid source_page_id: %w", err))
+	}
+
+	targetIDs := make([]uuid.UUID, 0, len(req.Msg.TargetPageIds))
+	for _, tidStr := range req.Msg.TargetPageIds {
+		tid, err := uuid.Parse(tidStr)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid target_page_id %q: %w", tidStr, err))
+		}
+		targetIDs = append(targetIDs, tid)
+	}
+
+	if err := h.service.SyncLinks(ctx, req.Msg.ProjectId, sourcePageID, targetIDs); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&wikiv1.SyncLinksResponse{}), nil
+}
+
 func pageToProto(p *models.WikiPage) *wikiv1.WikiPage {
 	pp := &wikiv1.WikiPage{
 		Id:          p.ID.String(),

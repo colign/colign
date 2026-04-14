@@ -7,7 +7,10 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"net/http"
+	"regexp"
+	"strings"
 	"sync"
 
 	"connectrpc.com/connect"
@@ -22,6 +25,8 @@ import (
 	taskv1 "github.com/gobenpark/colign/gen/proto/task/v1"
 	wikiv1 "github.com/gobenpark/colign/gen/proto/wiki/v1"
 	workflowv1 "github.com/gobenpark/colign/gen/proto/workflow/v1"
+	"github.com/gobenpark/colign/internal/ai"
+	"github.com/gobenpark/colign/internal/aiconfig"
 	"github.com/gobenpark/colign/internal/events"
 	"github.com/gobenpark/colign/internal/models"
 )
@@ -632,6 +637,22 @@ func init() {
 		ReadOnly: false,
 		Handler: func(s *Server, ctx context.Context, args json.RawMessage) (any, error) {
 			return s.handleUpdateWikiPage(ctx, args)
+		},
+	})
+	RegisterTool(Tool{
+		Name:        "auto_update_wiki",
+		Description: "Automatically update the project wiki based on a change's artifacts (proposal, spec, tasks, acceptance criteria, comments). Uses AI to determine which wiki pages to create or update.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]Property{
+				"project_id": {Type: "integer", Description: "Project ID"},
+				"change_id":  {Type: "integer", Description: "Change ID whose artifacts will be analyzed"},
+			},
+			Required: []string{"project_id", "change_id"},
+		},
+		ReadOnly: false,
+		Handler: func(s *Server, ctx context.Context, args json.RawMessage) (any, error) {
+			return s.handleAutoUpdateWiki(ctx, args)
 		},
 	})
 	RegisterTool(Tool{
@@ -2283,7 +2304,11 @@ func (s *Server) handleUpdateWikiPage(ctx context.Context, args json.RawMessage)
 
 	// Update content via Hocuspocus for real-time editor sync
 	if params.Content != "" {
-		html, err := markdownToHTML(params.Content)
+		// Resolve [[Page Title]] wiki links to HTML spans before markdown conversion
+		content := params.Content
+		resolvedContent, linkTargetIDs := s.resolveWikiLinks(ctx, params.ProjectID.Int64(), content)
+
+		html, err := markdownToHTML(resolvedContent)
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert markdown: %w", err)
 		}
@@ -2297,13 +2322,22 @@ func (s *Server) handleUpdateWikiPage(ctx context.Context, args json.RawMessage)
 			return nil, fmt.Errorf("failed to update wiki content: %w", err)
 		}
 
+		// Sync page links (always call to clear stale links when all removed)
+		if _, err := s.clients.wiki.SyncLinks(ctx, connect.NewRequest(&wikiv1.SyncLinksRequest{
+			ProjectId:     params.ProjectID.Int64(),
+			SourcePageId:  params.PageID,
+			TargetPageIds: linkTargetIDs,
+		})); err != nil {
+			slog.Warn("failed to sync wiki page links", slog.String("error", err.Error()))
+		}
+
 		// Also persist content_text in DB so read-back is consistent
 		if _, err := s.clients.wiki.UpdateWikiPage(ctx, connect.NewRequest(&wikiv1.UpdateWikiPageRequest{
 			ProjectId:   params.ProjectID.Int64(),
 			PageId:      params.PageID,
 			ContentText: params.Content,
 		})); err != nil {
-			log.Printf("failed to persist wiki content_text: %v", err)
+			slog.Warn("failed to persist wiki content_text", slog.String("error", err.Error()))
 		}
 	}
 
@@ -2370,4 +2404,355 @@ func (s *Server) sendToHocuspocus(documentName, htmlContent, fragment string) er
 	}
 
 	return nil
+}
+
+// wikiLinkRegex matches [[Page Title]] patterns in markdown content.
+var wikiLinkRegex = regexp.MustCompile(`\[\[([^\]]+)\]\]`)
+
+// resolveWikiLinks replaces [[Page Title]] in markdown with HTML page link spans.
+// Returns the resolved content and a list of target page IDs found.
+func (s *Server) resolveWikiLinks(ctx context.Context, projectID int64, content string) (string, []string) {
+	if !strings.Contains(content, "[[") {
+		return content, nil
+	}
+
+	// Fetch all pages for this project to build a title → ID lookup
+	resp, err := s.clients.wiki.ListWikiPages(ctx, connect.NewRequest(&wikiv1.ListWikiPagesRequest{
+		ProjectId: projectID,
+	}))
+	if err != nil {
+		slog.Warn("resolveWikiLinks: failed to list pages", slog.String("error", err.Error()))
+		return content, nil
+	}
+
+	titleToPage := make(map[string]*wikiv1.WikiPage, len(resp.Msg.Pages))
+	for _, p := range resp.Msg.Pages {
+		titleToPage[strings.ToLower(p.Title)] = p
+	}
+
+	var targetIDs []string
+	resolved := wikiLinkRegex.ReplaceAllStringFunc(content, func(match string) string {
+		title := match[2 : len(match)-2] // strip [[ and ]]
+		page, ok := titleToPage[strings.ToLower(title)]
+		if !ok {
+			return match // leave unresolved links as-is
+		}
+		targetIDs = append(targetIDs, page.Id)
+		return fmt.Sprintf(`<span class="wiki-page-link" data-page-id="%s" data-page-title="%s">%s</span>`,
+			page.Id, page.Title, page.Title)
+	})
+
+	return resolved, targetIDs
+}
+
+func (s *Server) handleAutoUpdateWiki(ctx context.Context, args json.RawMessage) (any, error) {
+	var params struct {
+		ProjectID FlexInt64 `json:"project_id"`
+		ChangeID  FlexInt64 `json:"change_id"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return nil, fmt.Errorf("invalid arguments: %w", err)
+	}
+
+	if s.clients.aiSvc == nil || s.clients.aiConfigSvc == nil {
+		return nil, fmt.Errorf("AI is not configured for this server")
+	}
+
+	// 1. Get change info
+	changeResp, err := s.clients.project.GetChange(ctx, connect.NewRequest(&projectv1.GetChangeRequest{
+		Id:        params.ChangeID.Int64(),
+		ProjectId: params.ProjectID.Int64(),
+	}))
+	if err != nil {
+		return nil, fmt.Errorf("get change: %w", err)
+	}
+	change := changeResp.Msg.Change
+
+	// 2. Resolve AI config (project-level → org-level fallback)
+	cfg, err := s.resolveAIConfig(ctx, params.ProjectID.Int64())
+	if err != nil {
+		return nil, fmt.Errorf("resolve AI config: %w", err)
+	}
+
+	// 3. Collect change context in parallel
+	input := ai.WikiUpdateInput{ChangeName: change.Name}
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+
+	// Proposal
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		resp, err := s.clients.document.GetDocument(ctx, connect.NewRequest(&documentv1.GetDocumentRequest{
+			ChangeId: params.ChangeID.Int64(), Type: "proposal", ProjectId: params.ProjectID.Int64(),
+		}))
+		if err == nil && resp.Msg.Document != nil && resp.Msg.Document.Content != "" {
+			mu.Lock()
+			input.Proposal = resp.Msg.Document.Content
+			mu.Unlock()
+		}
+	}()
+
+	// Spec
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		resp, err := s.clients.document.GetDocument(ctx, connect.NewRequest(&documentv1.GetDocumentRequest{
+			ChangeId: params.ChangeID.Int64(), Type: "spec", ProjectId: params.ProjectID.Int64(),
+		}))
+		if err == nil && resp.Msg.Document != nil && resp.Msg.Document.Content != "" {
+			md, convErr := exportDocumentToMarkdown(resp.Msg.Document.Content)
+			if convErr == nil {
+				mu.Lock()
+				input.Spec = md
+				mu.Unlock()
+			}
+		}
+	}()
+
+	// Tasks
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		resp, err := s.clients.task.ListTasks(ctx, connect.NewRequest(&taskv1.ListTasksRequest{
+			ChangeId: params.ChangeID.Int64(), ProjectId: params.ProjectID.Int64(),
+		}))
+		if err == nil && len(resp.Msg.Tasks) > 0 {
+			var sb strings.Builder
+			for _, t := range resp.Msg.Tasks {
+				fmt.Fprintf(&sb, "- [%s] %s\n", t.Status, t.Title)
+			}
+			mu.Lock()
+			input.Tasks = sb.String()
+			mu.Unlock()
+		}
+	}()
+
+	// Acceptance Criteria
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		resp, err := s.clients.acceptance.ListAC(ctx, connect.NewRequest(&acceptancev1.ListACRequest{
+			ChangeId: params.ChangeID.Int64(), ProjectId: params.ProjectID.Int64(),
+		}))
+		if err == nil && len(resp.Msg.Criteria) > 0 {
+			var sb strings.Builder
+			for _, ac := range resp.Msg.Criteria {
+				metStr := "unmet"
+				if ac.Met {
+					metStr = "met"
+				}
+				fmt.Fprintf(&sb, "Scenario: %s [%s]\n", ac.Scenario, metStr)
+				for _, step := range ac.Steps {
+					fmt.Fprintf(&sb, "  %s %s\n", step.Keyword, step.Text)
+				}
+			}
+			mu.Lock()
+			input.Acceptance = sb.String()
+			mu.Unlock()
+		}
+	}()
+
+	// Comments
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		resp, err := s.clients.comment.ListComments(ctx, connect.NewRequest(&commentv1.ListCommentsRequest{
+			ChangeId: params.ChangeID.Int64(), ProjectId: params.ProjectID.Int64(),
+		}))
+		if err == nil && len(resp.Msg.Comments) > 0 {
+			comments := resp.Msg.Comments
+			if len(comments) > 10 {
+				comments = comments[len(comments)-10:]
+			}
+			var sb strings.Builder
+			for _, cm := range comments {
+				fmt.Fprintf(&sb, "%s: %s\n", cm.UserName, cm.Body)
+			}
+			mu.Lock()
+			input.Comments = sb.String()
+			mu.Unlock()
+		}
+	}()
+
+	// Existing wiki pages
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		resp, err := s.clients.wiki.ListWikiPages(ctx, connect.NewRequest(&wikiv1.ListWikiPagesRequest{
+			ProjectId: params.ProjectID.Int64(),
+		}))
+		if err == nil {
+			titles := make([]string, len(resp.Msg.Pages))
+			for i, p := range resp.Msg.Pages {
+				titles[i] = p.Title
+			}
+			mu.Lock()
+			input.ExistingPages = titles
+			mu.Unlock()
+		}
+	}()
+
+	wg.Wait()
+
+	// 4. Call AI to generate wiki updates
+	updates, err := s.clients.aiSvc.GenerateWikiUpdate(ctx, cfg, input)
+	if err != nil {
+		return nil, fmt.Errorf("AI wiki update: %w", err)
+	}
+
+	if len(updates) == 0 {
+		return map[string]any{
+			"message": "AI determined no wiki updates are needed",
+			"updates": []any{},
+		}, nil
+	}
+
+	// 5. Apply each update
+	results := make([]map[string]any, 0, len(updates))
+	for _, u := range updates {
+		switch u.Action {
+		case "create":
+			res, err := s.applyWikiCreate(ctx, params.ProjectID.Int64(), u)
+			if err != nil {
+				slog.WarnContext(ctx, "auto wiki create failed", slog.String("title", u.PageTitle), slog.String("error", err.Error()))
+				continue
+			}
+			results = append(results, res)
+
+		case "update":
+			res, err := s.applyWikiUpdate(ctx, params.ProjectID.Int64(), u)
+			if err != nil {
+				slog.WarnContext(ctx, "auto wiki update failed", slog.String("page_id", u.PageID), slog.String("error", err.Error()))
+				continue
+			}
+			results = append(results, res)
+		}
+	}
+
+	return map[string]any{
+		"message": fmt.Sprintf("Applied %d wiki updates", len(results)),
+		"updates": results,
+	}, nil
+}
+
+// resolveAIConfig loads project-level AI config with org-level fallback
+// using the project's owning organization (not the caller's current org).
+func (s *Server) resolveAIConfig(ctx context.Context, projectID int64) (*aiconfig.AIConfig, error) {
+	cfg, err := s.clients.aiConfigSvc.ResolveForProject(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	if cfg == nil {
+		return nil, fmt.Errorf("no AI configuration found for project or organization")
+	}
+	return cfg, nil
+}
+
+// applyWikiCreate creates a new wiki page and syncs its content via Hocuspocus.
+func (s *Server) applyWikiCreate(ctx context.Context, projectID int64, u ai.WikiPageUpdate) (map[string]any, error) {
+	// Create the page
+	createResp, err := s.clients.wiki.CreateWikiPage(ctx, connect.NewRequest(&wikiv1.CreateWikiPageRequest{
+		ProjectId: projectID,
+		Title:     u.PageTitle,
+	}))
+	if err != nil {
+		return nil, fmt.Errorf("create wiki page: %w", err)
+	}
+
+	pageID := createResp.Msg.Page.Id
+
+	// Resolve [[links]] and convert markdown to HTML
+	resolvedContent, linkTargetIDs := s.resolveWikiLinks(ctx, projectID, u.Content)
+	html, err := markdownToHTML(resolvedContent)
+	if err != nil {
+		return nil, fmt.Errorf("convert markdown: %w", err)
+	}
+
+	// Send to Hocuspocus
+	if s.clients.hocuspocusURL != "" {
+		documentName := fmt.Sprintf("wiki-%s", pageID)
+		if err := s.sendToHocuspocus(documentName, html, "document-store"); err != nil {
+			slog.WarnContext(ctx, "hocuspocus update failed for new wiki page", slog.String("page_id", pageID), slog.String("error", err.Error()))
+		}
+	}
+
+	// Sync links (always call to clear stale links when all removed)
+	if _, err := s.clients.wiki.SyncLinks(ctx, connect.NewRequest(&wikiv1.SyncLinksRequest{
+		ProjectId:     projectID,
+		SourcePageId:  pageID,
+		TargetPageIds: linkTargetIDs,
+	})); err != nil {
+		slog.WarnContext(ctx, "sync links failed", slog.String("page_id", pageID), slog.String("error", err.Error()))
+	}
+
+	// Persist content_text
+	if _, err := s.clients.wiki.UpdateWikiPage(ctx, connect.NewRequest(&wikiv1.UpdateWikiPageRequest{
+		ProjectId:   projectID,
+		PageId:      pageID,
+		ContentText: u.Content,
+	})); err != nil {
+		slog.WarnContext(ctx, "persist content_text failed", slog.String("page_id", pageID), slog.String("error", err.Error()))
+	}
+
+	return map[string]any{
+		"action":  "create",
+		"page_id": pageID,
+		"title":   u.PageTitle,
+	}, nil
+}
+
+// applyWikiUpdate updates an existing wiki page's content via Hocuspocus.
+func (s *Server) applyWikiUpdate(ctx context.Context, projectID int64, u ai.WikiPageUpdate) (map[string]any, error) {
+	// Update title if provided
+	if u.PageTitle != "" {
+		if _, err := s.clients.wiki.UpdateWikiPage(ctx, connect.NewRequest(&wikiv1.UpdateWikiPageRequest{
+			ProjectId: projectID,
+			PageId:    u.PageID,
+			Title:     u.PageTitle,
+		})); err != nil {
+			return nil, fmt.Errorf("update wiki page title: %w", err)
+		}
+	}
+
+	// Resolve [[links]] and convert markdown to HTML
+	resolvedContent, linkTargetIDs := s.resolveWikiLinks(ctx, projectID, u.Content)
+	html, err := markdownToHTML(resolvedContent)
+	if err != nil {
+		return nil, fmt.Errorf("convert markdown: %w", err)
+	}
+
+	// Send to Hocuspocus
+	if s.clients.hocuspocusURL == "" {
+		return nil, fmt.Errorf("wiki content update requires hocuspocus")
+	}
+
+	documentName := fmt.Sprintf("wiki-%s", u.PageID)
+	if err := s.sendToHocuspocus(documentName, html, "document-store"); err != nil {
+		return nil, fmt.Errorf("hocuspocus update failed: %w", err)
+	}
+
+	// Sync links (always call to clear stale links when all removed)
+	if _, err := s.clients.wiki.SyncLinks(ctx, connect.NewRequest(&wikiv1.SyncLinksRequest{
+		ProjectId:     projectID,
+		SourcePageId:  u.PageID,
+		TargetPageIds: linkTargetIDs,
+	})); err != nil {
+		slog.WarnContext(ctx, "sync links failed", slog.String("page_id", u.PageID), slog.String("error", err.Error()))
+	}
+
+	// Persist content_text
+	if _, err := s.clients.wiki.UpdateWikiPage(ctx, connect.NewRequest(&wikiv1.UpdateWikiPageRequest{
+		ProjectId:   projectID,
+		PageId:      u.PageID,
+		ContentText: u.Content,
+	})); err != nil {
+		slog.WarnContext(ctx, "persist content_text failed", slog.String("page_id", u.PageID), slog.String("error", err.Error()))
+	}
+
+	return map[string]any{
+		"action":  "update",
+		"page_id": u.PageID,
+		"title":   u.PageTitle,
+	}, nil
 }

@@ -244,11 +244,15 @@ function stripWrappingParagraph(html: string): string {
 
 /**
  * Applies inline formatting (bold, italic, code) from simple HTML to Y.XmlText.
+ * Also handles wiki page links (<span class="wiki-page-link">).
  * For plain text without formatting, just inserts the text directly.
+ *
+ * Page links are inserted as Y.XmlElement("pageLink") siblings alongside text.
+ * The parent element must be passed so we can insert elements at the right position.
  */
 function applyInlineFormatting(xmlText: Y.XmlText, html: string): void {
-  // Simple case: no inline formatting tags
-  if (!/<(strong|em|code|b|i|u|s)[\s>]/i.test(html)) {
+  // Simple case: no inline formatting tags and no page links
+  if (!/<(strong|em|code|b|i|u|s|span)[\s>]/i.test(html)) {
     xmlText.insert(0, unescapeHtml(html));
     return;
   }
@@ -267,6 +271,53 @@ function applyInlineFormatting(xmlText: Y.XmlText, html: string): void {
     const text = unescapeHtml(seg.text);
     xmlText.insert(offset, text, attrs);
     offset += text.length;
+  }
+}
+
+/**
+ * Applies inline content including page links to a parent element.
+ * Page links become Y.XmlElement("pageLink") siblings of Y.XmlText nodes.
+ */
+export function applyInlineContentWithPageLinks(
+  parent: Y.XmlElement,
+  html: string,
+): void {
+  // Split on page-link spans
+  const pageLinkRegex = /<span[^>]*class="wiki-page-link"[^>]*data-page-id="([^"]*)"[^>]*data-page-title="([^"]*)"[^>]*>[\s\S]*?<\/span>/gi;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  const parts: Array<{ type: "text"; html: string } | { type: "pageLink"; pageId: string; pageTitle: string }> = [];
+
+  while ((match = pageLinkRegex.exec(html)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push({ type: "text", html: html.substring(lastIndex, match.index) });
+    }
+    parts.push({ type: "pageLink", pageId: match[1], pageTitle: match[2] });
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < html.length) {
+    parts.push({ type: "text", html: html.substring(lastIndex) });
+  }
+
+  // If no page links found, use standard text formatting
+  if (parts.length === 1 && parts[0].type === "text") {
+    const text = new Y.XmlText();
+    applyInlineFormatting(text, parts[0].html);
+    parent.insert(parent.length, [text]);
+    return;
+  }
+
+  for (const part of parts) {
+    if (part.type === "text") {
+      const text = new Y.XmlText();
+      applyInlineFormatting(text, part.html);
+      parent.insert(parent.length, [text]);
+    } else {
+      const el = new Y.XmlElement("pageLink");
+      el.setAttribute("pageId", part.pageId);
+      el.setAttribute("pageTitle", part.pageTitle);
+      parent.insert(parent.length, [el]);
+    }
   }
 }
 
@@ -371,18 +422,14 @@ export function htmlToBlockNoteFragment(
       const container = createBlockContainer();
       const el = new Y.XmlElement("heading");
       el.setAttribute("level", String(token.level));
-      const text = new Y.XmlText();
-      applyInlineFormatting(text, token.content);
-      el.insert(0, [text]);
+      applyInlineContentWithPageLinks(el, token.content);
       container.insert(0, [el]);
       blockGroup.insert(blockGroup.length, [container]);
       i++;
     } else if (token.type === "paragraph") {
       const container = createBlockContainer();
       const el = new Y.XmlElement("paragraph");
-      const text = new Y.XmlText();
-      applyInlineFormatting(text, token.content);
-      el.insert(0, [text]);
+      applyInlineContentWithPageLinks(el, token.content);
       container.insert(0, [el]);
       blockGroup.insert(blockGroup.length, [container]);
       i++;

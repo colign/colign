@@ -1,14 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useCreateBlockNote } from "@blocknote/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCreateBlockNote, SuggestionMenuController } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
+import {
+  BlockNoteSchema,
+  defaultInlineContentSpecs,
+  defaultStyleSpecs,
+  defaultBlockSpecs,
+} from "@blocknote/core";
 import type { PartialBlock } from "@blocknote/core";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
 import { wikiClient } from "@/lib/wiki";
 import { getAccessToken, getTokenPayload } from "@/lib/auth";
+import { PageLink } from "./extensions/page-link";
 import "@blocknote/shadcn/style.css";
+
+const wikiSchema = BlockNoteSchema.create({
+  blockSpecs: defaultBlockSpecs,
+  inlineContentSpecs: {
+    ...defaultInlineContentSpecs,
+    pageLink: PageLink,
+  },
+  styleSpecs: defaultStyleSpecs,
+});
 
 interface WikiEditorProps {
   projectId: bigint;
@@ -97,6 +113,7 @@ function CollaborativeEditor({
   const userName = normalizeCollaboratorName(payload?.name);
 
   const editor = useCreateBlockNote({
+    schema: wikiSchema,
     collaboration: {
       provider: getCollaborationProvider(provider),
       fragment: doc.getXmlFragment("document-store"),
@@ -118,6 +135,29 @@ function CollaborativeEditor({
     },
   });
 
+  // Cache page list for [[ suggestion menu
+  const [wikiPages, setWikiPages] = useState<
+    Array<{ id: string; title: string; icon: string }>
+  >([]);
+  const pagesFetchedRef = useRef(false);
+
+  useEffect(() => {
+    if (pagesFetchedRef.current) return;
+    pagesFetchedRef.current = true;
+    wikiClient
+      .listWikiPages({ projectId })
+      .then((res) => {
+        setWikiPages(
+          res.pages.map((p) => ({
+            id: p.id,
+            title: p.title || "Untitled",
+            icon: p.icon || "",
+          })),
+        );
+      })
+      .catch(() => {});
+  }, [projectId]);
+
   // Seed editor from initialContent when Yjs doc is empty (no yjs_state on server)
   useEffect(() => {
     if (seededRef.current || !initialContent || initialContent.length === 0) return;
@@ -130,8 +170,14 @@ function CollaborativeEditor({
       // Seed when fragment is empty OR when the editor document has no meaningful content
       // (BlockNote may write a default empty paragraph before sync completes)
       const isDocEmpty = fragment.length === 0 || editor.document.every(
-        (block) => !block.content || block.content.length === 0 ||
-          block.content.every((inline) => inline.type !== "text" || !(inline as { text?: string }).text?.trim()),
+        (block) => {
+          const content = block.content;
+          if (!content || !Array.isArray(content)) return true;
+          return content.length === 0 ||
+            content.every((inline: { type?: string; text?: string }) =>
+              inline.type !== "text" || !inline.text?.trim(),
+            );
+        },
       );
       if (isDocEmpty) {
         try {
@@ -178,6 +224,31 @@ function CollaborativeEditor({
       theme="dark"
       onChange={handleChange}
       className="wiki-blocknote-editor"
-    />
+    >
+      <SuggestionMenuController
+        triggerCharacter="[["
+        getItems={async (query) => {
+          return wikiPages
+            .filter((p) => p.id !== pageId)
+            .filter(
+              (p) =>
+                !query ||
+                p.title.toLowerCase().includes(query.toLowerCase()),
+            )
+            .map((p) => ({
+              title: `${p.icon ? p.icon + " " : ""}${p.title}`,
+              onItemClick: () => {
+                editor.insertInlineContent([
+                  {
+                    type: "pageLink",
+                    props: { pageId: p.id, pageTitle: p.title },
+                  },
+                  " ",
+                ]);
+              },
+            }));
+        }}
+      />
+    </BlockNoteView>
   );
 }

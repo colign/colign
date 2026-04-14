@@ -89,6 +89,34 @@ message ReorderWikiPagesRequest {
 
 message ReorderWikiPagesResponse {}
 
+// Links
+
+message WikiPageLink {
+  string source_page_id = 1;
+  string target_page_id = 2;
+  string target_page_title = 3;
+  string target_page_icon = 4;
+  string source_page_title = 5;
+  string source_page_icon = 6;
+}
+
+message GetBacklinksRequest {
+  int64 project_id = 1;
+  string page_id = 2;
+}
+
+message GetBacklinksResponse {
+  repeated WikiPageLink links = 1;
+}
+
+message SyncLinksRequest {
+  int64 project_id = 1;
+  string source_page_id = 2;
+  repeated string target_page_ids = 3;
+}
+
+message SyncLinksResponse {}
+
 // Images
 
 message UploadWikiImageRequest {
@@ -124,4 +152,6 @@ service WikiService {
   rpc ReorderWikiPages(ReorderWikiPagesRequest) returns (ReorderWikiPagesResponse) {}
   rpc UploadWikiImage(UploadWikiImageRequest) returns (UploadWikiImageResponse) {}
   rpc GetWikiImage(GetWikiImageRequest) returns (GetWikiImageResponse) {}
+  rpc GetBacklinks(GetBacklinksRequest) returns (GetBacklinksResponse) {}
+  rpc SyncLinks(SyncLinksRequest) returns (SyncLinksResponse) {}
 }

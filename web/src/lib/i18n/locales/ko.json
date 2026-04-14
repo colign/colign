@@ -114,6 +114,7 @@
     "wikiDeleted": "페이지가 삭제되었습니다",
     "wikiRestored": "페이지가 복원되었습니다",
     "wikiAddSubpage": "하위 페이지 추가",
+    "wikiBacklinks": "링크된 페이지",
     "addFirstMemory": "프로젝트 메모리 작성 시작",
     "noMemories": "프로젝트 메모리가 없습니다",
     "properties": "속성",

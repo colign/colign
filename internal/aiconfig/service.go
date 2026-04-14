@@ -210,3 +210,44 @@ func (s *Service) DeleteOrg(ctx context.Context, orgID int64) error {
 func (s *Service) DecryptOrgAPIKey(cfg *OrgAIConfig) (string, error) {
 	return Decrypt(cfg.APIKeyEncrypted, s.encryptionKey)
 }
+
+// ResolveForProject returns the AI config for a project, falling back to the
+// owning organization's config if no project-level config exists.
+func (s *Service) ResolveForProject(ctx context.Context, projectID int64) (*AIConfig, error) {
+	cfg, err := s.GetByProjectID(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	if cfg != nil {
+		return cfg, nil
+	}
+
+	// Lookup the project's organization
+	var orgID int64
+	err = s.db.NewSelect().
+		TableExpr("projects").
+		ColumnExpr("organization_id").
+		Where("id = ?", projectID).
+		Scan(ctx, &orgID)
+	if err != nil {
+		return nil, err
+	}
+
+	orgCfg, err := s.GetByOrgID(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+	if orgCfg == nil {
+		return nil, nil
+	}
+
+	return &AIConfig{
+		ID:              orgCfg.ID,
+		Provider:        orgCfg.Provider,
+		Model:           orgCfg.Model,
+		APIKeyEncrypted: orgCfg.APIKeyEncrypted,
+		KeyVersion:      orgCfg.KeyVersion,
+		CreatedAt:       orgCfg.CreatedAt,
+		UpdatedAt:       orgCfg.UpdatedAt,
+	}, nil
+}

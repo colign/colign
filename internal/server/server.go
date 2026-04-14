@@ -248,6 +248,18 @@ func (s *Server) setupRoutes(cfg *config.Config) error {
 	activityHandler := ai.NewActivityHandler(s.db, s.jwtManager, apiTokenService)
 	s.mux.HandleFunc("GET /api/changes/activities", activityHandler.HandleGetActivities)
 
+	// Wiki auto-update consumer (AI-driven wiki updates on change approval)
+	wikiAutoUpdate := wiki.NewAutoUpdateConsumer(wiki.AutoUpdateConsumerConfig{
+		DB:              s.db,
+		WikiSvc:         wikiService,
+		AISvc:           aiService,
+		AIConfigSvc:     aiConfigService,
+		Hub:             s.EventHub,
+		HocuspocusURL:   cfg.HocuspocusURL,
+		HocuspocusToken: cfg.HocuspocusAPISecret,
+	})
+	wikiAutoUpdate.Start(context.Background())
+
 	// Public OG metadata endpoint (no auth required)
 	s.mux.HandleFunc("GET /api/og/projects/{slug}/changes/{changeId}", func(w http.ResponseWriter, r *http.Request) {
 		slug := r.PathValue("slug")
@@ -294,6 +306,7 @@ func (s *Server) setupRoutes(cfg *config.Config) error {
 		mcpOpts = append(mcpOpts, mcpserver.WithHocuspocus(cfg.HocuspocusURL, cfg.HocuspocusAPISecret))
 	}
 	mcpOpts = append(mcpOpts, mcpserver.WithEventHub(s.EventHub))
+	mcpOpts = append(mcpOpts, mcpserver.WithAI(aiService, aiConfigService))
 	mcpHandler := mcpserver.NewStreamableHandlerWithAuth(apiURL, mcpOpts...)
 
 	if cfg.Edition == "ee" {

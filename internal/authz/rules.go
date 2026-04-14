@@ -77,6 +77,8 @@ var rpcRules = map[string]AuthRule{
 	"/wiki.v1.WikiService/ReorderWikiPages": {Resource: "wiki", Action: "update"},
 	"/wiki.v1.WikiService/UploadWikiImage": {Resource: "wiki", Action: "create"},
 	"/wiki.v1.WikiService/GetWikiImage":    {Resource: "wiki", Action: "read"},
+	"/wiki.v1.WikiService/GetBacklinks":    {Resource: "wiki", Action: "read"},
+	"/wiki.v1.WikiService/SyncLinks":       {Resource: "wiki", Action: "update"},
 }
 
 // skipRPCs lists RPC procedures that bypass RBAC enforcement entirely.

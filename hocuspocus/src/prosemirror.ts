@@ -71,6 +71,19 @@ function proseMirrorNodeToYNode(node: PMNode): Y.XmlElement | Y.XmlText | null {
     return new Y.XmlElement("horizontalRule");
   }
 
+  // PageLink is an atomic inline content node
+  if (node.type === "pageLink") {
+    const el = new Y.XmlElement("pageLink");
+    if (node.attrs) {
+      for (const [key, value] of Object.entries(node.attrs)) {
+        if (value !== undefined && value !== null) {
+          el.setAttribute(key, String(value));
+        }
+      }
+    }
+    return el;
+  }
+
   const element = new Y.XmlElement(proseMirrorTypeToYNode(node.type));
   for (const [key, value] of Object.entries(node.attrs ?? {})) {
     if (value !== undefined && value !== null) {
@@ -91,6 +104,12 @@ function proseMirrorNodeToYNode(node: PMNode): Y.XmlElement | Y.XmlText | null {
 function yNodeToProseMirror(node: Y.XmlElement | Y.XmlText): PMNode | PMNode[] | null {
   if (node instanceof Y.XmlText) {
     return yTextToProseMirror(node);
+  }
+
+  // PageLink is an atomic inline content node
+  if (node.nodeName === "pageLink") {
+    const attrs = node.getAttributes();
+    return { type: "pageLink", attrs };
   }
 
   const type = yNodeToProseMirrorType(node.nodeName);

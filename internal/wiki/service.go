@@ -273,3 +273,60 @@ func (s *Service) GetImage(ctx context.Context, imageID int64) (*models.WikiImag
 	}
 	return img, nil
 }
+
+// SyncLinks replaces the set of outgoing links from a source page with the
+// given target page IDs. The operation is atomic.
+func (s *Service) SyncLinks(ctx context.Context, projectID int64, sourcePageID uuid.UUID, targetPageIDs []uuid.UUID) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// Delete existing outgoing links from this source page.
+	if _, err := tx.NewDelete().
+		Model((*models.WikiPageLink)(nil)).
+		Where("source_page_id = ?", sourcePageID).
+		Where("project_id = ?", projectID).
+		Exec(ctx); err != nil {
+		return err
+	}
+
+	// Insert new links.
+	if len(targetPageIDs) > 0 {
+		links := make([]*models.WikiPageLink, 0, len(targetPageIDs))
+		for _, tid := range targetPageIDs {
+			links = append(links, &models.WikiPageLink{
+				SourcePageID: sourcePageID,
+				TargetPageID: tid,
+				ProjectID:    projectID,
+			})
+		}
+		if _, err := tx.NewInsert().
+			Model(&links).
+			On("CONFLICT (source_page_id, target_page_id) DO NOTHING").
+			Exec(ctx); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+// GetBacklinks returns all pages that link to the given page, along with the
+// source page title and icon.
+func (s *Service) GetBacklinks(ctx context.Context, projectID int64, pageID uuid.UUID) ([]*models.WikiPageLink, error) {
+	var links []*models.WikiPageLink
+	err := s.db.NewSelect().
+		Model(&links).
+		Relation("SourcePage", func(q *bun.SelectQuery) *bun.SelectQuery {
+			return q.Column("id", "title", "icon")
+		}).
+		Where("wpl.target_page_id = ?", pageID).
+		Where("wpl.project_id = ?", projectID).
+		Scan(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return links, nil
+}

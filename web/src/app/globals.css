@@ -258,6 +258,21 @@ html.desktop-app .desktop-drag-region {
   border-bottom-color: rgba(250, 204, 21, 0.8);
 }
 
+/* Wiki page link */
+.wiki-page-link {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.wiki-page-link:hover {
+  color: var(--color-primary);
+  text-decoration-style: solid;
+}
+
 .scrollbar-subtle {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;

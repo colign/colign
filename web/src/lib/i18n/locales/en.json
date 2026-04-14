@@ -114,6 +114,7 @@
     "wikiDeleted": "Page deleted",
     "wikiRestored": "Page restored",
     "wikiAddSubpage": "Add subpage",
+    "wikiBacklinks": "Linked from",
     "addFirstMemory": "Start writing project memory",
     "noMemories": "No project memory yet",
     "properties": "Properties",
