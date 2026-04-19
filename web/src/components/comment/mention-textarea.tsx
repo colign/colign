@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { marked } from "marked";
+import DOMPurify from "isomorphic-dompurify";
 import { cn } from "@/lib/utils";
 
 export interface MentionMember {
@@ -149,6 +151,89 @@ export function renderMentionBody(body: string, members: MentionMember[]): React
   }
 
   return parts.length > 0 ? parts : body;
+}
+
+const MENTION_CHIP_CLASS =
+  "comment-mention inline-flex items-center rounded-full border border-sky-400/30 bg-sky-500/12 px-2 py-0.5 align-baseline text-xs font-medium text-sky-200";
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+const MENTION_HANDLE_REGEX = /(^|\s)@([a-zA-Z0-9._-]+)/g;
+
+// Protected HTML segments where mentions must NOT be substituted:
+// fenced code, inline code, anchors (to avoid rewriting inside URLs), any
+// individual tag, and HTML entities. Anything between protected matches is
+// raw text that can be safely scanned for @mentions.
+const PROTECTED_HTML_REGEX =
+  /<pre\b[^>]*>[\s\S]*?<\/pre>|<code\b[^>]*>[\s\S]*?<\/code>|<a\b[^>]*>[\s\S]*?<\/a>|<[^>]+>|&[a-zA-Z#0-9]+;/gi;
+
+function replaceMentionsInTextSegment(
+  segment: string,
+  handleToMember: Map<string, MentionMember>,
+): string {
+  if (!segment || handleToMember.size === 0) return segment;
+  return segment.replace(MENTION_HANDLE_REGEX, (_full, prefix: string, handle: string) => {
+    const member = handleToMember.get(handle.toLowerCase());
+    if (!member) return `${prefix}@${handle}`;
+    return `${prefix}<span class="${MENTION_CHIP_CLASS}" title="@${escapeHtml(handle)}">@${escapeHtml(member.userName)}</span>`;
+  });
+}
+
+/** Apply mention chip substitution to parsed HTML, skipping code/anchors/tags. */
+function applyMentionsToHtml(html: string, handleToMember: Map<string, MentionMember>): string {
+  if (handleToMember.size === 0) return html;
+
+  let result = "";
+  let lastIdx = 0;
+  const regex = new RegExp(PROTECTED_HTML_REGEX.source, PROTECTED_HTML_REGEX.flags);
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(html)) !== null) {
+    result += replaceMentionsInTextSegment(html.slice(lastIdx, match.index), handleToMember);
+    result += match[0];
+    lastIdx = match.index + match[0].length;
+  }
+  result += replaceMentionsInTextSegment(html.slice(lastIdx), handleToMember);
+  return result;
+}
+
+/**
+ * Render a comment body as sanitized HTML with Markdown support and @mention chips.
+ * Used for read-only display. Returns a string suitable for dangerouslySetInnerHTML.
+ */
+export function renderCommentHtml(body: string, members: MentionMember[]): string {
+  if (!body) return "";
+
+  const handleToMember = new Map<string, MentionMember>();
+  const handleMap = buildMentionHandleMap(members);
+  for (const member of members) {
+    const handle = (handleMap.get(member.userId) ?? getHandleBase(member)).toLowerCase();
+    if (handle && !handleToMember.has(handle)) {
+      handleToMember.set(handle, member);
+    }
+  }
+
+  const rawHtml = marked.parse(body, {
+    async: false,
+    gfm: true,
+    breaks: true,
+  }) as string;
+
+  // Substitute mentions AFTER markdown parsing so fenced/inline code blocks
+  // render as-is and anchor hrefs containing "@" are never rewritten.
+  const withMentions = applyMentionsToHtml(rawHtml, handleToMember);
+
+  return DOMPurify.sanitize(withMentions, {
+    ADD_ATTR: ["class", "title", "target", "rel"],
+    // Forbid <img> to prevent attacker-controlled remote fetches from comment bodies.
+    FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "img"],
+  });
 }
 
 /**

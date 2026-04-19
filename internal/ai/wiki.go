@@ -23,12 +23,12 @@ type WikiPageUpdate struct {
 
 // WikiUpdateInput contains the context needed for wiki auto-update.
 type WikiUpdateInput struct {
-	ChangeName   string
-	Proposal     string // JSON: {problem, scope, outOfScope}
-	Spec         string // markdown
-	Tasks        string // summary of tasks with statuses
-	Acceptance   string // BDD scenarios
-	Comments     string // key discussions
+	ChangeName    string
+	Proposal      string   // JSON: {problem, scope, outOfScope}
+	Spec          string   // markdown
+	Tasks         string   // summary of tasks with statuses
+	Acceptance    string   // BDD scenarios
+	Comments      string   // key discussions
 	ExistingPages []string // titles of existing wiki pages
 }
 

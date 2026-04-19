@@ -308,6 +308,8 @@
     "showPanel": "코멘트 보기",
     "showOlder": "이전 댓글 {count}개 보기",
     "hideOlder": "이전 댓글 접기",
+    "showMore": "더보기",
+    "showLess": "접기",
     "edit": "수정",
     "editPlaceholder": "코멘트를 수정하세요...",
     "save": "저장",

@@ -56,8 +56,8 @@ func (s *LogSender) SendInvitationEmail(to string, params InviteParams) error {
 
 // ResendSender sends emails via the Resend API.
 type ResendSender struct {
-	client *resend.Client
-	from   string
+	client  *resend.Client
+	from    string
 	baseURL string
 }
 

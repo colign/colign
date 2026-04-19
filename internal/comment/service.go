@@ -16,11 +16,11 @@ import (
 )
 
 var (
-	ErrCommentNotFound  = errors.New("comment not found")
-	ErrNotAuthorized    = errors.New("not authorized")
-	ErrCommentResolved  = errors.New("cannot edit a resolved comment")
-	ErrBodyEmpty        = errors.New("body must not be empty")
-	ErrBodyTooLong      = errors.New("body too long")
+	ErrCommentNotFound = errors.New("comment not found")
+	ErrNotAuthorized   = errors.New("not authorized")
+	ErrCommentResolved = errors.New("cannot edit a resolved comment")
+	ErrBodyEmpty       = errors.New("body must not be empty")
+	ErrBodyTooLong     = errors.New("body too long")
 )
 
 type Service struct {

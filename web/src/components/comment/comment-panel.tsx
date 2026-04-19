@@ -6,7 +6,7 @@ import { useI18n } from "@/lib/i18n";
 import { commentClient } from "@/lib/comment";
 import { MessageSquare, Check, Trash2, ChevronDown, ChevronUp, Send, Pencil } from "lucide-react";
 import { showError } from "@/lib/toast";
-import { MentionTextarea, renderMentionBody, type MentionMember } from "./mention-textarea";
+import { MentionTextarea, renderCommentHtml, type MentionMember } from "./mention-textarea";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface CommentData {
@@ -256,70 +256,72 @@ export function CommentPanel({
                       onCancel={() => setEditingId(null)}
                     />
                   ) : (
-                    <p className="mt-1.5 text-sm">{renderMentionBody(comment.body, members)}</p>
+                    <CollapsibleBody className="mt-1.5" clampLines={6}>
+                      <MarkdownBody body={comment.body} members={members} size="sm" />
+                    </CollapsibleBody>
                   )}
 
                   {/* Actions */}
                   {editingId !== id && (
-                  <div className="mt-2 flex items-center gap-1">
-                    {!comment.resolved && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleResolve(comment.id)}
-                        className="h-6 cursor-pointer gap-1 px-1.5 text-[10px] text-muted-foreground"
-                      >
-                        <Check className="size-3" />
-                        {t("comments.resolve")}
-                      </Button>
-                    )}
-                    {!comment.resolved && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleReplyComposer(id)}
-                        className="h-6 cursor-pointer gap-1 px-1.5 text-[10px] text-muted-foreground"
-                      >
-                        {t("comments.reply")}
-                      </Button>
-                    )}
-                    {isOwner && !comment.resolved && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditingId(id)}
-                        className="h-6 cursor-pointer gap-1 px-1.5 text-[10px] text-muted-foreground"
-                      >
-                        <Pencil className="size-3" />
-                        {t("comments.edit")}
-                      </Button>
-                    )}
-                    {isOwner && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(comment.id)}
-                        className="h-6 cursor-pointer px-1.5 text-[10px] text-destructive"
-                      >
-                        <Trash2 className="size-3" />
-                      </Button>
-                    )}
+                    <div className="mt-2 flex items-center gap-1">
+                      {!comment.resolved && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleResolve(comment.id)}
+                          className="h-6 cursor-pointer gap-1 px-1.5 text-[10px] text-muted-foreground"
+                        >
+                          <Check className="size-3" />
+                          {t("comments.resolve")}
+                        </Button>
+                      )}
+                      {!comment.resolved && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleReplyComposer(id)}
+                          className="h-6 cursor-pointer gap-1 px-1.5 text-[10px] text-muted-foreground"
+                        >
+                          {t("comments.reply")}
+                        </Button>
+                      )}
+                      {isOwner && !comment.resolved && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingId(id)}
+                          className="h-6 cursor-pointer gap-1 px-1.5 text-[10px] text-muted-foreground"
+                        >
+                          <Pencil className="size-3" />
+                          {t("comments.edit")}
+                        </Button>
+                      )}
+                      {isOwner && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(comment.id)}
+                          className="h-6 cursor-pointer px-1.5 text-[10px] text-destructive"
+                        >
+                          <Trash2 className="size-3" />
+                        </Button>
+                      )}
 
-                    {/* Thread toggle */}
-                    {comment.replies.length > 0 && (
-                      <button
-                        onClick={() => toggleThread(id)}
-                        className="ml-auto flex cursor-pointer items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
-                      >
-                        {comment.replies.length} {t("comments.reply").toLowerCase()}
-                        {isExpanded ? (
-                          <ChevronUp className="size-3" />
-                        ) : (
-                          <ChevronDown className="size-3" />
-                        )}
-                      </button>
-                    )}
-                  </div>
+                      {/* Thread toggle */}
+                      {comment.replies.length > 0 && (
+                        <button
+                          onClick={() => toggleThread(id)}
+                          className="ml-auto flex cursor-pointer items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+                        >
+                          {comment.replies.length} {t("comments.reply").toLowerCase()}
+                          {isExpanded ? (
+                            <ChevronUp className="size-3" />
+                          ) : (
+                            <ChevronDown className="size-3" />
+                          )}
+                        </button>
+                      )}
+                    </div>
                   )}
 
                   {/* Replies */}
@@ -341,7 +343,9 @@ export function CommentPanel({
                               {timeAgo(reply.createdAt)}
                             </span>
                           </div>
-                          <p className="ml-7 text-xs">{renderMentionBody(reply.body, members)}</p>
+                          <CollapsibleBody className="ml-7" clampLines={4}>
+                            <MarkdownBody body={reply.body} members={members} size="xs" />
+                          </CollapsibleBody>
                         </div>
                       ))}
                     </div>
@@ -380,6 +384,101 @@ export function CommentPanel({
     </div>
   );
 }
+
+/** Clamps long comment bodies and reveals a show more/less toggle when overflowing. */
+function CollapsibleBody({
+  children,
+  className,
+  clampLines = 6,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  clampLines?: number;
+}) {
+  const { t } = useI18n();
+  const [expanded, setExpanded] = useState(false);
+  const [isOverflow, setIsOverflow] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (expanded) return;
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setIsOverflow(el.scrollHeight > el.clientHeight + 1);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [expanded, clampLines, children]);
+
+  const clampStyle: React.CSSProperties = expanded
+    ? {}
+    : {
+        display: "-webkit-box",
+        WebkitBoxOrient: "vertical",
+        WebkitLineClamp: clampLines,
+        overflow: "hidden",
+      };
+
+  const showToggle = isOverflow || expanded;
+
+  return (
+    <div className={className}>
+      <div ref={ref} style={clampStyle}>
+        {children}
+      </div>
+      {showToggle && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-1 cursor-pointer text-[11px] text-muted-foreground hover:text-foreground"
+        >
+          {expanded ? t("comments.showLess") : t("comments.showMore")}
+        </button>
+      )}
+    </div>
+  );
+}
+
+const MARKDOWN_BASE_CLASS =
+  "break-words [&_p]:my-1 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0" +
+  " [&_h1]:mt-2 [&_h1]:mb-1 [&_h1]:text-base [&_h1]:font-semibold" +
+  " [&_h2]:mt-2 [&_h2]:mb-1 [&_h2]:text-sm [&_h2]:font-semibold" +
+  " [&_h3]:mt-1.5 [&_h3]:mb-1 [&_h3]:text-sm [&_h3]:font-semibold" +
+  " [&_h4]:mt-1.5 [&_h4]:mb-1 [&_h4]:font-semibold" +
+  " [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5" +
+  " [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5" +
+  " [&_li]:my-0.5" +
+  " [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.85em]" +
+  " [&_pre]:my-1.5 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-muted/70 [&_pre]:p-2" +
+  " [&_pre_code]:bg-transparent [&_pre_code]:p-0" +
+  " [&_strong]:font-semibold [&_em]:italic" +
+  " [&_a]:text-sky-400 [&_a]:underline hover:[&_a]:text-sky-300" +
+  " [&_blockquote]:my-1.5 [&_blockquote]:border-l-2 [&_blockquote]:border-border/60 [&_blockquote]:pl-2 [&_blockquote]:text-muted-foreground" +
+  " [&_hr]:my-2 [&_hr]:border-border/40" +
+  " [&_table]:my-1.5 [&_table]:border-collapse" +
+  " [&_th]:border [&_th]:border-border/50 [&_th]:px-2 [&_th]:py-1 [&_th]:text-left" +
+  " [&_td]:border [&_td]:border-border/50 [&_td]:px-2 [&_td]:py-1";
+
+/** Sanitized markdown renderer with inline @mention chips. */
+const MarkdownBody = memo(function MarkdownBody({
+  body,
+  members,
+  size,
+}: {
+  body: string;
+  members: MentionMember[];
+  size: "sm" | "xs";
+}) {
+  const html = renderCommentHtml(body, members);
+  const sizeClass = size === "xs" ? "text-xs" : "text-sm";
+  return (
+    <div
+      className={`${sizeClass} ${MARKDOWN_BASE_CLASS}`}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+});
 
 /** Isolated edit composer — typing here does not re-render the comment list. */
 const EditComposer = memo(function EditComposer({

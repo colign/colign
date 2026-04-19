@@ -511,6 +511,39 @@ func init() {
 			return s.handleCreateComment(ctx, args)
 		},
 	})
+	RegisterTool(Tool{
+		Name:        "update_comment",
+		Description: "Edit an existing comment's content. Only the comment author can edit; resolved comments cannot be edited.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]Property{
+				"comment_id": {Type: "integer", Description: "Comment ID"},
+				"project_id": {Type: "integer", Description: "Project ID"},
+				"content":    {Type: "string", Description: "New comment text"},
+			},
+			Required: []string{"comment_id", "project_id", "content"},
+		},
+		ReadOnly: false,
+		Handler: func(s *Server, ctx context.Context, args json.RawMessage) (any, error) {
+			return s.handleUpdateComment(ctx, args)
+		},
+	})
+	RegisterTool(Tool{
+		Name:        "delete_comment",
+		Description: "Delete a comment. Only the comment author can delete.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]Property{
+				"comment_id": {Type: "integer", Description: "Comment ID"},
+				"project_id": {Type: "integer", Description: "Project ID"},
+			},
+			Required: []string{"comment_id", "project_id"},
+		},
+		ReadOnly: false,
+		Handler: func(s *Server, ctx context.Context, args json.RawMessage) (any, error) {
+			return s.handleDeleteComment(ctx, args)
+		},
+	})
 
 	// ── memory ───────────────────────────────────────────────────────
 	RegisterTool(Tool{
@@ -1237,8 +1270,8 @@ func (s *Server) handleLinkACToTest(ctx context.Context, args json.RawMessage) (
 func (s *Server) handleUpdateProject(ctx context.Context, args json.RawMessage) (any, error) {
 	var params struct {
 		ProjectID   FlexInt64 `json:"project_id"`
-		Name        string `json:"name"`
-		Description string `json:"description"`
+		Name        string    `json:"name"`
+		Description string    `json:"description"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return nil, fmt.Errorf("invalid arguments: %w", err)
@@ -1416,6 +1449,55 @@ func (s *Server) handleCreateComment(ctx context.Context, args json.RawMessage) 
 		"id":      c.Id,
 		"content": c.Body,
 		"created": true,
+	}, nil
+}
+
+func (s *Server) handleUpdateComment(ctx context.Context, args json.RawMessage) (any, error) {
+	var params struct {
+		CommentID FlexInt64 `json:"comment_id"`
+		ProjectID FlexInt64 `json:"project_id"`
+		Content   string    `json:"content"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return nil, fmt.Errorf("invalid arguments: %w", err)
+	}
+
+	resp, err := s.clients.comment.EditComment(ctx, connect.NewRequest(&commentv1.EditCommentRequest{
+		CommentId: params.CommentID.Int64(),
+		Body:      params.Content,
+		ProjectId: params.ProjectID.Int64(),
+	}))
+	if err != nil {
+		return nil, err
+	}
+
+	c := resp.Msg.Comment
+	return map[string]any{
+		"id":      c.Id,
+		"content": c.Body,
+		"updated": true,
+	}, nil
+}
+
+func (s *Server) handleDeleteComment(ctx context.Context, args json.RawMessage) (any, error) {
+	var params struct {
+		CommentID FlexInt64 `json:"comment_id"`
+		ProjectID FlexInt64 `json:"project_id"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return nil, fmt.Errorf("invalid arguments: %w", err)
+	}
+
+	if _, err := s.clients.comment.DeleteComment(ctx, connect.NewRequest(&commentv1.DeleteCommentRequest{
+		CommentId: params.CommentID.Int64(),
+		ProjectId: params.ProjectID.Int64(),
+	})); err != nil {
+		return nil, err
+	}
+
+	return map[string]any{
+		"comment_id": params.CommentID.Int64(),
+		"deleted":    true,
 	}, nil
 }
 
