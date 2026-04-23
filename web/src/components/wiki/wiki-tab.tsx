@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import { wikiClient } from "@/lib/wiki";
 import { showError, showSuccess } from "@/lib/toast";
 import { useI18n } from "@/lib/i18n";
@@ -41,7 +42,10 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { WikiEditor } from "@/components/wiki/wiki-editor";
+const WikiEditor = dynamic(
+  () => import("@/components/wiki/wiki-editor").then((m) => m.WikiEditor),
+  { ssr: false },
+);
 import type { WikiPage } from "@/gen/proto/wiki/v1/wiki_pb";
 
 interface TreeNode {
@@ -90,11 +94,18 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<WikiPage | null>(null);
   const lastPageParamRef = useRef<string | null>(null);
+  const pageCacheRef = useRef<Map<string, WikiPage>>(new Map());
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor),
   );
+
+  // Preload WikiEditor chunk as soon as wiki tab mounts
+  // so it's ready when user clicks a page
+  useEffect(() => {
+    import("@/components/wiki/wiki-editor");
+  }, []);
 
   const loadPages = useCallback(async () => {
     try {
@@ -242,6 +253,10 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
     }
   };
 
+  const handlePageLoaded = useCallback((page: WikiPage) => {
+    pageCacheRef.current.set(page.id, page);
+  }, []);
+
   const tree = buildTree(pages);
 
   if (loading) {
@@ -306,9 +321,10 @@ export function WikiTab({ projectId }: { projectId: bigint }) {
         <div className="min-w-0 flex-1 pl-4">
           {selectedPageId ? (
             <WikiPageContent
-              key={selectedPageId}
               projectId={projectId}
               pageId={selectedPageId}
+              pageCache={pageCacheRef}
+              onPageLoaded={handlePageLoaded}
               onTitleChange={(pageId, title) => {
                 setPages((prev) =>
                   prev.map((p) => (p.id === pageId ? { ...p, title } as WikiPage : p)),
@@ -581,39 +597,63 @@ function TreeItemMenu({
 function WikiPageContent({
   projectId,
   pageId,
+  pageCache,
+  onPageLoaded,
   onTitleChange,
 }: {
   projectId: bigint;
   pageId: string;
+  pageCache: React.RefObject<Map<string, WikiPage>>;
+  onPageLoaded: (page: WikiPage) => void;
   onTitleChange: (pageId: string, title: string) => void;
 }) {
   const { t } = useI18n();
-  const [page, setPage] = useState<WikiPage | null>(null);
-  const [titleLoading, setTitleLoading] = useState(true);
+  const [prevPageId, setPrevPageId] = useState(pageId);
+  const [fetchedPage, setFetchedPage] = useState<WikiPage | null>(null);
   const [title, setTitle] = useState("");
+  const [editorReady, setEditorReady] = useState(false);
 
+  // Handle page switch during render — no unmount, instant state reset
+  const cachedPage = pageCache.current?.get(pageId);
+  if (pageId !== prevPageId) {
+    setPrevPageId(pageId);
+    setFetchedPage(null);
+    setEditorReady(false);
+    setTitle(cachedPage ? normalizeWikiText(cachedPage.title) : "");
+  }
+
+  // Derive current page: fresh fetch > cache > null
+  const page = (fetchedPage?.id === pageId ? fetchedPage : null) ?? cachedPage ?? null;
+  const titleLoading = !page;
+
+  // Fetch fresh data on page change
   useEffect(() => {
     let cancelled = false;
-    setTitleLoading(true);
     wikiClient
       .getWikiPage({ projectId, pageId })
       .then((res) => {
-        if (!cancelled) {
-          setPage(res.page!);
-          setTitle(normalizeWikiText(res.page?.title));
-          setTitleLoading(false);
+        if (!cancelled && res.page) {
+          setFetchedPage(res.page);
+          setTitle(normalizeWikiText(res.page.title));
+          onPageLoaded(res.page);
         }
       })
       .catch((err) => {
-        if (!cancelled) {
-          showError(t("toast.loadFailed"), err);
-          setTitleLoading(false);
-        }
+        if (!cancelled) showError(t("toast.loadFailed"), err);
       });
     return () => {
       cancelled = true;
     };
-  }, [projectId, pageId, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, pageId]);
+
+  // Sync title from cache on initial mount
+  useEffect(() => {
+    if (cachedPage && !title) {
+      setTitle(normalizeWikiText(cachedPage.title));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleTitleBlur = async () => {
     if (!page || title === page.title) return;
@@ -656,16 +696,20 @@ function WikiPageContent({
     [pageId, projectId, t],
   );
 
-  const initialBlocks = page?.contentJson
-    ? (() => {
-        try {
-          const parsed = JSON.parse(page.contentJson);
-          return Array.isArray(parsed) ? parsed : undefined;
-        } catch {
-          return undefined;
-        }
-      })()
-    : undefined;
+  const initialBlocks = useMemo(() => {
+    if (!page?.contentJson) return undefined;
+    try {
+      const parsed = JSON.parse(page.contentJson);
+      if (Array.isArray(parsed)) return parsed;
+      // Handle ProseMirror doc wrapper: { type: "doc", content: [...] }
+      if (parsed && typeof parsed === "object" && Array.isArray(parsed.content)) {
+        return parsed.content;
+      }
+      return undefined;
+    } catch {
+      return undefined;
+    }
+  }, [page?.contentJson]);
 
   return (
     <div className="min-w-0">
@@ -685,13 +729,21 @@ function WikiPageContent({
       )}
       {page ? (
         <>
-          <WikiEditor
-            key={pageId}
-            projectId={projectId}
-            pageId={pageId}
-            initialContent={initialBlocks}
-            onContentChange={handleContentChange}
-          />
+          {/* Lightweight static preview — no BlockNote, renders instantly */}
+          {!editorReady && initialBlocks && initialBlocks.length > 0 && (
+            <StaticContentPreview blocks={initialBlocks} />
+          )}
+          {/* Collaborative editor — lazy loaded via dynamic import, hidden until sync */}
+          <div className={!editorReady && initialBlocks && initialBlocks.length > 0 ? "h-0 overflow-hidden" : ""}>
+            <WikiEditor
+              key={pageId}
+              projectId={projectId}
+              pageId={pageId}
+              initialContent={initialBlocks}
+              onContentChange={handleContentChange}
+              onReady={() => setEditorReady(true)}
+            />
+          </div>
           <BacklinksPanel
             projectId={projectId}
             pageId={pageId}
@@ -709,6 +761,98 @@ function WikiPageContent({
       )}
     </div>
   );
+}
+
+function StaticContentPreview({ blocks }: { blocks: unknown[] }) {
+  return (
+    <div className="wiki-static-preview">
+      {blocks.map((block, i) => (
+        <StaticBlock key={i} block={block} />
+      ))}
+    </div>
+  );
+}
+
+function renderInlineContent(items: unknown[]): React.ReactNode[] {
+  return items.map((item, i) => {
+    const c = item as Record<string, unknown>;
+    if (c.type === "text") {
+      const styles = (c.styles || {}) as Record<string, boolean>;
+      let el: React.ReactNode = c.text as string;
+      if (styles.bold) el = <strong>{el}</strong>;
+      if (styles.italic) el = <em>{el}</em>;
+      if (styles.code) el = <code className="rounded bg-muted px-1 py-0.5 text-sm">{el}</code>;
+      if (styles.strikethrough) el = <s>{el}</s>;
+      if (styles.underline) el = <u>{el}</u>;
+      return <span key={i}>{el}</span>;
+    }
+    if (c.type === "pageLink") {
+      const lp = (c.props || {}) as Record<string, string>;
+      return <span key={i} className="wiki-page-link">{lp.pageTitle || "Untitled"}</span>;
+    }
+    if (c.type === "link") {
+      const content = c.content as unknown[] | undefined;
+      return <a key={i} className="text-primary underline">{content ? renderInlineContent(content) : (c.href as string)}</a>;
+    }
+    return null;
+  });
+}
+
+function StaticBlock({ block }: { block: unknown }) {
+  const b = block as Record<string, unknown>;
+  const type = (b.type as string) || "paragraph";
+  const props = (b.props || {}) as Record<string, unknown>;
+  const content = b.content as unknown[] | undefined;
+  const children = b.children as unknown[] | undefined;
+
+  const inline = content && content.length > 0 ? renderInlineContent(content) : null;
+  const childBlocks = children && children.length > 0 ? (
+    <div className="ml-6">
+      {children.map((child, i) => <StaticBlock key={i} block={child} />)}
+    </div>
+  ) : null;
+
+  switch (type) {
+    case "heading": {
+      const level = (props.level as number) || 1;
+      if (level === 1) return <><h1 className="mb-2 mt-6 text-3xl font-bold">{inline}</h1>{childBlocks}</>;
+      if (level === 2) return <><h2 className="mb-2 mt-5 text-2xl font-bold">{inline}</h2>{childBlocks}</>;
+      return <><h3 className="mb-2 mt-4 text-xl font-bold">{inline}</h3>{childBlocks}</>;
+    }
+    case "bulletListItem":
+      return <><div className="my-0.5 flex gap-2"><span className="shrink-0">•</span><span>{inline}</span></div>{childBlocks}</>;
+    case "numberedListItem":
+      return <><div className="my-0.5">{inline}</div>{childBlocks}</>;
+    case "image":
+      return <><img src={props.url as string} alt={(props.caption as string) || ""} className="my-2 max-w-full rounded" />{childBlocks}</>;
+    case "table": {
+      const tableContent = b.content as Record<string, unknown> | undefined;
+      const rows = (tableContent?.rows as unknown[]) || [];
+      return (
+        <table className="my-2 w-full border-collapse text-sm">
+          <tbody>
+            {rows.map((row, ri) => {
+              const cells = ((row as Record<string, unknown>).cells as unknown[][]) || [];
+              return (
+                <tr key={ri} className="border-b border-border">
+                  {cells.map((cell, ci) => (
+                    <td key={ci} className="border border-border px-3 py-1.5">
+                      {renderInlineContent(cell)}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      );
+    }
+    case "horizontalRule":
+      return <hr className="my-4 border-border" />;
+    default:
+      if (!inline) return <div className="h-[1.5em]" />;
+      return <><p className="my-1 leading-relaxed">{inline}</p>{childBlocks}</>;
+  }
 }
 
 /**

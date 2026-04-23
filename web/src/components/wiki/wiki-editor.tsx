@@ -31,6 +31,7 @@ interface WikiEditorProps {
   pageId: string;
   initialContent?: PartialBlock[];
   onContentChange?: (json: string) => void;
+  onReady?: () => void;
 }
 
 const CURSOR_COLORS = [
@@ -56,7 +57,7 @@ function getUserColor(name: string): string {
   return CURSOR_COLORS[Math.abs(hash) % CURSOR_COLORS.length];
 }
 
-export function WikiEditor({ projectId, pageId, initialContent, onContentChange }: WikiEditorProps) {
+export function WikiEditor({ projectId, pageId, initialContent, onContentChange, onReady }: WikiEditorProps) {
   const hocuspocusUrl = process.env.NEXT_PUBLIC_HOCUSPOCUS_URL ?? "ws://localhost:1234";
 
   const collab = useMemo(() => {
@@ -88,6 +89,7 @@ export function WikiEditor({ projectId, pageId, initialContent, onContentChange 
       provider={collab.provider}
       initialContent={initialContent}
       onContentChange={onContentChange}
+      onReady={onReady}
     />
   );
 }
@@ -99,6 +101,7 @@ function CollaborativeEditor({
   provider,
   initialContent,
   onContentChange,
+  onReady,
 }: {
   projectId: bigint;
   pageId: string;
@@ -106,6 +109,7 @@ function CollaborativeEditor({
   provider: HocuspocusProvider;
   initialContent?: PartialBlock[];
   onContentChange?: (json: string) => void;
+  onReady?: () => void;
 }) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seededRef = useRef(false);
@@ -158,54 +162,77 @@ function CollaborativeEditor({
       .catch(() => {});
   }, [projectId]);
 
-  // Seed editor from initialContent when Yjs doc is empty (no yjs_state on server)
+  // Seed editor from initialContent when Yjs doc is empty, and signal readiness on sync
   useEffect(() => {
-    if (seededRef.current || !initialContent || initialContent.length === 0) return;
+    if (seededRef.current) return;
 
     const fragment = doc.getXmlFragment("document-store");
+    const hasInitial = initialContent && initialContent.length > 0;
 
-    const trySeed = () => {
+    const markReady = (didSync: boolean) => {
       if (seededRef.current) return;
       seededRef.current = true;
-      // Seed when fragment is empty OR when the editor document has no meaningful content
-      // (BlockNote may write a default empty paragraph before sync completes)
-      const isDocEmpty = fragment.length === 0 || editor.document.every(
-        (block) => {
-          const content = block.content;
-          if (!content || !Array.isArray(content)) return true;
-          return content.length === 0 ||
-            content.every((inline: { type?: string; text?: string }) =>
-              inline.type !== "text" || !inline.text?.trim(),
-            );
-        },
-      );
-      if (isDocEmpty) {
-        try {
-          editor.replaceBlocks(editor.document, initialContent);
-        } catch {
-          // Editor may not be ready yet; ignore
+
+      // Only seed or backfill once Yjs has actually synced — otherwise editor.document
+      // may be an empty placeholder that would overwrite real server content.
+      if (didSync && hasInitial) {
+        const isDocEmpty = fragment.length === 0 || editor.document.every(
+          (block) => {
+            const content = block.content;
+            if (!content || !Array.isArray(content)) return true;
+            return content.length === 0 ||
+              content.every((inline: { type?: string; text?: string }) =>
+                inline.type !== "text" || !inline.text?.trim(),
+              );
+          },
+        );
+        if (isDocEmpty) {
+          try {
+            editor.replaceBlocks(editor.document, initialContent);
+          } catch {
+            // Editor may not be ready yet; ignore
+          }
         }
+      }
+      onReady?.();
+
+      // Backfill content_json so future page switches get instant preview.
+      // Skip in fallback path: editor.document may be unsynced/empty there.
+      if (didSync && onContentChange) {
+        const json = JSON.stringify(editor.document);
+        onContentChange(json);
       }
     };
 
-    // If provider already synced, seed immediately
     if (provider.isSynced) {
-      trySeed();
+      markReady(true);
       return;
     }
 
-    // Wait for provider sync event
-    const onSynced = () => trySeed();
+    const onSynced = () => markReady(true);
     provider.on("synced", onSynced);
-
-    // Fallback if server is unreachable
-    const fallback = setTimeout(trySeed, 2000);
+    const fallback = setTimeout(() => markReady(false), 2000);
 
     return () => {
       provider.off("synced", onSynced);
       clearTimeout(fallback);
     };
-  }, [doc, editor, initialContent, provider]);
+  }, [doc, editor, initialContent, provider, onReady, onContentChange]);
+
+  // Flush pending content save on unmount (page switch)
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+      if (onContentChange && seededRef.current) {
+        const json = JSON.stringify(editor.document);
+        onContentChange(json);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleChange = useCallback(() => {
     if (!onContentChange) return;
