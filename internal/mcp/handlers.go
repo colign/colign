@@ -406,6 +406,22 @@ func init() {
 		},
 	})
 	RegisterTool(Tool{
+		Name:        "delete_acceptance_criteria",
+		Description: "Delete an acceptance criteria by ID",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]Property{
+				"id":         {Type: "integer", Description: "Acceptance criteria ID"},
+				"project_id": {Type: "integer", Description: "Project ID"},
+			},
+			Required: []string{"id", "project_id"},
+		},
+		ReadOnly: false,
+		Handler: func(s *Server, ctx context.Context, args json.RawMessage) (any, error) {
+			return s.handleDeleteAC(ctx, args)
+		},
+	})
+	RegisterTool(Tool{
 		Name:        "link_ac_to_test",
 		Description: "Link an acceptance criteria to a test reference. Set test_ref to empty string to unlink.",
 		InputSchema: InputSchema{
@@ -1236,6 +1252,29 @@ func (s *Server) handleToggleAC(ctx context.Context, args json.RawMessage) (any,
 		"met":      ac.Met,
 		"test_ref": ac.TestRef,
 		"toggled":  true,
+	}, nil
+}
+
+func (s *Server) handleDeleteAC(ctx context.Context, args json.RawMessage) (any, error) {
+	var params struct {
+		ID        FlexInt64 `json:"id"`
+		ProjectID FlexInt64 `json:"project_id"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return nil, fmt.Errorf("invalid arguments: %w", err)
+	}
+
+	_, err := s.clients.acceptance.DeleteAC(ctx, connect.NewRequest(&acceptancev1.DeleteACRequest{
+		Id:        params.ID.Int64(),
+		ProjectId: params.ProjectID.Int64(),
+	}))
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]any{
+		"id":      params.ID.Int64(),
+		"deleted": true,
 	}, nil
 }
 

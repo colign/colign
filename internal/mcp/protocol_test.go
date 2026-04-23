@@ -81,6 +81,24 @@ func TestCreateACToolHasTestRefParam(t *testing.T) {
 	assert.Contains(t, createAC.InputSchema.Properties, "test_ref", "create_acceptance_criteria should have test_ref param")
 }
 
+func TestDeleteACToolDefinition(t *testing.T) {
+	tools := ListTools()
+
+	var deleteAC *Tool
+	for i, tool := range tools {
+		if tool.Name == "delete_acceptance_criteria" {
+			deleteAC = &tools[i]
+			break
+		}
+	}
+	require.NotNil(t, deleteAC, "delete_acceptance_criteria tool not found")
+
+	assert.Contains(t, deleteAC.InputSchema.Properties, "id")
+	assert.Contains(t, deleteAC.InputSchema.Properties, "project_id")
+	assert.Equal(t, []string{"id", "project_id"}, deleteAC.InputSchema.Required)
+	assert.False(t, deleteAC.ReadOnly, "delete_acceptance_criteria must be a write tool")
+}
+
 func TestGetChangeHistoryToolDefinition(t *testing.T) {
 	tools := ListTools()
 

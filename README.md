@@ -122,6 +122,7 @@ COLIGN_API_TOKEN=col_... COLIGN_API_URL=http://localhost:8080 ./colign-mcp
 | `suggest_spec` | Get suggestions for improving a spec |
 | `list_acceptance_criteria` | List acceptance criteria (Given/When/Then) |
 | `create_acceptance_criteria` | Create BDD-style acceptance criteria |
+| `delete_acceptance_criteria` | Delete an acceptance criteria by ID |
 
 ## Claude Code Plugin
 
