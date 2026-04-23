@@ -43,11 +43,10 @@ interface Notification {
   createdAt?: { seconds: bigint };
 }
 
-const stageConfig: Record<string, { label: string; color: string }> = {
-  draft: { label: "Draft", color: "text-stage-draft" },
-  design: { label: "Design", color: "text-stage-spec" },
-  review: { label: "Review", color: "text-stage-review" },
-  ready: { label: "Ready", color: "text-primary" },
+const stageConfig: Record<string, { labelKey: string; color: string }> = {
+  draft: { labelKey: "stages.draft", color: "text-stage-draft" },
+  spec: { labelKey: "stages.spec", color: "text-stage-spec" },
+  approved: { labelKey: "stages.approved", color: "text-stage-approved" },
 };
 
 function timeAgo(seconds: bigint | undefined): string {
@@ -238,7 +237,7 @@ export default function InboxPage() {
             <span className="text-muted-foreground"> {t("inbox.moved")} </span>
             <span className="font-medium text-foreground">{n.changeName}</span>
             <span className="text-muted-foreground"> → </span>
-            <span className={`font-medium ${stage.color}`}>{stage.label}</span>
+            <span className={`font-medium ${stage.color}`}>{t(stage.labelKey)}</span>
           </p>
         );
       }
