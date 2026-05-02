@@ -1142,7 +1142,9 @@ function ChangesTab({
           res.changes.map((c) => ({
             id: c.id,
             name: c.name,
+            identifier: c.identifier,
             stage: c.stage,
+            subStatus: c.subStatus,
             archivedAt: c.archivedAt,
             labels: (c.labels ?? []).map((l) => ({ id: l.id, name: l.name, color: l.color })),
           })),
@@ -1164,7 +1166,9 @@ function ChangesTab({
           res.changes.map((c) => ({
             id: c.id,
             name: c.name,
+            identifier: c.identifier,
             stage: c.stage,
+            subStatus: c.subStatus,
             archivedAt: c.archivedAt,
             labels: (c.labels ?? []).map((l) => ({ id: l.id, name: l.name, color: l.color })),
           })),
@@ -1183,7 +1187,9 @@ function ChangesTab({
           res.changes.map((c) => ({
             id: c.id,
             name: c.name,
+            identifier: c.identifier,
             stage: c.stage,
+            subStatus: c.subStatus,
             archivedAt: c.archivedAt,
             labels: (c.labels ?? []).map((l) => ({ id: l.id, name: l.name, color: l.color })),
           })),
