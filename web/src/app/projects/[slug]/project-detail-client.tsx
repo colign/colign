@@ -30,7 +30,9 @@ import { orgClient } from "@/lib/organization";
 import { memoryClient } from "@/lib/memory";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import dynamic from "next/dynamic";
-const WikiTab = dynamic(() => import("@/components/wiki/wiki-tab").then((m) => m.WikiTab), { ssr: false });
+const WikiTab = dynamic(() => import("@/components/wiki/wiki-tab").then((m) => m.WikiTab), {
+  ssr: false,
+});
 import { useEvents } from "@/lib/events";
 import { useI18n } from "@/lib/i18n";
 import { showError, showSuccess } from "@/lib/toast";
@@ -206,7 +208,9 @@ export default function ProjectDetailClient() {
   );
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [members, setMembers] = useState<{ name: string; email: string; role: string; avatarUrl: string }[]>([]);
+  const [members, setMembers] = useState<
+    { name: string; email: string; role: string; avatarUrl: string }[]
+  >([]);
   const [memoryContent, setMemoryContent] = useState("");
   const [activeProperty, setActiveProperty] = useState<string | null>(null);
   const propertyRef = useRef<HTMLDivElement>(null);
@@ -292,7 +296,9 @@ export default function ProjectDetailClient() {
           {
             id: res.change!.id,
             name: res.change!.name,
+            identifier: res.change!.identifier,
             stage: res.change!.stage,
+            subStatus: res.change!.subStatus,
             archivedAt: res.change!.archivedAt,
             labels: (res.change!.labels ?? []).map((l) => ({
               id: l.id,
@@ -528,7 +534,9 @@ export default function ProjectDetailClient() {
               {/* Priority */}
               <div className="relative">
                 <button
-                  onClick={() => setActiveProperty(activeProperty === "priority" ? null : "priority")}
+                  onClick={() =>
+                    setActiveProperty(activeProperty === "priority" ? null : "priority")
+                  }
                   className="flex cursor-pointer items-center gap-1.5 rounded-md bg-card px-2.5 py-1 text-xs text-secondary-foreground transition-colors hover:bg-accent"
                 >
                   <span className="font-mono text-muted-foreground">
@@ -643,7 +651,11 @@ export default function ProjectDetailClient() {
                     className="flex cursor-pointer items-center gap-1.5 rounded-md px-1 py-0.5 text-sm transition-colors hover:bg-accent"
                   >
                     <User className="size-3.5 text-muted-foreground/60" />
-                    <span className={project.leadName ? "text-foreground/80" : "text-muted-foreground/40"}>
+                    <span
+                      className={
+                        project.leadName ? "text-foreground/80" : "text-muted-foreground/40"
+                      }
+                    >
                       {project.leadName || t("project.noLead")}
                     </span>
                   </button>
@@ -706,7 +718,9 @@ export default function ProjectDetailClient() {
                 </div>
                 <div className="flex items-center gap-1.5 px-1 py-0.5 text-sm text-foreground/80">
                   <Users className="size-3.5 text-muted-foreground/60" />
-                  <span>{members.length} {t("project.membersCount")}</span>
+                  <span>
+                    {members.length} {t("project.membersCount")}
+                  </span>
                 </div>
               </div>
 
@@ -732,7 +746,7 @@ export default function ProjectDetailClient() {
                 />
               </div>
             </div>
-        )}
+          )}
         </div>
 
         {/* Tabs + Content card */}
@@ -756,9 +770,7 @@ export default function ProjectDetailClient() {
 
           {/* Tab Content */}
           <div className="p-4">
-            {activeTab === "wiki" && (
-              <WikiTab projectId={project.id} />
-            )}
+            {activeTab === "wiki" && <WikiTab projectId={project.id} />}
 
             {activeTab === "changes" && (
               <ChangesTab
@@ -1048,7 +1060,9 @@ function ChangesTab({
       activeRes.changes.map((c) => ({
         id: c.id,
         name: c.name,
+        identifier: c.identifier,
         stage: c.stage,
+        subStatus: c.subStatus,
         archivedAt: c.archivedAt,
         labels: (c.labels ?? []).map((l) => ({ id: l.id, name: l.name, color: l.color })),
       })),
@@ -1057,7 +1071,9 @@ function ChangesTab({
       archivedRes.changes.map((c) => ({
         id: c.id,
         name: c.name,
+        identifier: c.identifier,
         stage: c.stage,
+        subStatus: c.subStatus,
         archivedAt: c.archivedAt,
         labels: (c.labels ?? []).map((l) => ({ id: l.id, name: l.name, color: l.color })),
       })),
@@ -1707,9 +1723,9 @@ function MemoryTab({
           <span className="text-sm font-medium">{t("project.memory")}</span>
         </div>
         <ReadmeEditor
-          initialContent={
-            DOMPurify.sanitize(content.startsWith("<") ? content : (marked.parse(content, { async: false }) as string))
-          }
+          initialContent={DOMPurify.sanitize(
+            content.startsWith("<") ? content : (marked.parse(content, { async: false }) as string),
+          )}
           onSave={handleMemorySave}
           placeholder="Write project memory — domain rules, business context, constraints..."
         />
